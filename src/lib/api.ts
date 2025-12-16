@@ -170,12 +170,12 @@ export const refreshToken = async (refreshTokenStr: string) => {
 };
 
 // Fetch dynamic homepage (uses GUEST TOKEN - offers scope)
+// NOTE: Always use Desktop device type because Mobile API returns different structure without page_elements
 export const fetchDynamicPage = async () => {
-  const device = getDeviceType();
   const guestToken = await getGuestToken();
   console.log('[API] fetchDynamicPage using guest token');
   return callProxy(
-    `/dynamicpage/api-homepage?device=${device}&include=seo_content&filter[deal_card_type]=flash_site`,
+    `/dynamicpage/api-homepage?device=Desktop&include=seo_content&filter[deal_card_type]=flash_site`,
     'GET',
     undefined,
     guestToken

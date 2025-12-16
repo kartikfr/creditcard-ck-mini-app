@@ -59,6 +59,9 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
   const cashbackText = getCashbackText();
   const displayName = attrs.name || attrs.title || attrs.store_name || 'Special Offer';
   const ribbonText = attrs.cashback_ribbon_text || attrs.offer_type || '';
+  
+  // Get image URL with fallback
+  const imageUrl = attrs.image_url || `https://placehold.co/150x60/f9fafb/666666?text=${encodeURIComponent(displayName.slice(0, 10))}`;
 
   // Use links.self as primary link (API detail page)
   const offerLink = offer.links?.self || attrs.cashback_url || '#';
@@ -78,13 +81,17 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
       )}
       
       {/* Logo/Image */}
-      <div className="flex items-center justify-center p-4 md:p-6 min-h-[80px] md:min-h-[100px]">
+      <div className="flex items-center justify-center p-4 md:p-6 min-h-[80px] md:min-h-[100px] bg-white dark:bg-card">
         <img
-          src={attrs.image_url}
+          src={imageUrl}
           alt={displayName}
           className="max-h-12 md:max-h-16 max-w-full object-contain group-hover:scale-105 transition-transform"
+          loading="lazy"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://placehold.co/150x60/f9fafb/666666?text=Logo';
+            const target = e.target as HTMLImageElement;
+            if (!target.src.includes('placehold.co')) {
+              target.src = `https://placehold.co/150x60/f9fafb/666666?text=${encodeURIComponent(displayName.slice(0, 10))}`;
+            }
           }}
         />
       </div>

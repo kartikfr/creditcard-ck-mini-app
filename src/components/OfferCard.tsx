@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface OfferCashback {
   payment_type?: string;
@@ -36,6 +37,7 @@ interface OfferCardProps {
 }
 
 const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
+  const navigate = useNavigate();
   const attrs = offer.attributes;
   
   // Format cashback display text
@@ -63,15 +65,18 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
   // Get image URL with fallback
   const imageUrl = attrs.image_url || `https://placehold.co/150x60/f9fafb/666666?text=${encodeURIComponent(displayName.slice(0, 10))}`;
 
-  // Use links.self as primary link (API detail page)
-  const offerLink = offer.links?.self || attrs.cashback_url || '#';
+  // Navigate to internal offer detail page using unique_identifier
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (attrs.unique_identifier) {
+      navigate(`/offer/${attrs.unique_identifier}`);
+    }
+  };
 
   return (
-    <a
-      href={offerLink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group"
+    <div
+      onClick={handleClick}
+      className="block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer"
     >
       {/* Ribbon Badge */}
       {ribbonText && (
@@ -109,7 +114,7 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
           </div>
         </div>
       )}
-    </a>
+    </div>
   );
 };
 

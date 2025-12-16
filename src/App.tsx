@@ -10,6 +10,7 @@ import Earnings from "./pages/Earnings";
 import MissingCashback from "./pages/MissingCashback";
 import Payments from "./pages/Payments";
 import Profile from "./pages/Profile";
+import OfferDetail from "./pages/OfferDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/offer/:uniqueIdentifier" element={<ProtectedRoute><OfferDetail /></ProtectedRoute>} />
       <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
       <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />

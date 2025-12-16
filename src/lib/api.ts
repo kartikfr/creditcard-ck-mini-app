@@ -199,6 +199,18 @@ export const fetchCategoryOffers = async (
   );
 };
 
+// Fetch offer detail by unique_identifier (uses GUEST TOKEN - offers scope)
+export const fetchOfferDetail = async (uniqueIdentifier: string) => {
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchOfferDetail: ${uniqueIdentifier}`);
+  return callProxy(
+    `/offers/${uniqueIdentifier}?device=Desktop`,
+    'GET',
+    undefined,
+    guestToken
+  );
+};
+
 // Fetch user earnings
 export const fetchEarnings = async (accessToken: string) => {
   return callProxy(

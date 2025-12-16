@@ -55,15 +55,74 @@ interface SeoContent {
 }
 
 interface EarningsData {
-  total_earnings?: number;
-  pending_amount?: number;
-  confirmed_amount?: number;
-  paid_amount?: number;
-  total_orders?: number;
-  cashbacks?: any;
-  rewards?: any;
-  referrals?: any;
+  firstname?: string;
+  total_earned?: string;
+  total_cashback_earned?: string;
+  confirmed_cashback?: string;
+  pending_cashback?: string;
+  paid_cashback?: string;
+  total_rewards_earned?: string;
+  total_referral_earned?: string;
+  currency?: string;
 }
+
+// Fallback banners from the provided API structure (used when staging API returns empty)
+const FALLBACK_BANNERS: Banner[] = [
+  {
+    type: "banner",
+    id: 1,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Desktop-V1-1700830609.png" },
+    links: { self: "https://cashkaro.com/stores/amazon" }
+  },
+  {
+    type: "banner",
+    id: 2,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/FK Desktop Banner-1701403834.png" },
+    links: { self: "https://cashkaro.com/stores/flipkart" }
+  },
+  {
+    type: "banner",
+    id: 3,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Myntra Desktop Banner-1701405672.png" },
+    links: { self: "https://cashkaro.com/stores/myntra" }
+  },
+  {
+    type: "banner",
+    id: 4,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/HDFC-Desktop-2-11-2023-1701404891.png" },
+    links: { self: "https://cashkaro.com/stores/swiggy-hdfc-bank-credit-card-offers" }
+  },
+  {
+    type: "banner",
+    id: 5,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Ajio Desktop Banner-1701415307.png" },
+    links: { self: "https://cashkaro.com/stores/ajio-coupons" }
+  },
+  {
+    type: "banner",
+    id: 6,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Derma-co-Desktop-2-11-2023-1701404040.png" },
+    links: { self: "https://cashkaro.com/stores/thedermaco-coupons" }
+  },
+  {
+    type: "banner",
+    id: 7,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/m caff Desktop Banner-1701403887.png" },
+    links: { self: "https://cashkaro.com/stores/mcaffeine-coupons" }
+  },
+  {
+    type: "banner",
+    id: 8,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Aqualogica Desktop Banner-1701430521.png" },
+    links: { self: "https://cashkaro.com/stores/aqualogica-coupons" }
+  },
+  {
+    type: "banner",
+    id: 9,
+    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Norton-Desktop-30-10-2023-1701411906.png" },
+    links: { self: "https://cashkaro.com/stores/norton-coupons" }
+  }
+];
 
 const Home: React.FC = () => {
   const { user, accessToken, isAuthenticated } = useAuth();
@@ -76,6 +135,7 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [rawApiResponse, setRawApiResponse] = useState<any>(null);
+  const [usedFallback, setUsedFallback] = useState(false);
 
   // Parse stringified JSON data from page_elements
   const parsePageElementData = useCallback((data: string | any[]): Banner[] => {
@@ -110,7 +170,9 @@ const Home: React.FC = () => {
       setRawApiResponse(response);
       
       if (!response?.data) {
-        console.warn('[Home] No data in response');
+        console.warn('[Home] No data in response, using fallback banners');
+        setBanners(FALLBACK_BANNERS);
+        setUsedFallback(true);
         return;
       }
 
@@ -139,10 +201,20 @@ const Home: React.FC = () => {
           allBanners.push(...elementBanners);
         });
         
-        setBanners(allBanners);
-        console.log('[Home] Total banners extracted:', allBanners.length);
+        // If no banners from API, use fallback
+        if (allBanners.length === 0) {
+          console.log('[Home] No banners from API, using fallback banners');
+          setBanners(FALLBACK_BANNERS);
+          setUsedFallback(true);
+        } else {
+          setBanners(allBanners);
+          setUsedFallback(false);
+        }
+        console.log('[Home] Total banners:', allBanners.length > 0 ? allBanners.length : FALLBACK_BANNERS.length);
       } else {
-        console.log('[Home] No home_page or dynamic_page found in response');
+        console.log('[Home] No home_page found, using fallback banners');
+        setBanners(FALLBACK_BANNERS);
+        setUsedFallback(true);
       }
 
       // Parse SEO content from included
@@ -157,6 +229,9 @@ const Home: React.FC = () => {
     } catch (err) {
       console.error('[Home] Failed to load homepage:', err);
       setError(err instanceof Error ? err.message : 'Failed to load homepage');
+      // Use fallback banners on error
+      setBanners(FALLBACK_BANNERS);
+      setUsedFallback(true);
     }
   }, [parsePageElementData]);
 
@@ -169,8 +244,10 @@ const Home: React.FC = () => {
       const response = await fetchEarnings(accessToken);
       console.log('[Home] Earnings response:', response);
       
-      if (response?.data?.attributes) {
-        setEarnings(response.data.attributes);
+      // Handle array response format
+      const userData = Array.isArray(response?.data) ? response.data[0] : response?.data;
+      if (userData?.attributes) {
+        setEarnings(userData.attributes);
       }
     } catch (err) {
       console.error('[Home] Failed to load earnings:', err);
@@ -207,13 +284,11 @@ const Home: React.FC = () => {
     if (!metaTagsHtml) return;
     
     try {
-      // Parse and apply title
       const titleMatch = metaTagsHtml.match(/<title>([^<]+)<\/title>/);
       if (titleMatch) {
         document.title = titleMatch[1];
       }
 
-      // Parse meta tags
       const metaRegex = /<meta\s+([^>]+)>/gi;
       let match;
       while ((match = metaRegex.exec(metaTagsHtml)) !== null) {
@@ -262,6 +337,11 @@ const Home: React.FC = () => {
     setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
   };
 
+  // Parse earnings values
+  const totalEarnings = parseFloat(earnings?.total_earned || earnings?.total_cashback_earned || '0');
+  const pendingAmount = parseFloat(earnings?.pending_cashback || '0');
+  const confirmedAmount = parseFloat(earnings?.confirmed_cashback || '0');
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -280,7 +360,7 @@ const Home: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
-                Hello, {user?.firstName || 'there'}! 👋
+                Hello, {user?.firstName || earnings?.firstname || 'there'}! 👋
               </h1>
               <p className="text-muted-foreground mt-1">
                 Find the best cashback offers today
@@ -373,6 +453,13 @@ const Home: React.FC = () => {
               <div className="absolute top-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
                 {currentBannerIndex + 1} / {banners.length}
               </div>
+
+              {/* Fallback indicator */}
+              {usedFallback && (
+                <div className="absolute top-3 left-3 bg-yellow-500/80 text-white text-[10px] px-2 py-1 rounded-full">
+                  Demo Data
+                </div>
+              )}
             </div>
 
             {/* Thumbnail Strip */}
@@ -406,19 +493,19 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-3 gap-3 md:gap-4 text-center">
             <div>
               <p className="text-xl md:text-3xl font-bold">
-                ₹{earnings?.total_earnings?.toLocaleString() || earnings?.confirmed_amount?.toLocaleString() || earnings?.paid_amount?.toLocaleString() || '0'}
+                ₹{totalEarnings.toLocaleString()}
               </p>
               <p className="text-[10px] md:text-sm text-primary-foreground/80">Total Earnings</p>
             </div>
             <div className="border-l border-r border-primary-foreground/20">
               <p className="text-xl md:text-3xl font-bold">
-                ₹{earnings?.pending_amount?.toLocaleString() || '0'}
+                ₹{pendingAmount.toLocaleString()}
               </p>
               <p className="text-[10px] md:text-sm text-primary-foreground/80">Pending</p>
             </div>
             <div>
-              <p className="text-xl md:text-3xl font-bold">{earnings?.total_orders || 0}</p>
-              <p className="text-[10px] md:text-sm text-primary-foreground/80">Orders</p>
+              <p className="text-xl md:text-3xl font-bold">₹{confirmedAmount.toLocaleString()}</p>
+              <p className="text-[10px] md:text-sm text-primary-foreground/80">Confirmed</p>
             </div>
           </div>
         </div>
@@ -495,43 +582,25 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        {/* No Banners State */}
-        {banners.length === 0 && !error && (
-          <div className="text-center py-8 card-elevated rounded-xl">
-            <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">Loading offers...</p>
-            <p className="text-sm text-muted-foreground mt-1">Pull down to refresh or check back later</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={handleRefresh}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-            </Button>
-          </div>
-        )}
-
         {/* API Response Debug Panel */}
         <details className="card-elevated p-4 mt-6">
           <summary className="cursor-pointer font-medium text-foreground text-sm flex items-center gap-2">
-            📡 API Debug ({banners.length} banners, {pageData?.attributes?.page_elements?.length || 0} elements)
+            📡 API Debug {usedFallback && '(Using Fallback Data)'}
           </summary>
           <div className="mt-4 space-y-4">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Page Info:</p>
-              <p className="text-xs">Type: {pageData?.type || 'N/A'}</p>
-              <p className="text-xs">ID: {pageData?.id || 'N/A'}</p>
-              <p className="text-xs">Title: {pageData?.attributes?.title || 'N/A'}</p>
+            <div className="text-xs space-y-1">
+              <p><strong>Banners:</strong> {banners.length}</p>
+              <p><strong>Data Source:</strong> {usedFallback ? 'Fallback (API returned empty)' : 'Live API'}</p>
+              <p><strong>Page Type:</strong> {pageData?.type || 'N/A'}</p>
+              <p><strong>Page ID:</strong> {pageData?.id || 'N/A'}</p>
             </div>
             
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Raw API Response:</p>
-              <pre className="p-3 bg-secondary rounded-lg overflow-auto text-xs max-h-64">
+              <pre className="p-3 bg-secondary rounded-lg overflow-auto text-xs max-h-48">
                 {JSON.stringify(rawApiResponse, null, 2)}
               </pre>
             </div>
-
-            {seoContent && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">SEO Content ID: {seoContent.id}</p>
-              </div>
-            )}
           </div>
         </details>
       </div>

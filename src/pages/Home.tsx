@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronRight, ChevronLeft, Percent, Gift, Star, TrendingUp, Zap, ExternalLink, RefreshCw } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, Percent, Gift, Star, Zap, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import OfferCard, { Offer } from '@/components/OfferCard';
 
 // Types for API response
 interface Banner {
@@ -64,27 +65,6 @@ interface EarningsData {
   total_rewards_earned?: string;
   total_referral_earned?: string;
   currency?: string;
-}
-
-// Types for category offers
-interface CategoryOffer {
-  type: string;
-  id: string | number;
-  attributes: {
-    title?: string;
-    name?: string;
-    description?: string;
-    image_url?: string;
-    logo_url?: string;
-    store_logo?: string;
-    cashback_string?: string;
-    cashback_text?: string;
-    store_name?: string;
-    url?: string;
-  };
-  links?: {
-    self?: string;
-  };
 }
 
 // Default API response structure (used when staging API returns empty data)
@@ -165,8 +145,10 @@ const Home: React.FC = () => {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [rawApiResponse, setRawApiResponse] = useState<any>(null);
   const [usedFallback, setUsedFallback] = useState(false);
-  const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+  const [categoryOffers, setCategoryOffers] = useState<Offer[]>([]);
   const [offersLoading, setOffersLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const OFFERS_PER_PAGE = 8;
 
   // Parse stringified JSON data from page_elements
   const parsePageElementData = useCallback((data: string | any[]): Banner[] => {
@@ -586,49 +568,55 @@ const Home: React.FC = () => {
               </button>
             </div>
             
+            {/* Offers Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {categoryOffers.map((offer) => (
-                <a
-                  key={offer.id}
-                  href={offer.links?.self || offer.attributes?.url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="card-elevated p-3 md:p-4 hover:shadow-lg transition-all hover:scale-[1.02] group"
-                >
-                  {/* Offer Image/Logo */}
-                  <div className="aspect-video rounded-lg overflow-hidden bg-secondary mb-3">
-                    <img
-                      src={offer.attributes?.image_url || offer.attributes?.logo_url || offer.attributes?.store_logo}
-                      alt={offer.attributes?.title || offer.attributes?.name || offer.attributes?.store_name || 'Offer'}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://placehold.co/200x100/1a1a2e/ffffff?text=Offer';
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Offer Details */}
-                  <h3 className="font-medium text-foreground text-sm md:text-base line-clamp-2 mb-1">
-                    {offer.attributes?.title || offer.attributes?.name || offer.attributes?.store_name || 'Special Offer'}
-                  </h3>
-                  
-                  {/* Cashback Badge */}
-                  {(offer.attributes?.cashback_string || offer.attributes?.cashback_text) && (
-                    <div className="inline-flex items-center gap-1 bg-success/10 text-success text-xs font-medium px-2 py-1 rounded-full">
-                      <TrendingUp className="w-3 h-3" />
-                      {offer.attributes?.cashback_string || offer.attributes?.cashback_text}
-                    </div>
-                  )}
-                  
-                  {/* Description */}
-                  {offer.attributes?.description && (
-                    <p className="text-muted-foreground text-xs mt-2 line-clamp-2">
-                      {offer.attributes.description}
-                    </p>
-                  )}
-                </a>
-              ))}
+              {categoryOffers
+                .slice((currentPage - 1) * OFFERS_PER_PAGE, currentPage * OFFERS_PER_PAGE)
+                .map((offer) => (
+                  <OfferCard key={offer.id} offer={offer} />
+                ))}
             </div>
+
+            {/* Pagination */}
+            {categoryOffers.length > OFFERS_PER_PAGE && (
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(categoryOffers.length / OFFERS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary hover:bg-secondary/80 text-foreground'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(Math.ceil(categoryOffers.length / OFFERS_PER_PAGE), p + 1))}
+                  disabled={currentPage >= Math.ceil(categoryOffers.length / OFFERS_PER_PAGE)}
+                  className="rounded-lg"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </section>
         )}
 

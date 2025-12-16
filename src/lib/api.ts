@@ -23,6 +23,23 @@ const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000;
 let currentGuestToken: string | null = null;
 let tokenRefreshTimer: NodeJS.Timeout | null = null;
 
+// Helper to decode JWT and get expiration time
+const getTokenExpiration = (token: string): number | null => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
+  } catch {
+    return null;
+  }
+};
+
+// Check if token is expired or about to expire (with 60s buffer)
+const isTokenExpired = (token: string): boolean => {
+  const exp = getTokenExpiration(token);
+  if (!exp) return true;
+  return Date.now() >= exp - 60000; // 60 second buffer before expiration
+};
+
 // Helper to call the proxy edge function
 const callProxy = async (endpoint: string, method = 'GET', body?: any, accessToken?: string) => {
   console.log(`[API] Calling proxy: ${method} ${endpoint}`);
@@ -62,10 +79,18 @@ export const generateToken = async (): Promise<string> => {
 
 // Initialize and maintain guest token
 export const initGuestToken = async (): Promise<string> => {
-  if (!currentGuestToken) {
+  if (!currentGuestToken || isTokenExpired(currentGuestToken)) {
+    console.log('[API] Token missing or expired, generating new one...');
     currentGuestToken = await generateToken();
     startTokenRefresh();
   }
+  return currentGuestToken;
+};
+
+// Force refresh guest token (useful before critical operations)
+export const forceRefreshGuestToken = async (): Promise<string> => {
+  console.log('[API] Force refreshing guest token...');
+  currentGuestToken = await generateToken();
   return currentGuestToken;
 };
 
@@ -96,9 +121,10 @@ export const stopTokenRefresh = () => {
   }
 };
 
-// Get current guest token
+// Get current guest token (always checks expiration)
 export const getGuestToken = async (): Promise<string> => {
-  if (!currentGuestToken) {
+  if (!currentGuestToken || isTokenExpired(currentGuestToken)) {
+    console.log('[API] Guest token expired or missing, refreshing...');
     return initGuestToken();
   }
   return currentGuestToken;

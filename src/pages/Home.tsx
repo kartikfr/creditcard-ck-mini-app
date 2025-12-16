@@ -66,63 +66,71 @@ interface EarningsData {
   currency?: string;
 }
 
-// Fallback banners from the provided API structure (used when staging API returns empty)
-const FALLBACK_BANNERS: Banner[] = [
-  {
-    type: "banner",
-    id: 1,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Desktop-V1-1700830609.png" },
-    links: { self: "https://cashkaro.com/stores/amazon" }
-  },
-  {
-    type: "banner",
-    id: 2,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/FK Desktop Banner-1701403834.png" },
-    links: { self: "https://cashkaro.com/stores/flipkart" }
-  },
-  {
-    type: "banner",
-    id: 3,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Myntra Desktop Banner-1701405672.png" },
-    links: { self: "https://cashkaro.com/stores/myntra" }
-  },
-  {
-    type: "banner",
-    id: 4,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/HDFC-Desktop-2-11-2023-1701404891.png" },
-    links: { self: "https://cashkaro.com/stores/swiggy-hdfc-bank-credit-card-offers" }
-  },
-  {
-    type: "banner",
-    id: 5,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Ajio Desktop Banner-1701415307.png" },
-    links: { self: "https://cashkaro.com/stores/ajio-coupons" }
-  },
-  {
-    type: "banner",
-    id: 6,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Derma-co-Desktop-2-11-2023-1701404040.png" },
-    links: { self: "https://cashkaro.com/stores/thedermaco-coupons" }
-  },
-  {
-    type: "banner",
-    id: 7,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/m caff Desktop Banner-1701403887.png" },
-    links: { self: "https://cashkaro.com/stores/mcaffeine-coupons" }
-  },
-  {
-    type: "banner",
-    id: 8,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Aqualogica Desktop Banner-1701430521.png" },
-    links: { self: "https://cashkaro.com/stores/aqualogica-coupons" }
-  },
-  {
-    type: "banner",
-    id: 9,
-    attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Norton-Desktop-30-10-2023-1701411906.png" },
-    links: { self: "https://cashkaro.com/stores/norton-coupons" }
-  }
-];
+// Default API response structure (used when staging API returns empty data)
+const DEFAULT_API_RESPONSE = {
+  data: [
+    {
+      type: "home_page",
+      id: "dynamic",
+      attributes: {
+        title: "API-Homepage",
+        unique_identifier: "api-homepage",
+        remove_header_footer: false,
+        page_elements: [
+          {
+            id: "static-content1",
+            title: "Nil",
+            viewallurl: "Nil",
+            viewallurltext: "Nil",
+            col: 1,
+            row: 1,
+            size_x: 1,
+            size_y: 1,
+            data: JSON.stringify({
+              data: [
+                { type: "banner", id: 1, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Desktop-V1-1700830609.png" }, links: { self: "https://cashkaro.com/stores/amazon" } },
+                { type: "banner", id: 2, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/FK Desktop Banner-1701403834.png" }, links: { self: "https://cashkaro.com/stores/flipkart" } },
+                { type: "banner", id: 3, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Myntra Desktop Banner-1701405672.png" }, links: { self: "https://cashkaro.com/stores/myntra" } },
+                { type: "banner", id: 4, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/HDFC-Desktop-2-11-2023-1701404891.png" }, links: { self: "https://cashkaro.com/stores/swiggy-hdfc-bank-credit-card-offers" } },
+                { type: "banner", id: 5, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Ajio Desktop Banner-1701415307.png" }, links: { self: "https://cashkaro.com/stores/ajio-coupons" } },
+                { type: "banner", id: 6, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Derma-co-Desktop-2-11-2023-1701404040.png" }, links: { self: "https://cashkaro.com/stores/thedermaco-coupons" } },
+                { type: "banner", id: 7, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/m caff Desktop Banner-1701403887.png" }, links: { self: "https://cashkaro.com/stores/mcaffeine-coupons" } },
+                { type: "banner", id: 8, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Aqualogica Desktop Banner-1701430521.png" }, links: { self: "https://cashkaro.com/stores/aqualogica-coupons" } },
+                { type: "banner", id: 9, attributes: { image_url: "https://asset22.ckassets.com/resources/image/staticpage_images/Norton-Desktop-30-10-2023-1701411906.png" }, links: { self: "https://cashkaro.com/stores/norton-coupons" } }
+              ]
+            })
+          },
+          {
+            id: "home_categories",
+            col: 1,
+            row: 2,
+            size_x: 1,
+            size_y: 1,
+            stacking_type: "horizontal",
+            data: []
+          }
+        ]
+      }
+    }
+  ],
+  included: [
+    {
+      type: "seo_content",
+      id: 2074,
+      attributes: {
+        meta_tags: `<title>CashKaro: Discount Coupons, Cashback Offers & Promo Codes</title>
+<meta name="Description" content="Get Top deals, latest Coupons & Discount Codes for [1500+ Sites]. Backed By Mr. Ratan Tata CashKaro is a True place to Avail Extra Cashback on online shopping's."/>
+<meta property="og:title" content="CashKaro: Discount Coupons, Cashback Offers & Promo Codes"/>
+<meta property="og:description" content="Get Top deals, latest Coupons & Discount Codes for [1500+ Sites]."/>
+<meta property="og:url" content="https://cashkaro.com"/>
+<meta property="og:site_name" content="CashKaro"/>
+<meta property="og:image" content="https://asset22.ckassets.com/resources/image/staticpage_images/CK-Logo-1613133688.png"/>`,
+        google_remarketing_code: "",
+        fb_remarketting_code: ""
+      }
+    }
+  ]
+};
 
 const Home: React.FC = () => {
   const { user, accessToken, isAuthenticated } = useAuth();
@@ -161,6 +169,35 @@ const Home: React.FC = () => {
     return [];
   }, []);
 
+  // Process API response (either from API or default)
+  const processApiResponse = useCallback((response: any) => {
+    const dataArray = Array.isArray(response.data) ? response.data : [response.data];
+    
+    // Find home_page or dynamic_page type
+    const homePage = dataArray.find(
+      (item: any) => item.type === 'home_page' || item.type === 'dynamic_page'
+    );
+    
+    if (homePage) {
+      setPageData(homePage);
+      
+      // Extract banners from page_elements
+      const pageElements = homePage.attributes?.page_elements || [];
+      const allBanners: Banner[] = [];
+      
+      pageElements.forEach((element: PageElement) => {
+        const elementBanners = parsePageElementData(element.data);
+        allBanners.push(...elementBanners);
+      });
+      
+      if (allBanners.length > 0) {
+        setBanners(allBanners);
+        return true;
+      }
+    }
+    return false;
+  }, [parsePageElementData]);
+
   // Load dynamic page data
   const loadDynamicPage = useCallback(async () => {
     try {
@@ -169,59 +206,22 @@ const Home: React.FC = () => {
       console.log('[Home] Dynamic page raw response:', response);
       setRawApiResponse(response);
       
-      if (!response?.data) {
-        console.warn('[Home] No data in response, using fallback banners');
-        setBanners(FALLBACK_BANNERS);
+      // Check if API response has valid page_elements with banners
+      const hasValidData = response?.data && processApiResponse(response);
+      
+      if (!hasValidData) {
+        console.log('[Home] API returned empty data, using default response');
+        processApiResponse(DEFAULT_API_RESPONSE);
         setUsedFallback(true);
-        return;
-      }
-
-      const dataArray = Array.isArray(response.data) ? response.data : [response.data];
-      console.log('[Home] Data array:', dataArray);
-      
-      // Find home_page or dynamic_page type
-      const homePage = dataArray.find(
-        (item: any) => item.type === 'home_page' || item.type === 'dynamic_page'
-      );
-      
-      if (homePage) {
-        console.log('[Home] Found home page data:', homePage);
-        setPageData(homePage);
-        
-        // Extract banners from page_elements
-        const pageElements = homePage.attributes?.page_elements || [];
-        console.log('[Home] Page elements:', pageElements);
-        
-        const allBanners: Banner[] = [];
-        
-        pageElements.forEach((element: PageElement) => {
-          console.log('[Home] Processing element:', element.id, 'data type:', typeof element.data);
-          const elementBanners = parsePageElementData(element.data);
-          console.log('[Home] Extracted banners from element:', elementBanners.length);
-          allBanners.push(...elementBanners);
-        });
-        
-        // If no banners from API, use fallback
-        if (allBanners.length === 0) {
-          console.log('[Home] No banners from API, using fallback banners');
-          setBanners(FALLBACK_BANNERS);
-          setUsedFallback(true);
-        } else {
-          setBanners(allBanners);
-          setUsedFallback(false);
-        }
-        console.log('[Home] Total banners:', allBanners.length > 0 ? allBanners.length : FALLBACK_BANNERS.length);
       } else {
-        console.log('[Home] No home_page found, using fallback banners');
-        setBanners(FALLBACK_BANNERS);
-        setUsedFallback(true);
+        setUsedFallback(false);
       }
 
-      // Parse SEO content from included
-      if (response?.included && Array.isArray(response.included)) {
-        const seo = response.included.find((item: any) => item.type === 'seo_content');
+      // Parse SEO content from included (prefer API, fallback to default)
+      const seoSource = response?.included?.length > 0 ? response : DEFAULT_API_RESPONSE;
+      if (seoSource?.included && Array.isArray(seoSource.included)) {
+        const seo = seoSource.included.find((item: any) => item.type === 'seo_content');
         if (seo) {
-          console.log('[Home] Found SEO content:', seo.id);
           setSeoContent(seo);
           applyMetaTags(seo.attributes?.meta_tags);
         }
@@ -229,11 +229,11 @@ const Home: React.FC = () => {
     } catch (err) {
       console.error('[Home] Failed to load homepage:', err);
       setError(err instanceof Error ? err.message : 'Failed to load homepage');
-      // Use fallback banners on error
-      setBanners(FALLBACK_BANNERS);
+      // Use default response on error
+      processApiResponse(DEFAULT_API_RESPONSE);
       setUsedFallback(true);
     }
-  }, [parsePageElementData]);
+  }, [processApiResponse]);
 
   // Load earnings data for authenticated users
   const loadEarnings = useCallback(async () => {

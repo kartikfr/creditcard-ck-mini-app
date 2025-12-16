@@ -1,6 +1,20 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// TOKEN TYPES:
+// 1. GUEST TOKEN (offers, search, products, helper scope) - Used for:
+//    - /token (Basic Auth - generates guest token)
+//    - /loginotp (uses guest token)
+//    - /login (uses guest token)
+//    - /dynamicpage (uses guest token)
+//
+// 2. USER TOKEN (user-specific scope) - Used for:
+//    - /users/earnings
+//    - /users/profile
+//    - /users/missingcashback/*
+//    - /payment/*
+//    - /refreshtoken
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -37,15 +51,21 @@ serve(async (req) => {
       'x-chkr-app-version': CASHKARO_CONFIG.APP_VERSION,
     };
 
-    // Use user access token if provided, otherwise use basic auth for token generation
-    if (userAccessToken) {
-      headers['Authorization'] = `Bearer ${userAccessToken}`;
-    } else if (endpoint === '/token') {
+    // Determine authorization strategy based on endpoint
+    if (endpoint === '/token') {
+      // Token generation always uses Basic Auth
       headers['Authorization'] = CASHKARO_CONFIG.AUTH_HEADER;
+      console.log(`[CashKaro Proxy] Using Basic Auth for /token endpoint`);
+    } else if (userAccessToken) {
+      // All other endpoints use Bearer token (either guest or user token)
+      headers['Authorization'] = `Bearer ${userAccessToken}`;
+      console.log(`[CashKaro Proxy] Using Bearer token for ${endpoint}`);
+    } else {
+      console.warn(`[CashKaro Proxy] WARNING: No token provided for ${endpoint} - this may fail`);
     }
 
     console.log(`[CashKaro Proxy] Making request to: ${url}`);
-    console.log(`[CashKaro Proxy] Headers:`, JSON.stringify(headers, null, 2));
+    console.log(`[CashKaro Proxy] Authorization type:`, headers['Authorization']?.split(' ')[0] || 'None');
 
     // Make the request to CashKaro API
     const response = await fetch(url, {

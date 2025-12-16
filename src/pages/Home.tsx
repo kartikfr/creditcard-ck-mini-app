@@ -33,25 +33,23 @@ const mockCategories = [
 ];
 
 const Home: React.FC = () => {
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const loadHomepage = async () => {
-      if (accessToken) {
-        try {
-          await fetchDynamicPage(accessToken);
-        } catch (error) {
-          console.error('Failed to load homepage:', error);
-        }
+      try {
+        // fetchDynamicPage uses guest token internally (offers scope)
+        await fetchDynamicPage();
+      } catch (error) {
+        console.error('Failed to load homepage:', error);
       }
-      // Simulate loading
-      setTimeout(() => setIsLoading(false), 1000);
+      setIsLoading(false);
     };
 
     loadHomepage();
-  }, [accessToken]);
+  }, []);
 
   if (isLoading) {
     return (

@@ -1,4 +1,18 @@
 // CashKaro API Service - Using Edge Function Proxy to bypass CORS
+// 
+// TOKEN TYPES:
+// 1. GUEST TOKEN (offers, search scope) - Used for:
+//    - /token (Basic Auth - no token needed)
+//    - /loginotp (uses guest token)
+//    - /login (uses guest token)
+//    - /dynamicpage (uses guest token)
+//
+// 2. USER TOKEN (user-specific scope) - Used for:
+//    - /users/earnings
+//    - /users/profile
+//    - /users/missingcashback/*
+//    - /payment/*
+//    - /refreshtoken
 
 import { supabase } from '@/integrations/supabase/client';
 
@@ -10,15 +24,16 @@ let currentGuestToken: string | null = null;
 let tokenRefreshTimer: NodeJS.Timeout | null = null;
 
 // Helper to call the proxy edge function
-const callProxy = async (endpoint: string, method = 'GET', body?: any, userAccessToken?: string) => {
+const callProxy = async (endpoint: string, method = 'GET', body?: any, accessToken?: string) => {
   console.log(`[API] Calling proxy: ${method} ${endpoint}`);
+  console.log(`[API] Using token:`, accessToken ? 'Bearer token provided' : 'No token (will use Basic Auth for /token)');
   
   const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
     body: {
       endpoint,
       method,
       body,
-      userAccessToken,
+      userAccessToken: accessToken,
     },
   });
 
@@ -151,14 +166,16 @@ export const refreshToken = async (refreshTokenStr: string, accessToken: string)
   );
 };
 
-// Fetch dynamic homepage
-export const fetchDynamicPage = async (accessToken: string) => {
+// Fetch dynamic homepage (uses GUEST TOKEN - offers scope)
+export const fetchDynamicPage = async () => {
   const device = getDeviceType();
+  const guestToken = await getGuestToken();
+  console.log('[API] fetchDynamicPage using guest token');
   return callProxy(
     `/dynamicpage/api-homepage?device=${device}&include=seo_content&filter[deal_card_type]=flash_site`,
     'GET',
     undefined,
-    accessToken
+    guestToken
   );
 };
 

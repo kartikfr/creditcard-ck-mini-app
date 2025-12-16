@@ -530,47 +530,6 @@ const Home: React.FC = () => {
           ))}
         </div>
 
-        {/* All Banners Grid */}
-        {banners.length > 0 && (
-          <section className="mb-6 animate-slide-up">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="section-title flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Top Offers ({banners.length})
-              </h2>
-              <button className="text-primary text-sm font-medium flex items-center hover:underline">
-                View All <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {banners.map((banner, index) => (
-                <a
-                  key={`${banner.id}-${index}`}
-                  href={banner.links?.self || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all hover:scale-[1.02] bg-secondary"
-                >
-                  <img
-                    src={banner.attributes?.image_url}
-                    alt={`Offer ${banner.id}`}
-                    className="w-full h-24 md:h-32 object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://placehold.co/300x150/1a1a2e/ffffff?text=Offer';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                    <span className="text-white text-xs font-medium flex items-center gap-1">
-                      Shop Now <ExternalLink className="w-3 h-3" />
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* Error State */}
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6">

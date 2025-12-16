@@ -86,7 +86,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Setup user token refresh (for authenticated users)
-  const setupUserTokenRefresh = useCallback((expiresIn: number, currentRefreshToken: string) => {
+  const setupUserTokenRefresh = useCallback((
+    expiresIn: number,
+    currentRefreshToken: string,
+    currentAccessToken: string
+  ) => {
     if (userTokenRefreshTimer) {
       clearTimeout(userTokenRefreshTimer);
     }
@@ -94,13 +98,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Refresh 2 minutes before expiry
     const refreshTime = Math.max((expiresIn - 120) * 1000, 60000); // At least 1 minute
     console.log(`[Auth] User token will refresh in ${refreshTime / 1000} seconds`);
-    
+
     const timer = setTimeout(async () => {
       console.log('[Auth] Refreshing user access token...');
       try {
-        const response = await refreshTokenApi(currentRefreshToken);
+        const response = await refreshTokenApi(currentRefreshToken, currentAccessToken);
         const newData = response.data.attributes;
-        
+
         setState(prev => ({
           ...prev,
           accessToken: newData.access_token,
@@ -108,10 +112,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }));
 
         console.log('[Auth] User token refreshed successfully');
-        setupUserTokenRefresh(newData.expires_in, newData.refresh_token);
+        setupUserTokenRefresh(newData.expires_in, newData.refresh_token, newData.access_token);
       } catch (error) {
         console.error('[Auth] Token refresh failed:', error);
-        logout();
+        setState(prev => ({
+          ...prev,
+          isAuthenticated: false,
+          user: null,
+          accessToken: null,
+          refreshTokenStr: null,
+        }));
       }
     }, refreshTime);
 
@@ -143,8 +153,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isNewUser: loginData.is_new_user,
       },
     }));
-
-    setupUserTokenRefresh(loginData.expires_in, loginData.refresh_token);
+    setupUserTokenRefresh(loginData.expires_in, loginData.refresh_token, loginData.access_token);
   }, [setupUserTokenRefresh]);
 
   const logout = useCallback(() => {

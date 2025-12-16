@@ -135,15 +135,20 @@ export const verifyOTPAndLogin = async (
 };
 
 // Refresh access token
-export const refreshToken = async (refreshTokenStr: string) => {
-  return callProxy('/refreshtoken', 'POST', {
-    data: {
-      type: 'auth',
-      attributes: {
-        refresh_token: refreshTokenStr,
+export const refreshToken = async (refreshTokenStr: string, accessToken: string) => {
+  return callProxy(
+    '/refreshtoken',
+    'POST',
+    {
+      data: {
+        type: 'auth',
+        attributes: {
+          refresh_token: refreshTokenStr,
+        },
       },
     },
-  });
+    accessToken
+  );
 };
 
 // Fetch dynamic homepage

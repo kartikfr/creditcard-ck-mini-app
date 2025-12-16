@@ -27,7 +27,7 @@ interface AuthContextType extends AuthState {
     email: string;
     first_name: string;
     is_new_user: boolean;
-    expires_in: number;
+    expires_in?: number; // Not always returned by CashKaro
   }) => void;
   logout: () => void;
   getGuestToken: () => Promise<string>;
@@ -85,12 +85,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
+  // Best-effort: derive expires_in from JWT exp if API doesn't return it
+  const getExpiresInFromJwt = useCallback((jwt: string): number | null => {
+    try {
+      const [, payloadB64] = jwt.split('.');
+      if (!payloadB64) return null;
+
+      const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'));
+      const payload = JSON.parse(payloadJson) as { exp?: number; iat?: number };
+
+      if (!payload.exp) return null;
+      const nowSec = Math.floor(Date.now() / 1000);
+      return Math.max(payload.exp - nowSec, 0);
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Setup user token refresh (for authenticated users)
-  const setupUserTokenRefresh = useCallback((
-    expiresIn: number,
-    currentRefreshToken: string,
-    currentAccessToken: string
-  ) => {
+  const setupUserTokenRefresh = useCallback((expiresIn: number, currentRefreshToken: string) => {
     if (userTokenRefreshTimer) {
       clearTimeout(userTokenRefreshTimer);
     }
@@ -102,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const timer = setTimeout(async () => {
       console.log('[Auth] Refreshing user access token...');
       try {
-        const response = await refreshTokenApi(currentRefreshToken, currentAccessToken);
+        const response = await refreshTokenApi(currentRefreshToken);
         const newData = response.data.attributes;
 
         setState(prev => ({
@@ -111,8 +124,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           refreshTokenStr: newData.refresh_token,
         }));
 
-        console.log('[Auth] User token refreshed successfully');
-        setupUserTokenRefresh(newData.expires_in, newData.refresh_token, newData.access_token);
+        const nextExpiresIn =
+          typeof newData.expires_in === 'number'
+            ? newData.expires_in
+            : getExpiresInFromJwt(newData.access_token);
+
+        if (typeof nextExpiresIn === 'number') {
+          console.log('[Auth] User token refreshed successfully');
+          setupUserTokenRefresh(nextExpiresIn, newData.refresh_token);
+        } else {
+          console.warn('[Auth] Token refreshed but expires_in missing; skipping auto-refresh scheduling');
+        }
       } catch (error) {
         console.error('[Auth] Token refresh failed:', error);
         setState(prev => ({
@@ -126,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, refreshTime);
 
     setUserTokenRefreshTimer(timer);
-  }, [userTokenRefreshTimer]);
+  }, [userTokenRefreshTimer, getExpiresInFromJwt]);
 
   const login = useCallback((loginData: {
     access_token: string;
@@ -136,10 +158,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     email: string;
     first_name: string;
     is_new_user: boolean;
-    expires_in: number;
+    expires_in?: number;
   }) => {
     console.log('[Auth] User logged in:', loginData.first_name);
-    
+
     setState(prev => ({
       ...prev,
       isAuthenticated: true,
@@ -153,8 +175,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isNewUser: loginData.is_new_user,
       },
     }));
-    setupUserTokenRefresh(loginData.expires_in, loginData.refresh_token, loginData.access_token);
-  }, [setupUserTokenRefresh]);
+
+    const expiresIn =
+      typeof loginData.expires_in === 'number'
+        ? loginData.expires_in
+        : getExpiresInFromJwt(loginData.access_token);
+
+    if (typeof expiresIn === 'number') {
+      setupUserTokenRefresh(expiresIn, loginData.refresh_token);
+    } else {
+      console.warn('[Auth] Login succeeded but expires_in missing; skipping auto-refresh scheduling');
+    }
+  }, [setupUserTokenRefresh, getExpiresInFromJwt]);
 
   const logout = useCallback(() => {
     console.log('[Auth] User logged out');

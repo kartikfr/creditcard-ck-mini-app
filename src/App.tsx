@@ -8,7 +8,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Earnings from "./pages/Earnings";
 import MissingCashback from "./pages/MissingCashback";
-import Payments from "./pages/Payments";
+import Deals from "./pages/Deals";
 import Profile from "./pages/Profile";
 import OfferDetail from "./pages/OfferDetail";
 import NotFound from "./pages/NotFound";
@@ -42,7 +42,7 @@ const AppRoutes = () => {
       <Route path="/offer/:uniqueIdentifier" element={<ProtectedRoute><OfferDetail /></ProtectedRoute>} />
       <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
       <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
-      <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+      <Route path="/deals" element={<ProtectedRoute><Deals /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

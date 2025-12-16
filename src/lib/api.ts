@@ -339,3 +339,15 @@ export const submitPaymentRequest = async (
 export const fetchPaymentHistory = async (accessToken: string) => {
   return callProxy('/payment/history', 'GET', undefined, accessToken);
 };
+
+// Fetch all categories (uses GUEST TOKEN - offers scope)
+export const fetchCategories = async (pageNumber: number = 1, pageSize: number = 1000) => {
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchCategories page=${pageNumber} size=${pageSize}`);
+  return callProxy(
+    `/offers/categories?device=Desktop&page[number]=${pageNumber}&page[size]=${pageSize}`,
+    'GET',
+    undefined,
+    guestToken
+  );
+};

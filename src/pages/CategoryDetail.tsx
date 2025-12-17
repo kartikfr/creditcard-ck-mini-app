@@ -17,8 +17,9 @@ interface SubCategory {
   type: string;
   attributes: {
     name: string;
-    slug: string;
+    unique_identifier: string;
     image_url?: string;
+    new_image_url?: string;
     offer_count?: number;
     description?: string;
   };
@@ -35,8 +36,9 @@ interface CategoryData {
   type: string;
   attributes: {
     name: string;
-    slug: string;
+    unique_identifier: string;
     image_url?: string;
+    new_image_url?: string;
     offer_count?: number;
     description?: string;
   };
@@ -230,7 +232,12 @@ const CategoryDetail: React.FC = () => {
   }, [handleObserver]);
 
   const handleSubcategoryClick = (subcat: SubCategory) => {
-    const newPath = slugPath ? `${slugPath}/${subcat.attributes.slug}` : subcat.attributes.slug;
+    const subcatSlug = subcat.attributes.unique_identifier;
+    if (!subcatSlug) {
+      console.error('[CategoryDetail] Subcategory missing unique_identifier:', subcat);
+      return;
+    }
+    const newPath = slugPath ? `${slugPath}/${subcatSlug}` : subcatSlug;
     navigate(`/category/${newPath}`);
   };
 

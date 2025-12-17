@@ -256,8 +256,9 @@ export const fetchOfferDetail = async (uniqueIdentifier: string) => {
 
 // Fetch user earnings
 export const fetchEarnings = async (accessToken: string) => {
+  // Must match the upstream endpoint exactly
   return callProxy(
-    '/users/earnings?include=cashbacks,rewards,referrals',
+    '/users/earnings',
     'GET',
     undefined,
     accessToken

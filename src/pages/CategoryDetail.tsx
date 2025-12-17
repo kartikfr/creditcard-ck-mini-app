@@ -181,8 +181,15 @@ const CategoryDetail: React.FC = () => {
           loadOffers(1, categoryOffersUrl);
         } else {
           // No subcategories AND no offers URL.
-          // Some roots (e.g., "Beauty" as beauty_01) are placeholders while the real category exists under a different unique_identifier.
-          // Attempt to resolve to the best matching category by name.
+          // Some roots are placeholders (e.g. beauty_01) while the real category exists without the numeric suffix (beauty).
+          const normalizedSlug = String(slugPath).replace(/_\d+$/, '');
+          if (normalizedSlug && normalizedSlug !== slugPath) {
+            console.log('[CategoryDetail] Normalizing slug:', slugPath, '->', normalizedSlug);
+            navigate(`/category/${normalizedSlug}`, { replace: true });
+            return;
+          }
+
+          // If normalization didn't help, attempt to resolve to the best matching category by name.
           const categoryName = categoryData?.attributes?.name;
           if (categoryName) {
             try {

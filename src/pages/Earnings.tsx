@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, ChevronRight, Calendar, ArrowUpRight, Filter, Search, Wallet, CreditCard, Building2, Clock, CheckCircle, IndianRupee, ShieldCheck } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { fetchEarnings } from '@/lib/api';
 
 // Mock data
 const mockTransactions = [
@@ -77,11 +78,50 @@ type PaymentStep = 'method' | 'details' | 'otp' | 'confirm';
 
 const Earnings: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
-  
+  const { user, accessToken } = useAuth();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-  
+
+  // Earnings API state
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
+  const [earningsError, setEarningsError] = useState<string | null>(null);
+  const [totalEarned, setTotalEarned] = useState<number | null>(null);
+  const [totalConfirmedApi, setTotalConfirmedApi] = useState<number | null>(null);
+  const [totalPendingApi, setTotalPendingApi] = useState<number | null>(null);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!accessToken) return;
+      setIsLoadingEarnings(true);
+      setEarningsError(null);
+      try {
+        // This will hit /users/earnings exactly as requested
+        const res = await fetchEarnings(accessToken);
+        const attrs = res?.data?.attributes ?? res?.data?.[0]?.attributes;
+
+        const parseMoney = (v: any): number | null => {
+          if (typeof v === 'number') return v;
+          if (typeof v === 'string') {
+            const n = Number(v.replace(/,/g, ''));
+            return Number.isFinite(n) ? n : null;
+          }
+          return null;
+        };
+
+        setTotalEarned(parseMoney(attrs?.total_earned));
+        setTotalConfirmedApi(parseMoney(attrs?.total_confirmed));
+        setTotalPendingApi(parseMoney(attrs?.total_pending));
+      } catch (e: any) {
+        setEarningsError(String(e?.message || 'Failed to load earnings'));
+      } finally {
+        setIsLoadingEarnings(false);
+      }
+    };
+
+    run();
+  }, [accessToken]);
+
   // Payment sheet state
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('method');
@@ -223,17 +263,23 @@ const Earnings: React.FC = () => {
           <div className="card-elevated p-6 bg-gradient-primary text-primary-foreground">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-primary-foreground/80 text-sm mb-1">Total Earnings</p>
-                <p className="text-3xl font-bold">₹5,250.75</p>
+                <p className="text-primary-foreground/80 text-sm mb-1">Total Earned</p>
+                <p className="text-3xl font-bold">
+                  {isLoadingEarnings ? '—' : `₹${(totalEarned ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                </p>
               </div>
               <div className="w-10 h-10 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
                 <TrendingUp className="w-5 h-5" />
               </div>
             </div>
-            <div className="flex items-center text-sm text-primary-foreground/80">
-              <ArrowUpRight className="w-4 h-4 mr-1" />
-              <span>+12.5% from last month</span>
-            </div>
+            {earningsError ? (
+              <p className="text-sm text-primary-foreground/80">{earningsError}</p>
+            ) : (
+              <div className="flex items-center text-sm text-primary-foreground/80">
+                <ArrowUpRight className="w-4 h-4 mr-1" />
+                <span>Live from your account</span>
+              </div>
+            )}
           </div>
 
           {/* Confirmed */}
@@ -241,7 +287,9 @@ const Earnings: React.FC = () => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-muted-foreground text-sm mb-1">Confirmed</p>
-                <p className="text-3xl font-bold text-success">₹{totalConfirmed.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-success">
+                  ₹{(totalConfirmedApi ?? totalConfirmed).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
               <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center">
                 <ArrowUpRight className="w-5 h-5 text-success" />
@@ -258,7 +306,9 @@ const Earnings: React.FC = () => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-muted-foreground text-sm mb-1">Pending</p>
-                <p className="text-3xl font-bold text-warning">₹{totalPending.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-warning">
+                  ₹{(totalPendingApi ?? totalPending).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
               </div>
               <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-warning" />

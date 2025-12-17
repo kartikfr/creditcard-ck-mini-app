@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import CategoryBreadcrumb, { BreadcrumbItem } from '@/components/CategoryBreadcrumb';
 import OfferCard from '@/components/OfferCard';
-import { 
-  fetchCategoryBySlug, 
+import {
+  fetchCategoryBySlug,
   fetchCategoryOffersBySlug,
-  fetchOffersByUrl
+  fetchOffersByUrl,
+  fetchCategories,
 } from '@/lib/api';
 
 interface SubCategory {
@@ -179,9 +180,44 @@ const CategoryDetail: React.FC = () => {
           setContentType('offers');
           loadOffers(1, categoryOffersUrl);
         } else {
-          // No subcategories AND no offers URL - try to load offers by slug anyway
+          // No subcategories AND no offers URL.
+          // Some roots (e.g., "Beauty" as beauty_01) are placeholders while the real category exists under a different unique_identifier.
+          // Attempt to resolve to the best matching category by name.
+          const categoryName = categoryData?.attributes?.name;
+          if (categoryName) {
+            try {
+              console.log('[CategoryDetail] No content for slug, attempting alias resolution by name:', categoryName);
+              const all = await fetchCategories(1, 1000);
+              const list = Array.isArray(all?.data) ? all.data : [];
+
+              const candidates = list
+                .filter((c: any) => String(c?.attributes?.name || '').trim().toLowerCase() === categoryName.trim().toLowerCase())
+                .filter((c: any) => String(c?.attributes?.unique_identifier || '') !== String(slugPath))
+                .filter((c: any) => {
+                  const subCount = c?.relationships?.sub_categories?.data?.length || 0;
+                  const offersLink = typeof c?.links?.offers === 'string' ? c.links.offers.trim() : '';
+                  return subCount > 0 || offersLink.length > 0;
+                });
+
+              const best = candidates.sort((a: any, b: any) => {
+                const aHasOffers = (typeof a?.links?.offers === 'string' ? a.links.offers.trim() : '').length > 0;
+                const bHasOffers = (typeof b?.links?.offers === 'string' ? b.links.offers.trim() : '').length > 0;
+                return Number(bHasOffers) - Number(aHasOffers);
+              })[0];
+
+              const bestSlug = best?.attributes?.unique_identifier;
+              if (bestSlug) {
+                console.log('[CategoryDetail] Resolved alias:', slugPath, '->', bestSlug);
+                navigate(`/category/${bestSlug}`, { replace: true });
+                return;
+              }
+            } catch (e) {
+              console.warn('[CategoryDetail] Alias resolution failed:', e);
+            }
+          }
+
           setContentType('offers');
-          console.log('[CategoryDetail] No subcategories or offers URL, trying to load offers by slug');
+          console.log('[CategoryDetail] No alias found; trying to load offers by slug');
           loadOffers(1, null);
         }
       } else {

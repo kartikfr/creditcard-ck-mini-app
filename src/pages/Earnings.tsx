@@ -68,7 +68,14 @@ const Earnings: React.FC = () => {
 
   useEffect(() => {
     const loadEarnings = async () => {
-      if (!accessToken) return;
+      // If user is not logged in, don't try to load earnings and don't block UI
+      if (!accessToken) {
+        setIsLoadingEarnings(false);
+        setEarnings(null);
+        setEarningsError(null);
+        return;
+      }
+
       setIsLoadingEarnings(true);
       setEarningsError(null);
       try {
@@ -327,6 +334,19 @@ const Earnings: React.FC = () => {
   const formatMoney = (value: number) => {
     return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
   };
+
+  // Show login prompt if not authenticated (must be before loading check)
+  if (!isAuthenticated) {
+    return (
+      <AppLayout>
+        <LoginPrompt 
+          title="View Your Earnings"
+          description="Login to see your cashback, rewards, and request payments"
+          icon={Wallet}
+        />
+      </AppLayout>
+    );
+  }
 
   if (isLoadingEarnings) {
     return (
@@ -862,19 +882,6 @@ const Earnings: React.FC = () => {
 
     return null;
   };
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <AppLayout>
-        <LoginPrompt 
-          title="View Your Earnings"
-          description="Login to see your cashback, rewards, and request payments"
-          icon={Wallet}
-        />
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout>

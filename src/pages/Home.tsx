@@ -451,22 +451,24 @@ const Home: React.FC = () => {
         {/* Hero Banner Carousel */}
         {banners.length > 0 && (
           <section className="mb-6 animate-fade-in">
-            <div className="relative rounded-2xl overflow-hidden shadow-lg bg-secondary">
+            <div className="relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-secondary to-muted">
               {/* Main Banner */}
               <a 
                 href={banners[currentBannerIndex]?.links?.self || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block"
+                className="block w-full"
               >
-                <img
-                  src={banners[currentBannerIndex]?.attributes?.image_url}
-                  alt={`Banner ${currentBannerIndex + 1}`}
-                  className="w-full h-40 md:h-56 lg:h-64 object-cover transition-opacity duration-500"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/800x300/1a1a2e/ffffff?text=Offer';
-                  }}
-                />
+                <div className="relative w-full aspect-[3/1] md:aspect-[4/1] lg:aspect-[5/1]">
+                  <img
+                    src={banners[currentBannerIndex]?.attributes?.image_url}
+                    alt={`Banner ${currentBannerIndex + 1}`}
+                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/1200x400/1a1a2e/ffffff?text=Offer';
+                    }}
+                  />
+                </div>
               </a>
 
               {/* Banner Indicators */}

@@ -17,8 +17,11 @@ interface ProfileData {
     first_name?: string;
     last_name?: string;
     full_name?: string;
+    user_full_name?: string;
+    name?: string;
     member_since?: string;
     created_at?: string;
+    date_joined?: string;
   };
 }
 
@@ -77,16 +80,19 @@ const Profile: React.FC = () => {
   ];
 
   // Get display values from API response or fallback to auth context
-  const displayName = profileData?.attributes?.full_name || 
-    profileData?.attributes?.first_name || 
+  const attrs = profileData?.attributes;
+  const displayName = attrs?.full_name || 
+    attrs?.user_full_name || 
+    attrs?.name ||
+    (attrs?.first_name && attrs?.last_name ? `${attrs.first_name} ${attrs.last_name}` : attrs?.first_name) ||
     user?.firstName || 
     'User';
   
-  const displayEmail = profileData?.attributes?.email || user?.email || 'Not provided';
-  const displayPhone = profileData?.attributes?.mobile_number || user?.mobileNumber || '**********';
+  const displayEmail = attrs?.email || user?.email || 'Not provided';
+  const displayPhone = attrs?.mobile_number || user?.mobileNumber || '**********';
   
   const formatMemberSince = () => {
-    const dateStr = profileData?.attributes?.member_since || profileData?.attributes?.created_at;
+    const dateStr = attrs?.member_since || attrs?.created_at || attrs?.date_joined;
     if (dateStr) {
       try {
         return new Date(dateStr).toLocaleDateString('en-IN', { 

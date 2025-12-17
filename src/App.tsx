@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import ScrollToTop from "@/components/ScrollToTop";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Earnings from "./pages/Earnings";
@@ -17,6 +18,8 @@ import OrderDetail from "./pages/OrderDetail";
 import Help from "./pages/Help";
 import FAQ from "./pages/FAQ";
 import Feedback from "./pages/Feedback";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -49,22 +52,27 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-      <Route path="/offer/:uniqueIdentifier" element={<ProtectedRoute><OfferDetail /></ProtectedRoute>} />
-      <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
-      <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
-      <Route path="/deals" element={<ProtectedRoute><Deals /></ProtectedRoute>} />
-      <Route path="/category/*" element={<ProtectedRoute><CategoryDetail /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-      <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-      <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
-      <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/offer/:uniqueIdentifier" element={<ProtectedRoute><OfferDetail /></ProtectedRoute>} />
+        <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+        <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
+        <Route path="/deals" element={<ProtectedRoute><Deals /></ProtectedRoute>} />
+        <Route path="/category/*" element={<ProtectedRoute><CategoryDetail /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+        <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
+        <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 };
 

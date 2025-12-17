@@ -54,8 +54,14 @@ const Login: React.FC = () => {
     return phoneRegex.test(value);
   };
 
-  const validateName = (value: string): boolean => {
-    return value.trim().length >= 2;
+const validateName = (value: string): boolean => {
+    // Only allow letters and spaces, at least 2 characters
+    const nameRegex = /^[A-Za-z\s]{2,}$/;
+    return nameRegex.test(value.trim());
+  };
+
+  const validateOtp = (value: string): boolean => {
+    return /^\d{6}$/.test(value);
   };
 
   // Reset state when switching modes
@@ -208,10 +214,19 @@ const Login: React.FC = () => {
   };
 
   const handleCompleteSignup = async () => {
+    if (!fullName.trim()) {
+      toast({
+        title: 'Name Required',
+        description: 'Please enter your full name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!validateName(fullName)) {
       toast({
         title: 'Invalid Name',
-        description: 'Please enter your full name (at least 2 characters)',
+        description: 'Name should only contain letters and spaces (at least 2 characters)',
         variant: 'destructive',
       });
       return;
@@ -220,16 +235,16 @@ const Login: React.FC = () => {
     if (email && !validateEmail(email)) {
       toast({
         title: 'Invalid Email',
-        description: 'Please enter a valid email address',
+        description: 'Please enter a valid email address (e.g., name@example.com)',
         variant: 'destructive',
       });
       return;
     }
 
-    if (otp.length !== 6) {
+    if (!validateOtp(otp)) {
       toast({
         title: 'Invalid OTP',
-        description: 'Please enter the 6-digit OTP',
+        description: 'Please enter a valid 6-digit OTP',
         variant: 'destructive',
       });
       return;
@@ -650,13 +665,19 @@ const Login: React.FC = () => {
 
             <p className="mt-6 text-xs text-center text-muted-foreground">
               By continuing, you agree to our{' '}
-              <a href="#" className="text-primary hover:underline">
+              <button 
+                onClick={() => navigate('/terms')} 
+                className="text-primary hover:underline"
+              >
                 Terms of Service
-              </a>{' '}
+              </button>{' '}
               and{' '}
-              <a href="#" className="text-primary hover:underline">
+              <button 
+                onClick={() => navigate('/privacy')} 
+                className="text-primary hover:underline"
+              >
                 Privacy Policy
-              </a>
+              </button>
             </p>
           </div>
         </div>

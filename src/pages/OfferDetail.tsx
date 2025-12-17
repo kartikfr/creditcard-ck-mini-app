@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, ArrowRight, ChevronRight, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchOfferDetail } from '@/lib/api';
+import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -222,7 +223,7 @@ const OfferDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted/30">
+      <AppLayout>
         <div className="max-w-6xl mx-auto p-4 md:p-6">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-4">
@@ -261,19 +262,21 @@ const OfferDetail: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (error || !offer) {
     return (
-      <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
-        <p className="text-destructive mb-4">{error || 'Offer not found'}</p>
-        <Button onClick={() => navigate(-1)} variant="outline">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Go Back
-        </Button>
-      </div>
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center p-4 py-20">
+          <p className="text-destructive mb-4">{error || 'Offer not found'}</p>
+          <Button onClick={() => navigate(-1)} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </AppLayout>
     );
   }
 
@@ -289,21 +292,51 @@ const OfferDetail: React.FC = () => {
   const hasFaqs = attrs.faq && attrs.faq.length > 0;
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-20 md:pb-8">
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto p-4 md:p-6">
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="md:col-span-2 space-y-4">
-            {/* Banner Carousel */}
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
-              {currentBanner && (
-                <img 
-                  src={currentBanner} 
-                  alt={attrs.name}
-                  className="w-full h-48 md:h-72 object-cover"
-                />
-              )}
+    <AppLayout>
+      <div className="pb-20 md:pb-8">
+        {/* Back Button */}
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pt-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate(-1)}
+            className="mb-4 -ml-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-4 md:px-6 pb-6">
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Left Column - Main Content */}
+            <div className="md:col-span-2 space-y-4">
+              {/* Banner Carousel */}
+              <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+                {currentBanner ? (
+                  <img 
+                    src={currentBanner} 
+                    alt={attrs.name}
+                    className="w-full h-48 md:h-72 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = attrs.image_url || `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                    }}
+                  />
+                ) : attrs.image_url ? (
+                  <img 
+                    src={attrs.image_url} 
+                    alt={attrs.name}
+                    className="w-full h-48 md:h-72 object-contain bg-muted/50 p-8"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-48 md:h-72 flex items-center justify-center bg-muted/50">
+                    <span className="text-muted-foreground text-lg">{attrs.name}</span>
+                  </div>
+                )}
               {/* T&Cs Apply Badge */}
               <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
                 *T&Cs Apply
@@ -669,7 +702,8 @@ const OfferDetail: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AppLayout>
   );
 };
 

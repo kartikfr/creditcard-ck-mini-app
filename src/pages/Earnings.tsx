@@ -58,11 +58,11 @@ const PAYMENT_METHODS = [
 
 const Earnings: React.FC = () => {
   const { toast } = useToast();
-  const { user, accessToken, isAuthenticated } = useAuth();
+  const { user, accessToken, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
 
   // Earnings API state
-  const [isLoadingEarnings, setIsLoadingEarnings] = useState(true);
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
   const [earningsError, setEarningsError] = useState<string | null>(null);
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
 
@@ -334,6 +334,17 @@ const Earnings: React.FC = () => {
   const formatMoney = (value: number) => {
     return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
   };
+
+  // Show loading while auth is being determined
+  if (isAuthLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <LoadingSpinner />
+        </div>
+      </AppLayout>
+    );
+  }
 
   // Show login prompt if not authenticated (must be before loading check)
   if (!isAuthenticated) {

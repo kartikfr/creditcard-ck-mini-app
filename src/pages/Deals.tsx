@@ -88,28 +88,36 @@ const Deals: React.FC = () => {
     cat.attributes?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Normalize slug by removing numeric suffix (e.g., beauty_01 -> beauty)
+  const normalizeSlug = (slug: string): string => {
+    return slug.replace(/_\d+$/, '');
+  };
+
   const handleCategoryClick = (category: Category) => {
     // Priority 1: Extract slug from links.self URL (most reliable for nested categories)
     if (category.links?.self) {
       const match = category.links.self.match(/\/categories\/([^?]+)/);
       if (match) {
-        console.log('[Deals] Using links.self for navigation:', match[1]);
-        navigate(`/category/${match[1]}`);
+        const normalizedSlug = normalizeSlug(match[1]);
+        console.log('[Deals] Using links.self for navigation:', normalizedSlug);
+        navigate(`/category/${normalizedSlug}`);
         return;
       }
     }
     
-    // Priority 2: Use unique_identifier
+    // Priority 2: Use unique_identifier (normalized)
     if (category.attributes?.unique_identifier) {
-      console.log('[Deals] Using unique_identifier for navigation:', category.attributes.unique_identifier);
-      navigate(`/category/${category.attributes.unique_identifier}`);
+      const normalizedSlug = normalizeSlug(category.attributes.unique_identifier);
+      console.log('[Deals] Using unique_identifier for navigation:', normalizedSlug);
+      navigate(`/category/${normalizedSlug}`);
       return;
     }
     
-    // Priority 3: Use slug
+    // Priority 3: Use slug (normalized)
     if (category.attributes?.slug) {
-      console.log('[Deals] Using slug for navigation:', category.attributes.slug);
-      navigate(`/category/${category.attributes.slug}`);
+      const normalizedSlug = normalizeSlug(category.attributes.slug);
+      console.log('[Deals] Using slug for navigation:', normalizedSlug);
+      navigate(`/category/${normalizedSlug}`);
       return;
     }
     

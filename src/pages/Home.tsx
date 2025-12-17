@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, ChevronRight, ChevronLeft, RefreshCw, Loader2, Menu, Wallet, HelpCircle, User } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
@@ -415,64 +414,17 @@ const Home: React.FC = () => {
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Top Navigation Header */}
-        <header className="mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            {/* Search Bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search for any brand or product"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-11 rounded-full bg-secondary/50 border-0"
-              />
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-2 md:gap-4">
-              {/* Wallet Balance - Clickable */}
-              <button
-                onClick={() => navigate('/earnings')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-              >
-                <Wallet className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">
-                  ₹{totalEarnings.toLocaleString()}
-                </span>
-              </button>
-              
-              {/* Help - Desktop only */}
-              <button
-                onClick={() => navigate('/help')}
-                className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Help</span>
-              </button>
-
-              {/* Profile - Desktop only */}
-              <button
-                onClick={() => navigate('/profile')}
-                className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Profile</span>
-              </button>
-
-              {/* Refresh */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleRefresh}
-                className="rounded-full w-9 h-9"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </header>
+        {/* Refresh Button */}
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleRefresh}
+            className="rounded-full w-9 h-9"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
 
         {/* Hero Banner Carousel - Auto-rotating Cards */}
         {banners.length > 0 && (

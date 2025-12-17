@@ -22,12 +22,12 @@ const Sidebar: React.FC = () => {
         <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
           <CreditCard className="w-5 h-5 text-primary-foreground" />
         </div>
-        <div>
-          <h1 className="text-lg font-display font-bold">
+        <div className="flex flex-col">
+          <h1 className="text-lg font-display font-bold leading-tight">
             <span className="text-primary">Cash</span>
             <span className="text-foreground">Karo</span>
           </h1>
-          <p className="text-[10px] text-muted-foreground leading-tight">India's #1 Credit Card Cashback App</p>
+          <p className="text-[9px] text-muted-foreground whitespace-nowrap">India's #1 Credit Card Cashback Website</p>
         </div>
       </div>
 

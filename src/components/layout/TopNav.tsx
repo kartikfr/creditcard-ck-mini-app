@@ -43,7 +43,7 @@ const TopNav: React.FC = () => {
                 <span className="text-primary">Cash</span>
                 <span className="text-foreground">Karo</span>
               </span>
-              <span className="text-[8px] text-muted-foreground leading-tight">#1 Credit Card Cashback</span>
+              <span className="text-[7px] text-muted-foreground whitespace-nowrap">India's #1 Credit Card Cashback Website</span>
             </div>
           </button>
 

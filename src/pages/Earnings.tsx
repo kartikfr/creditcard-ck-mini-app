@@ -1,3 +1,4 @@
+// Earnings Page - My Earnings dashboard
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Info, Wallet, CreditCard, Building2, Clock, CheckCircle, IndianRupee, ShieldCheck } from 'lucide-react';

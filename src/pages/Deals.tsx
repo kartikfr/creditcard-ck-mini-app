@@ -12,7 +12,9 @@ interface Category {
   type: string;
   attributes: {
     name: string;
-    slug: string;
+    slug?: string;
+    unique_identifier?: string;
+    hierachy_unique_identifier?: string;
     image_url?: string;
     offer_count?: number;
     description?: string;
@@ -54,9 +56,22 @@ const Deals: React.FC = () => {
   );
 
   const handleCategoryClick = (category: Category) => {
-    // Navigate to category detail page using slug
-    const slug = category.attributes?.slug || category.id;
-    navigate(`/category/${slug}`);
+    // Use unique_identifier from attributes, or extract slug from links.self URL
+    let slug = category.attributes?.unique_identifier || category.attributes?.slug;
+    
+    // If no slug found, try to extract from links.self URL
+    if (!slug && category.links?.self) {
+      const match = category.links.self.match(/\/categories\/([^?]+)/);
+      if (match) {
+        slug = match[1];
+      }
+    }
+    
+    if (slug) {
+      navigate(`/category/${slug}`);
+    } else {
+      console.error('[Deals] No slug found for category:', category);
+    }
   };
 
   const LoadingSkeleton = () => (

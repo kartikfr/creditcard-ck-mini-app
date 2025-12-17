@@ -160,6 +160,62 @@ export const requestOTP = async (mobileNumber: string, accessToken: string) => {
   );
 };
 
+// Request OTP for new user sign-up
+export const requestSignupOTP = async (mobileNumber: string, accessToken: string) => {
+  return callProxy(
+    '/signupotp',
+    'POST',
+    {
+      data: {
+        type: 'user_otp',
+        attributes: {
+          mobile_number: parseInt(mobileNumber),
+        },
+      },
+    },
+    accessToken
+  );
+};
+
+// Complete sign-up with OTP verification
+export const signupUser = async (
+  fullname: string,
+  mobileNumber: string,
+  otpGuid: string,
+  otp: string,
+  accessToken: string
+) => {
+  return callProxy(
+    '/signupV1?device=Desktop',
+    'POST',
+    {
+      data: {
+        type: 'auth',
+        attributes: {
+          fullname,
+          email: '',
+          password: '',
+          mobile_number: parseInt(mobileNumber),
+          otp_guid: otpGuid,
+          otp: parseInt(otp),
+          referral_user: null,
+          ip_address: '0.0.0.0',
+          device_info: {
+            fcm_id: 'web_token_placeholder',
+            device_unique_id: `web_${Date.now()}`,
+            device_client: 'Web',
+            app_version: '1.0',
+            os_name: 'Web',
+            device_country: 'IN',
+            language: 'en',
+          },
+        },
+      },
+    },
+    accessToken
+  );
+};
+
 // Verify OTP and login
 export const verifyOTPAndLogin = async (
   mobileNumber: string,

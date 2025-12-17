@@ -118,9 +118,19 @@ const CategoryDetail: React.FC = () => {
     try {
       const response = await fetchCategoryBySlug(slugPath);
       console.log('[CategoryDetail] Category response:', response);
+      console.log('[CategoryDetail] Full response data:', JSON.stringify(response, null, 2));
       
       if (response?.data) {
         const categoryData = Array.isArray(response.data) ? response.data[0] : response.data;
+        console.log('[CategoryDetail] Extracted categoryData:', categoryData);
+        console.log('[CategoryDetail] relationships:', categoryData?.relationships);
+        console.log('[CategoryDetail] links:', categoryData?.links);
+        
+        if (!categoryData) {
+          setError('Category data not found');
+          return;
+        }
+        
         setCategory(categoryData);
         
         // Update breadcrumb name if available
@@ -138,9 +148,16 @@ const CategoryDetail: React.FC = () => {
         // Check for sub_categories in relationships or directly in data
         const subCats = categoryData?.sub_categories || 
                         categoryData?.relationships?.sub_categories?.data || [];
+        console.log('[CategoryDetail] Subcategories found:', subCats.length, subCats);
+        
         const hasSubcategories = subCats && subCats.length > 0;
-        const categoryOffersUrl = categoryData?.links?.offers ?? null;
+        // Only consider offers URL valid if it's a non-empty string
+        const categoryOffersUrl = categoryData?.links?.offers && categoryData.links.offers.trim() !== '' 
+          ? categoryData.links.offers 
+          : null;
         const hasOffers = !!categoryOffersUrl;
+        
+        console.log('[CategoryDetail] hasSubcategories:', hasSubcategories, 'hasOffers:', hasOffers, 'offersUrl:', categoryOffersUrl);
 
         setOffersUrl(categoryOffersUrl);
 
@@ -150,6 +167,7 @@ const CategoryDetail: React.FC = () => {
             ...categoryData,
             sub_categories: subCats
           });
+          console.log('[CategoryDetail] Set category with subcategories');
         }
 
         if (hasSubcategories && hasOffers) {
@@ -157,9 +175,14 @@ const CategoryDetail: React.FC = () => {
           loadOffers(1, categoryOffersUrl);
         } else if (hasSubcategories) {
           setContentType('subcategories');
-        } else {
+        } else if (hasOffers) {
           setContentType('offers');
           loadOffers(1, categoryOffersUrl);
+        } else {
+          // No subcategories AND no offers URL - try to load offers by slug anyway
+          setContentType('offers');
+          console.log('[CategoryDetail] No subcategories or offers URL, trying to load offers by slug');
+          loadOffers(1, null);
         }
       } else {
         setError('Category not found');

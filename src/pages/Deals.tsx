@@ -21,6 +21,13 @@ interface Category {
   };
   links?: {
     self?: string;
+    offers?: string;
+    products?: string;
+  };
+  relationships?: {
+    sub_categories?: {
+      data?: any[];
+    };
   };
 }
 
@@ -40,16 +47,34 @@ const Deals: React.FC = () => {
       setIsLoading(true);
       const response = await fetchCategories(1, 1000);
       console.log('[Deals] Categories response:', response);
+      console.log('[Deals] Total categories from API:', response?.data?.length || 0);
       
       if (response?.data && Array.isArray(response.data)) {
-        // Filter out categories without valid navigation paths
+        // Log each category's navigation info
+        response.data.forEach((cat: Category) => {
+          const subCats = cat.relationships?.sub_categories?.data || [];
+          const hasOffers = !!cat.links?.offers && cat.links.offers.trim() !== '';
+          console.log(`[Deals] Category: ${cat.attributes?.name} | unique_id: ${cat.attributes?.unique_identifier} | subCats: ${subCats.length} | hasOffers: ${hasOffers}`);
+        });
+        
+        // Filter out categories without valid navigation paths OR without content
         const validCategories = response.data.filter((cat: Category) => {
           const hasUniqueId = !!cat.attributes?.unique_identifier;
           const hasSlug = !!cat.attributes?.slug;
           const hasSelfLink = !!cat.links?.self;
-          return hasUniqueId || hasSlug || hasSelfLink;
+          const hasValidPath = hasUniqueId || hasSlug || hasSelfLink;
+          
+          // Also check if category has subcategories or offers
+          const subCats = cat.relationships?.sub_categories?.data || [];
+          const hasSubcategories = subCats.length > 0;
+          const hasOffersUrl = !!cat.links?.offers && cat.links.offers.trim() !== '';
+          const hasContent = hasSubcategories || hasOffersUrl;
+          
+          // Only show categories that have valid path AND content
+          return hasValidPath && hasContent;
         });
-        console.log(`[Deals] Filtered ${response.data.length - validCategories.length} invalid categories`);
+        
+        console.log(`[Deals] Valid categories after filtering: ${validCategories.length} (removed ${response.data.length - validCategories.length})`);
         setCategories(validCategories);
       }
     } catch (error) {

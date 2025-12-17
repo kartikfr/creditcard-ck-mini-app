@@ -393,6 +393,20 @@ export const fetchProfile = async (accessToken: string) => {
   );
 };
 
+// Logout user
+export const logoutUser = async (accessToken: string) => {
+  const device = getDeviceType();
+  return callProxy(`/users/logout?device=${device}`, 'POST', {
+    data: {
+      type: 'user',
+      attributes: {
+        fcm_id: 'web_token_placeholder',
+        device_unique_id: `web_${Date.now()}`,
+      },
+    },
+  }, accessToken);
+};
+
 // Send payment OTP
 export const sendPaymentOTP = async (accessToken: string, mobileNumber: string) => {
   const device = getDeviceType();

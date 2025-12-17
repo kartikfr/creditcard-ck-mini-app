@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { fetchProfile } from '@/lib/api';
+import { fetchProfile, logoutUser } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProfileData {
@@ -57,12 +57,33 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: 'Logged Out',
-      description: 'You have been successfully logged out',
-    });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (!accessToken) {
+      logout();
+      return;
+    }
+    
+    setIsLoggingOut(true);
+    try {
+      await logoutUser(accessToken);
+      logout();
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out',
+      });
+    } catch (err: any) {
+      console.error('Logout error:', err);
+      // Still logout locally even if API fails
+      logout();
+      toast({
+        title: 'Logged Out',
+        description: 'Session ended',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const settingsItems = [
@@ -205,9 +226,19 @@ const Profile: React.FC = () => {
           onClick={handleLogout}
           variant="destructive"
           className="w-full h-12"
+          disabled={isLoggingOut}
         >
-          <LogOut className="w-5 h-5 mr-2" />
-          Logout
+          {isLoggingOut ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Logging out...
+            </>
+          ) : (
+            <>
+              <LogOut className="w-5 h-5 mr-2" />
+              Logout
+            </>
+          )}
         </Button>
 
         {/* App Version */}

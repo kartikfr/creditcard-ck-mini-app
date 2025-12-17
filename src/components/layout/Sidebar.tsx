@@ -27,7 +27,7 @@ const Sidebar: React.FC = () => {
             <span className="text-primary">Cash</span>
             <span className="text-foreground">Karo</span>
           </h1>
-          <p className="text-xs text-muted-foreground">Cashback & Rewards</p>
+          <p className="text-[10px] text-muted-foreground leading-tight">India's #1 Credit Card Cashback App</p>
         </div>
       </div>
 

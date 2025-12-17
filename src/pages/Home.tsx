@@ -419,7 +419,9 @@ const Home: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
-                Hello, {user?.firstName || earnings?.firstname || 'there'}! 👋
+                {user?.firstName || earnings?.firstname 
+                  ? `Hey ${user?.firstName || earnings?.firstname}! 👋` 
+                  : 'Welcome back! 👋'}
               </h1>
               <p className="text-muted-foreground mt-1">
                 Find the best cashback offers today
@@ -448,14 +450,16 @@ const Home: React.FC = () => {
           </div>
         </header>
 
-        {/* Hero Banner Carousel - Horizontal Scrollable Cards */}
+        {/* Hero Banner Carousel - Auto-rotating Cards */}
         {banners.length > 0 && (
           <section className="mb-6 animate-fade-in">
-            <div className="relative">
-              {/* Scrollable Banner Container */}
+            <div className="relative overflow-hidden">
+              {/* Scrollable Banner Container with auto-scroll */}
               <div 
-                className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                className="flex gap-4 transition-transform duration-500 ease-out"
+                style={{ 
+                  transform: `translateX(-${currentBannerIndex * (window.innerWidth < 768 ? 296 : window.innerWidth < 1024 ? 376 : 436)}px)` 
+                }}
               >
                 {banners.map((banner, index) => (
                   <a
@@ -463,15 +467,15 @@ const Home: React.FC = () => {
                     href={banner.links?.self || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-shrink-0 snap-start first:ml-0"
+                    className="flex-shrink-0"
                   >
-                    <div className="w-[280px] md:w-[360px] lg:w-[420px] aspect-[4/3] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                    <div className="w-[280px] md:w-[360px] lg:w-[420px] h-[180px] md:h-[220px] lg:h-[260px] rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
                       <img
                         src={banner.attributes?.image_url}
                         alt={`Banner ${index + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/420x315/1a1a2e/ffffff?text=Offer';
+                          (e.target as HTMLImageElement).src = 'https://placehold.co/420x260/1a1a2e/ffffff?text=Offer';
                         }}
                       />
                     </div>
@@ -480,13 +484,24 @@ const Home: React.FC = () => {
               </div>
 
               {/* Navigation Arrow - Right */}
-              {banners.length > 2 && (
+              {banners.length > 1 && (
                 <button
                   onClick={goToNextBanner}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/90 hover:bg-background shadow-lg rounded-full flex items-center justify-center text-foreground transition-colors z-10"
-                  aria-label="Scroll right"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/95 hover:bg-background shadow-lg rounded-full flex items-center justify-center text-foreground transition-colors z-10"
+                  aria-label="Next banner"
                 >
                   <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
+
+              {/* Navigation Arrow - Left */}
+              {banners.length > 1 && currentBannerIndex > 0 && (
+                <button
+                  onClick={goToPrevBanner}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-background/95 hover:bg-background shadow-lg rounded-full flex items-center justify-center text-foreground transition-colors z-10"
+                  aria-label="Previous banner"
+                >
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
               )}
 

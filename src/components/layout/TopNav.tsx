@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, HelpCircle, User } from 'lucide-react';
+import { Wallet, HelpCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchEarnings } from '@/lib/api';
 import SearchDropdown from './SearchDropdown';
-import logo from '@/assets/logo.png';
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate();
@@ -35,8 +34,14 @@ const TopNav: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3">
         <div className="flex items-center gap-4">
           {/* Logo - Mobile only */}
-          <button onClick={() => navigate('/')} className="lg:hidden flex-shrink-0">
-            <img src={logo} alt="CashKaro" className="h-8 w-auto" />
+          <button onClick={() => navigate('/')} className="lg:hidden flex-shrink-0 flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-md">
+              <CreditCard className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-display font-bold text-foreground">
+              <span className="text-primary">Cash</span>
+              <span className="text-foreground">Karo</span>
+            </span>
           </button>
 
           {/* Search Bar with Dropdown */}
@@ -62,15 +67,6 @@ const TopNav: React.FC = () => {
             >
               <HelpCircle className="w-4 h-4" />
               <span>Help</span>
-            </button>
-
-            {/* Profile - Desktop only */}
-            <button
-              onClick={() => navigate('/profile')}
-              className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <User className="w-4 h-4" />
-              <span>Profile</span>
             </button>
           </div>
         </div>

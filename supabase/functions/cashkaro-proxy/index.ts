@@ -85,6 +85,8 @@ serve(async (req) => {
       data = { raw: responseText };
     }
 
+    // Always return 200 from the edge function so client can read error details
+    // (Supabase throws before we can read body on non-2xx status)
     if (!response.ok) {
       console.error(`[CashKaro Proxy] API Error: ${response.status}`, data);
       return new Response(JSON.stringify({ 
@@ -92,7 +94,7 @@ serve(async (req) => {
         status: response.status,
         data 
       }), {
-        status: response.status,
+        status: 200, // Return 200 so client can read error details
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

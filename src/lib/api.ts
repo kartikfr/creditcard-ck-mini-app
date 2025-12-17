@@ -59,9 +59,16 @@ const callProxy = async (endpoint: string, method = 'GET', body?: any, accessTok
     throw new Error(error.message || 'API call failed');
   }
 
+  // Handle API-level errors (edge fn now returns 200 with error in body)
   if (data?.error) {
     console.error('[API] API error:', data);
-    throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.data));
+    // Extract user-friendly message from CashKaro error format
+    const errors = data.data?.errors;
+    if (Array.isArray(errors) && errors.length > 0) {
+      const firstError = errors[0];
+      throw new Error(firstError.detail || firstError.title || 'API request failed');
+    }
+    throw new Error(typeof data.error === 'string' ? data.error : `API Error ${data.status}`);
   }
 
   return data;

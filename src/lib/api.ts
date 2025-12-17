@@ -180,6 +180,7 @@ export const requestSignupOTP = async (mobileNumber: string, accessToken: string
 // Complete sign-up with OTP verification
 export const signupUser = async (
   fullname: string,
+  email: string,
   mobileNumber: string,
   otpGuid: string,
   otp: string,
@@ -193,7 +194,7 @@ export const signupUser = async (
         type: 'auth',
         attributes: {
           fullname,
-          email: '',
+          email: email || '',
           password: '',
           mobile_number: parseInt(mobileNumber),
           otp_guid: otpGuid,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Phone, ArrowRight, ShieldCheck, IndianRupee, Gift, Percent, User, CreditCard, Sparkles } from 'lucide-react';
+import { Phone, ArrowRight, ShieldCheck, IndianRupee, Gift, Percent, User, CreditCard, Sparkles, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { requestOTP, verifyOTPAndLogin, requestSignupOTP, signupUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ const Login: React.FC = () => {
   // Signup state
   const [signupStep, setSignupStep] = useState<SignupStep>('phone');
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   
   // Shared state
   const [phone, setPhone] = useState('');
@@ -64,9 +65,16 @@ const Login: React.FC = () => {
     setOtp('');
     setOtpGuid('');
     setFullName('');
+    setEmail('');
     setLoginStep('phone');
     setSignupStep('phone');
     setCountdown(0);
+  };
+
+  const validateEmail = (value: string): boolean => {
+    if (!value) return true; // Email is optional
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value);
   };
 
   // LOGIN HANDLERS
@@ -209,6 +217,15 @@ const Login: React.FC = () => {
       return;
     }
 
+    if (email && !validateEmail(email)) {
+      toast({
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (otp.length !== 6) {
       toast({
         title: 'Invalid OTP',
@@ -226,7 +243,7 @@ const Login: React.FC = () => {
         throw new Error('OTP GUID is missing. Please request a new OTP.');
       }
       
-      const response = await signupUser(fullName.trim(), phone, otpGuid, otp, token);
+      const response = await signupUser(fullName.trim(), email.trim(), phone, otpGuid, otp, token);
       const userData = response.data.attributes;
       login(userData);
       
@@ -513,6 +530,23 @@ const Login: React.FC = () => {
                 disabled={isLoading}
               />
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Email Address <span className="text-muted-foreground font-normal">(Optional)</span>
+            </label>
+            <div className="relative">
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 pl-12"
+                disabled={isLoading}
+              />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             </div>
           </div>
 

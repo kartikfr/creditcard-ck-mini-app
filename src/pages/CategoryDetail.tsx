@@ -80,6 +80,7 @@ const CategoryDetail: React.FC = () => {
   const [hasMoreOffers, setHasMoreOffers] = useState(true);
   const [offerPage, setOfferPage] = useState(1);
   const [contentType, setContentType] = useState<'subcategories' | 'offers' | 'mixed'>('subcategories');
+  const [offersUrl, setOffersUrl] = useState<string | null>(null);
   
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -112,6 +113,7 @@ const CategoryDetail: React.FC = () => {
     setOfferPage(1);
     setHasMoreOffers(true);
     setCategory(null);
+    setOffersUrl(null);
     
     try {
       const response = await fetchCategoryBySlug(slugPath);
@@ -137,8 +139,11 @@ const CategoryDetail: React.FC = () => {
         const subCats = categoryData?.sub_categories || 
                         categoryData?.relationships?.sub_categories?.data || [];
         const hasSubcategories = subCats && subCats.length > 0;
-        const hasOffers = categoryData?.links?.offers;
-        
+        const categoryOffersUrl = categoryData?.links?.offers ?? null;
+        const hasOffers = !!categoryOffersUrl;
+
+        setOffersUrl(categoryOffersUrl);
+
         // Update category with properly resolved subcategories
         if (hasSubcategories) {
           setCategory({
@@ -146,15 +151,15 @@ const CategoryDetail: React.FC = () => {
             sub_categories: subCats
           });
         }
-        
+
         if (hasSubcategories && hasOffers) {
           setContentType('mixed');
-          loadOffers();
+          loadOffers(1, categoryOffersUrl);
         } else if (hasSubcategories) {
           setContentType('subcategories');
         } else {
           setContentType('offers');
-          loadOffers();
+          loadOffers(1, categoryOffersUrl);
         }
       } else {
         setError('Category not found');
@@ -173,17 +178,17 @@ const CategoryDetail: React.FC = () => {
     }
   };
 
-  const loadOffers = async (page: number = 1) => {
+  const loadOffers = useCallback(async (page: number = 1, urlOverride?: string | null) => {
     if (!slugPath || isLoadingOffers) return;
 
     setIsLoadingOffers(true);
 
     try {
       // Prefer the API-provided offers link when available (contains correct hierarchy path)
-      const offersUrl = category?.links?.offers;
+      const urlToUse = typeof urlOverride === 'string' ? urlOverride : offersUrl;
 
-      const response = offersUrl
-        ? await fetchOffersByUrl(offersUrl, page, 20)
+      const response = urlToUse
+        ? await fetchOffersByUrl(urlToUse, page, 20)
         : await fetchCategoryOffersBySlug(slugPath, page, 20);
 
       console.log('[CategoryDetail] Offers response:', response);
@@ -202,16 +207,15 @@ const CategoryDetail: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[CategoryDetail] Error loading offers:', error);
-      // Convert known API invalid-category errors into a user-friendly state
       const msg = String(error?.message || '');
       if (msg.includes('Invalid Category')) {
-        setError('This category does not have offers available.');
+        setError('This category is not available or has been removed.');
       }
       setHasMoreOffers(false);
     } finally {
       setIsLoadingOffers(false);
     }
-  };
+  }, [slugPath, isLoadingOffers, offersUrl]);
 
   // Infinite scroll for offers
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
@@ -221,7 +225,7 @@ const CategoryDetail: React.FC = () => {
       setOfferPage(nextPage);
       loadOffers(nextPage);
     }
-  }, [hasMoreOffers, isLoadingOffers, offerPage, contentType]);
+  }, [hasMoreOffers, isLoadingOffers, offerPage, contentType, loadOffers]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();

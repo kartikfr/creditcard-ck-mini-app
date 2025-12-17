@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearAuth = useCallback(() => {
     safeStorage.removeItem(AUTH_STORAGE_KEY);
-    if (userTokenRefreshTimer) clearTimeout(userTokenRefreshTimer);
+    if (userTokenRefreshTimer) clearInterval(userTokenRefreshTimer);
 
     setState(prev => ({
       ...prev,
@@ -146,12 +146,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }));
   }, [userTokenRefreshTimer]);
 
-  const setupUserTokenRefresh = useCallback((expiresIn: number, currentRefreshToken: string, currentAccessToken: string) => {
-    if (userTokenRefreshTimer) clearTimeout(userTokenRefreshTimer);
+  // Fixed 10-minute refresh interval
+  const USER_TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
-    const refreshTime = Math.max((expiresIn - 120) * 1000, 60000);
+  const setupUserTokenRefresh = useCallback((currentRefreshToken: string, currentAccessToken: string) => {
+    if (userTokenRefreshTimer) clearInterval(userTokenRefreshTimer);
 
-    const timer = setTimeout(async () => {
+    console.log('[Auth] Setting up user token refresh every 10 minutes');
+
+    const timer = setInterval(async () => {
+      console.log('[Auth] Auto-refreshing user token (10 min interval)...');
       try {
         const response = await refreshTokenApi(currentRefreshToken, currentAccessToken);
         const newData = response.data.attributes;
@@ -170,6 +174,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const expiresAt = newExpiresIn ? Date.now() + newExpiresIn * 1000 : Date.now() + 3600000;
           saveAuthToStorage(newAccessToken, newRefreshToken, prev.user, expiresAt);
 
+          console.log('[Auth] User token refreshed successfully');
+
           return {
             ...prev,
             accessToken: newAccessToken,
@@ -177,24 +183,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
         });
 
-        const nextExpiresIn =
-          typeof newData.expires_in === 'number'
-            ? newData.expires_in
-            : getExpiresInFromJwt(newAccessToken);
-
-        if (typeof nextExpiresIn === 'number') {
-          setupUserTokenRefresh(nextExpiresIn, newRefreshToken, newAccessToken);
-        }
+        // Update the interval with new tokens for next refresh
+        setupUserTokenRefresh(newRefreshToken, newAccessToken);
       } catch (error: any) {
+        console.error('[Auth] Failed to refresh user token:', error);
         const msg = String(error?.message || '');
         if (msg.includes('401') || msg.includes('Unauthorized')) {
           clearAuth();
-        } else {
-          // retry after 1 minute
-          setupUserTokenRefresh(60, currentRefreshToken, currentAccessToken);
         }
+        // Don't retry on error - interval will continue
       }
-    }, refreshTime);
+    }, USER_TOKEN_REFRESH_INTERVAL);
 
     setUserTokenRefreshTimer(timer);
   }, [userTokenRefreshTimer, getExpiresInFromJwt, saveAuthToStorage, clearAuth]);
@@ -228,9 +227,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               isLoading: false,
             }));
 
-            if (typeof newExpiresIn === 'number') {
-              setupUserTokenRefresh(newExpiresIn, newData.refresh_token, newData.access_token);
-            }
+            setupUserTokenRefresh(newData.refresh_token, newData.access_token);
 
             initGuestToken().then(token => setState(prev => ({ ...prev, guestToken: token })));
             return;
@@ -247,8 +244,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             isLoading: false,
           }));
 
-          const remainingSec = Math.floor((storedAuth.expiresAt - Date.now()) / 1000);
-          setupUserTokenRefresh(remainingSec, storedAuth.refreshTokenStr, storedAuth.accessToken);
+          setupUserTokenRefresh(storedAuth.refreshTokenStr, storedAuth.accessToken);
           initGuestToken().then(token => setState(prev => ({ ...prev, guestToken: token })));
           return;
         }
@@ -303,9 +299,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
     }));
 
-    if (typeof expiresIn === 'number') {
-      setupUserTokenRefresh(expiresIn, loginData.refresh_token, loginData.access_token);
-    }
+    setupUserTokenRefresh(loginData.refresh_token, loginData.access_token);
   }, [setupUserTokenRefresh, getExpiresInFromJwt, saveAuthToStorage]);
 
   const logout = useCallback(() => {
@@ -322,7 +316,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     return () => {
-      if (userTokenRefreshTimer) clearTimeout(userTokenRefreshTimer);
+      if (userTokenRefreshTimer) clearInterval(userTokenRefreshTimer);
     };
   }, [userTokenRefreshTimer]);
 

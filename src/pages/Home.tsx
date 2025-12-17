@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, ChevronRight, ChevronLeft, Percent, Gift, Star, Zap, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
@@ -537,25 +537,61 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-2 md:gap-3 mb-6">
-          {[
-            { icon: Percent, label: 'Top Offers', color: 'bg-primary/10 text-primary' },
-            { icon: Zap, label: 'Flash Deals', color: 'bg-accent/10 text-accent' },
-            { icon: Gift, label: 'Rewards', color: 'bg-success/10 text-success' },
-            { icon: Star, label: 'Favorites', color: 'bg-warning/10 text-warning' },
-          ].map((action, index) => (
-            <button
-              key={index}
-              className="card-elevated p-3 md:p-4 flex flex-col items-center gap-2 hover:scale-105 transition-transform"
-            >
-              <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl ${action.color} flex items-center justify-center`}>
-                <action.icon className="w-4 h-4 md:w-5 md:h-5" />
+        {/* How It Works Section */}
+        <section className="mb-6 animate-fade-in">
+          <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4">
+            How to Earn ₹2000 Cashback
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Step 1 */}
+            <div className="card-elevated p-4 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-bl-full" />
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-primary font-bold">1</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">Browse & Pick</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Explore 50+ credit cards and find the one that suits your lifestyle.
+                  </p>
+                </div>
               </div>
-              <span className="text-[10px] md:text-xs font-medium text-foreground text-center">{action.label}</span>
-            </button>
-          ))}
-        </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="card-elevated p-4 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-accent/5 rounded-bl-full" />
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-accent font-bold">2</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">Apply Through Us</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Click apply and we'll redirect you to the bank's secure page. It's that simple.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="card-elevated p-4 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-success/5 rounded-bl-full" />
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-success font-bold">3</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">Get ₹2000 Cashback</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Once your card is approved, ₹2000 cashback is credited directly to your wallet.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Category Offers Section */}
         {categoryOffers.length > 0 && (

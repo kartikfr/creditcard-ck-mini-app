@@ -186,11 +186,12 @@ export const verifyOTPAndLogin = async (
   );
 };
 
-// Refresh access token (uses USER TOKEN - even if expired, needed to identify user context)
+// Refresh access token (uses USER TOKEN)
+// NOTE: CashKaro refresh endpoint expects the same device context as other auth calls.
 export const refreshToken = async (refreshTokenStr: string, currentAccessToken: string) => {
   console.log('[API] refreshToken using user access token');
   return callProxy(
-    '/refreshtoken',
+    '/refreshtoken?device=Desktop',
     'POST',
     {
       data: {

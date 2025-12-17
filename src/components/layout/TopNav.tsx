@@ -38,10 +38,13 @@ const TopNav: React.FC = () => {
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-md">
               <CreditCard className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-foreground">
-              <span className="text-primary">Cash</span>
-              <span className="text-foreground">Karo</span>
-            </span>
+            <div className="flex flex-col items-start">
+              <span className="font-display font-bold text-sm leading-tight">
+                <span className="text-primary">Cash</span>
+                <span className="text-foreground">Karo</span>
+              </span>
+              <span className="text-[8px] text-muted-foreground leading-tight">#1 Credit Card Cashback</span>
+            </div>
           </button>
 
           {/* Search Bar with Dropdown */}

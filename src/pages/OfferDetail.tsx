@@ -309,7 +309,7 @@ const OfferDetail: React.FC = () => {
 
   return (
     <AppLayout>
-      <div className="pb-20 md:pb-8">
+      <div className="pb-32 lg:pb-8">
         {/* Back Button */}
         <div className="max-w-6xl mx-auto px-3 md:px-6 pt-3 md:pt-4">
           <Button 
@@ -575,24 +575,24 @@ const OfferDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Fixed CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 z-20 md:hidden">
-        <div className="flex items-center justify-between gap-4">
+      {/* Mobile Fixed CTA - positioned above bottom nav */}
+      <div className="fixed bottom-16 left-0 right-0 bg-card border-t border-border p-3 z-40 lg:hidden shadow-lg">
+        <div className="flex items-center justify-between gap-3">
           {cashbackDisplay && (
-            <div className="flex-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-semibold">{cashbackDisplay.prefix}</span>
-                <span className="text-lg font-bold text-orange-500">{cashbackDisplay.amount}</span>
-                <span className="text-sm font-semibold text-orange-500">{cashbackDisplay.suffix}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-1 flex-wrap">
+                <span className="text-xs font-semibold text-muted-foreground">{cashbackDisplay.prefix}</span>
+                <span className="text-base font-bold text-orange-500">{cashbackDisplay.amount}</span>
+                <span className="text-xs font-semibold text-orange-500">{cashbackDisplay.suffix}</span>
               </div>
             </div>
           )}
           <Button 
             onClick={handleApplyNow}
-            className="h-11 px-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+            className="h-10 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm whitespace-nowrap"
           >
-            {attrs.cashback_button_text?.split(' ').slice(0, 2).join(' ') || 'Visit Store'}
-            <ArrowRight className="w-4 h-4 ml-2" />
+            {attrs.cashback_button_text || `Visit ${attrs.name?.split(' ')[0] || 'Store'}`}
+            <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         </div>
       </div>

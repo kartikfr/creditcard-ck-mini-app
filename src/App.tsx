@@ -14,6 +14,9 @@ import Profile from "./pages/Profile";
 import OfferDetail from "./pages/OfferDetail";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
+import Help from "./pages/Help";
+import FAQ from "./pages/FAQ";
+import Feedback from "./pages/Feedback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -57,6 +60,9 @@ const AppRoutes = () => {
       <Route path="/deals" element={<ProtectedRoute><Deals /></ProtectedRoute>} />
       <Route path="/category/*" element={<ProtectedRoute><CategoryDetail /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+      <Route path="/faq" element={<ProtectedRoute><FAQ /></ProtectedRoute>} />
+      <Route path="/feedback" element={<ProtectedRoute><Feedback /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

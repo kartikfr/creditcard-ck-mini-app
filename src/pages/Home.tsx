@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, ChevronLeft, RefreshCw, Loader2, Menu, Wallet, HelpCircle, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
@@ -7,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
-
 // Types for API response
 interface Banner {
   type: string;
@@ -134,6 +134,7 @@ const DEFAULT_API_RESPONSE = {
 };
 
 const Home: React.FC = () => {
+  const navigate = useNavigate();
   const { user, accessToken, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -417,14 +418,6 @@ const Home: React.FC = () => {
         {/* Top Navigation Header */}
         <header className="mb-6">
           <div className="flex items-center gap-4 mb-4">
-            {/* Logo */}
-            <div className="hidden lg:flex items-center">
-              <span className="text-xl font-bold">
-                <span className="text-primary">CASH</span>
-                <span className="text-accent">KARO</span>
-              </span>
-            </div>
-
             {/* Search Bar */}
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -439,22 +432,31 @@ const Home: React.FC = () => {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 md:gap-4">
-              {/* Wallet Balance */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50">
+              {/* Wallet Balance - Clickable */}
+              <button
+                onClick={() => navigate('/earnings')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+              >
                 <Wallet className="w-4 h-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">
                   ₹{totalEarnings.toLocaleString()}
                 </span>
-              </div>
+              </button>
               
               {/* Help - Desktop only */}
-              <button className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={() => navigate('/help')}
+                className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <HelpCircle className="w-4 h-4" />
                 <span>Help</span>
               </button>
 
               {/* Profile - Desktop only */}
-              <button className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={() => navigate('/profile')}
+                className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <User className="w-4 h-4" />
                 <span>Profile</span>
               </button>

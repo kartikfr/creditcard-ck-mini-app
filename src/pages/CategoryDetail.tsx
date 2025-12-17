@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Tag, ChevronRight, Grid3X3, List, Package, ArrowLeft } from 'lucide-react';
+import { Tag, ChevronRight, Grid3X3, List, Package, ArrowLeft, AlertCircle } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,6 +72,7 @@ const CategoryDetail: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOffers, setIsLoadingOffers] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
   const [hasMoreOffers, setHasMoreOffers] = useState(true);
@@ -104,9 +105,11 @@ const CategoryDetail: React.FC = () => {
     if (!slugPath) return;
     
     setIsLoading(true);
+    setError(null);
     setOffers([]);
     setOfferPage(1);
     setHasMoreOffers(true);
+    setCategory(null);
     
     try {
       const response = await fetchCategoryBySlug(slugPath);
@@ -127,9 +130,20 @@ const CategoryDetail: React.FC = () => {
           });
         }
         
-        // Determine content type
-        const hasSubcategories = categoryData?.sub_categories && categoryData.sub_categories.length > 0;
+        // Determine content type based on response structure
+        // Check for sub_categories in relationships or directly in data
+        const subCats = categoryData?.sub_categories || 
+                        categoryData?.relationships?.sub_categories?.data || [];
+        const hasSubcategories = subCats && subCats.length > 0;
         const hasOffers = categoryData?.links?.offers;
+        
+        // Update category with properly resolved subcategories
+        if (hasSubcategories) {
+          setCategory({
+            ...categoryData,
+            sub_categories: subCats
+          });
+        }
         
         if (hasSubcategories && hasOffers) {
           setContentType('mixed');
@@ -140,9 +154,18 @@ const CategoryDetail: React.FC = () => {
           setContentType('offers');
           loadOffers();
         }
+      } else {
+        setError('Category not found');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[CategoryDetail] Error loading category:', error);
+      const errorMessage = error?.message || 'Failed to load category';
+      // Parse error message for user-friendly display
+      if (errorMessage.includes('Invalid Category')) {
+        setError('This category is not available or has been removed.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -411,6 +434,25 @@ const CategoryDetail: React.FC = () => {
               </>
             )}
           </>
+        ) : error ? (
+          <div className="card-elevated p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-foreground mb-2">Unable to Load Category</h2>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={() => navigate(-1)}
+              >
+                Go Back
+              </Button>
+              <Button
+                onClick={() => navigate('/deals')}
+              >
+                Browse All Categories
+              </Button>
+            </div>
+          </div>
         ) : (
           <div className="card-elevated p-8 text-center">
             <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

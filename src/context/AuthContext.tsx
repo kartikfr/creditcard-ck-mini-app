@@ -205,12 +205,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [userTokenRefreshTimer]);
 
   const getGuestToken = useCallback(async (): Promise<string> => {
-    if (state.guestToken) {
-      return state.guestToken;
+    // Always delegate to the API token manager which handles expiry + refresh.
+    // (state.guestToken can become stale if the app stays open for a long time)
+    const token = await initGuestToken();
+
+    if (token !== state.guestToken) {
+      setState(prev => ({ ...prev, guestToken: token }));
     }
 
-    const token = await initGuestToken();
-    setState(prev => ({ ...prev, guestToken: token }));
     return token;
   }, [state.guestToken]);
 

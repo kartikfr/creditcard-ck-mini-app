@@ -464,51 +464,110 @@ export const logoutUser = async (accessToken: string) => {
   }, accessToken);
 };
 
-// Send payment OTP
-export const sendPaymentOTP = async (accessToken: string, mobileNumber: string) => {
-  const device = getDeviceType();
-  return callProxy(`/users/sendotp?device=${device}`, 'POST', {
+// Send payment request OTP
+export const sendPaymentRequestOTP = async (accessToken: string) => {
+  return callProxy('/users/sendotp', 'POST', {
     data: {
       type: 'user_otp',
       attributes: {
-        mobile_number: parseInt(mobileNumber),
+        notification_name: 'PAYMENT_REQUEST_OTP',
       },
     },
   }, accessToken);
 };
 
-// Verify payment OTP
-export const verifyPaymentOTP = async (accessToken: string, otp: string) => {
+// Verify payment request OTP
+export const verifyPaymentRequestOTP = async (accessToken: string, otpGuid: string, otp: string) => {
   return callProxy('/users/verify', 'POST', {
     data: {
       type: 'user_otp',
       attributes: {
+        otp_guid: otpGuid,
         otp: parseInt(otp),
       },
     },
   }, accessToken);
 };
 
-// Submit payment request
-export const submitPaymentRequest = async (
+// Submit Amazon Pay payment
+export const submitAmazonPayment = async (
   accessToken: string,
-  type: 'upi' | 'bank',
-  amount: string,
-  paymentDetails: {
-    upi_id?: string;
-    account_number?: string;
-    ifsc_code?: string;
-    account_holder_name?: string;
-  }
+  paymentType: 'cashback' | 'rewards' | 'combined',
+  mobile: string,
+  otpGuid: string
 ) => {
-  const device = getDeviceType();
-  return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
+  return callProxy('/payment/paymentV1?device=Desktop', 'POST', {
     data: {
-      type,
+      type: 'amazongiftcard',
       attributes: {
-        amount,
-        ...paymentDetails,
-        otp_verified: true,
+        payment_type: paymentType,
+        payment_method_id: 12,
+        mobile: parseInt(mobile),
+        otp_guid: otpGuid,
+      },
+    },
+  }, accessToken);
+};
+
+// Submit Flipkart Gift Card payment
+export const submitFlipkartPayment = async (
+  accessToken: string,
+  paymentType: 'cashback' | 'rewards' | 'combined',
+  email: string,
+  otpGuid: string
+) => {
+  return callProxy('/payment/paymentV1?device=Desktop', 'POST', {
+    data: {
+      type: 'flipkartgiftcard',
+      attributes: {
+        payment_type: paymentType,
+        payment_method_id: '13',
+        email: email,
+        otp_guid: otpGuid,
+      },
+    },
+  }, accessToken);
+};
+
+// Submit UPI payment
+export const submitUPIPayment = async (
+  accessToken: string,
+  paymentType: 'cashback',
+  upiId: string,
+  otpGuid: string
+) => {
+  return callProxy('/payment/paymentV1?device=Desktop', 'POST', {
+    data: {
+      type: 'upi',
+      attributes: {
+        payment_type: paymentType,
+        payment_method_id: '20',
+        upi_id: upiId,
+        otp_guid: otpGuid,
+      },
+    },
+  }, accessToken);
+};
+
+// Submit Bank Transfer (IMPS) payment
+export const submitBankPayment = async (
+  accessToken: string,
+  paymentType: 'cashback',
+  ifscCode: string,
+  accountHolderName: string,
+  accountNumber: string,
+  otpGuid: string
+) => {
+  return callProxy('/payment/paymentV1?device=Desktop', 'POST', {
+    data: {
+      type: 'imps',
+      attributes: {
+        payment_type: paymentType,
+        payment_method_id: '18',
+        ifsc_code: ifscCode,
+        account_holder_name: accountHolderName,
+        account_number: accountNumber,
+        otp_guid: otpGuid,
       },
     },
   }, accessToken);

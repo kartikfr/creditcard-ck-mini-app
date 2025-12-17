@@ -387,3 +387,71 @@ export const fetchCategories = async (pageNumber: number = 1, pageSize: number =
     guestToken
   );
 };
+
+// Helper to extract endpoint path from full CashKaro URL
+export const extractEndpointFromUrl = (fullUrl: string): string => {
+  // From: https://ckapistaging.lmssecure.com/v1/offers/categories/flash-deal-category?device=Desktop
+  // To: /offers/categories/flash-deal-category?device=Desktop
+  const match = fullUrl.match(/\/v1(.+)/);
+  return match ? match[1] : fullUrl;
+};
+
+// Fetch category details by URL (from links.self)
+export const fetchCategoryByUrl = async (selfUrl: string) => {
+  const endpoint = extractEndpointFromUrl(selfUrl);
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchCategoryByUrl: ${endpoint}`);
+  return callProxy(endpoint, 'GET', undefined, guestToken);
+};
+
+// Fetch offers by URL (from links.offers)
+export const fetchOffersByUrl = async (offersUrl: string, pageNumber: number = 1, pageSize: number = 50) => {
+  let endpoint = extractEndpointFromUrl(offersUrl);
+  // Add pagination if not already present
+  if (!endpoint.includes('page[number]')) {
+    endpoint += `&page[number]=${pageNumber}&page[size]=${pageSize}`;
+  }
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchOffersByUrl: ${endpoint}`);
+  return callProxy(endpoint, 'GET', undefined, guestToken);
+};
+
+// Fetch products by URL (from links.products)
+export const fetchProductsByUrl = async (productsUrl: string, pageNumber: number = 1, pageSize: number = 50) => {
+  let endpoint = extractEndpointFromUrl(productsUrl);
+  // Add pagination if not already present
+  if (!endpoint.includes('page[number]')) {
+    endpoint += `&page[number]=${pageNumber}&page[size]=${pageSize}`;
+  }
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchProductsByUrl: ${endpoint}`);
+  return callProxy(endpoint, 'GET', undefined, guestToken);
+};
+
+// Fetch category by slug path (e.g., "flash-deal-category" or "voucher-deals/welcome-offers")
+export const fetchCategoryBySlug = async (slugPath: string) => {
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchCategoryBySlug: ${slugPath}`);
+  return callProxy(
+    `/offers/categories/${slugPath}?device=Desktop`,
+    'GET',
+    undefined,
+    guestToken
+  );
+};
+
+// Fetch offers for a category by slug path
+export const fetchCategoryOffersBySlug = async (
+  slugPath: string,
+  pageNumber: number = 1,
+  pageSize: number = 50
+) => {
+  const guestToken = await getGuestToken();
+  console.log(`[API] fetchCategoryOffersBySlug: ${slugPath}`);
+  return callProxy(
+    `/offers/category/${slugPath}?device=Desktop&page[number]=${pageNumber}&page[size]=${pageSize}`,
+    'GET',
+    undefined,
+    guestToken
+  );
+};

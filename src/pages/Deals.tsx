@@ -54,9 +54,9 @@ const Deals: React.FC = () => {
   );
 
   const handleCategoryClick = (category: Category) => {
-    // Navigate to category page or handle as needed
-    console.log('Category clicked:', category);
-    // You can implement navigation to category-specific offers page
+    // Navigate to category detail page using slug
+    const slug = category.attributes?.slug || category.id;
+    navigate(`/category/${slug}`);
   };
 
   const LoadingSkeleton = () => (

@@ -126,11 +126,11 @@ const FAQ: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/help')}
+              onClick={() => navigate(-1)}
               className="text-primary-foreground hover:bg-primary-foreground/10 -ml-2 mb-4"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
-              Back to Help
+              Back
             </Button>
             <div className="flex items-center gap-3">
               <HelpCircle className="w-8 h-8 text-primary-foreground" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Filter, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Filter, AlertCircle } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -172,14 +172,19 @@ const Orders: React.FC = () => {
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Breadcrumb */}
-        <nav className="text-sm text-muted-foreground mb-6">
-          <span className="cursor-pointer hover:text-foreground" onClick={() => navigate('/')}>Home</span>
-          <span className="mx-2">/</span>
-          <span className="cursor-pointer hover:text-foreground" onClick={() => navigate('/earnings')}>My Earnings</span>
-          <span className="mx-2">/</span>
-          <span className="text-foreground font-medium">My Order Details</span>
-        </nav>
+        {/* Back Button & Breadcrumb */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <nav className="text-sm text-muted-foreground">
+            <span className="cursor-pointer hover:text-foreground" onClick={() => navigate('/')}>Home</span>
+            <span className="mx-2">/</span>
+            <span className="cursor-pointer hover:text-foreground" onClick={() => navigate('/earnings')}>My Earnings</span>
+            <span className="mx-2">/</span>
+            <span className="text-foreground font-medium">My Order Details</span>
+          </nav>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Filters Sidebar */}

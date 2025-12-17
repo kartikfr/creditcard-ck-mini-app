@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Settings, HelpCircle, FileText, Shield, LogOut, ChevronRight, Bell, Mail as MailIcon, Newspaper, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Phone, Settings, HelpCircle, FileText, Shield, LogOut, ChevronRight, ChevronLeft, Bell, Mail as MailIcon, Newspaper, Loader2 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -21,6 +22,7 @@ interface ProfileData {
 }
 
 const Profile: React.FC = () => {
+  const navigate = useNavigate();
   const { user, accessToken, logout, isAuthenticated } = useAuth();
   const { toast } = useToast();
   
@@ -127,6 +129,14 @@ const Profile: React.FC = () => {
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+        {/* Back Button */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-xl font-semibold text-foreground">My Profile</h1>
+        </div>
+
         {/* Profile Header */}
         <div className="card-elevated p-6 mb-6">
           {isLoading ? (

@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MessageSquareWarning, HelpCircle, FileQuestion, Headphones, MessageCircle } from 'lucide-react';
+import { Search, MessageSquareWarning, HelpCircle, FileQuestion, Headphones, MessageCircle, ChevronLeft } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -88,6 +89,15 @@ const Help: React.FC = () => {
         {/* Hero Banner */}
         <div className="bg-primary px-6 py-12 md:py-16 relative overflow-hidden">
           <div className="max-w-4xl mx-auto relative z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="text-primary-foreground hover:bg-primary-foreground/10 -ml-2 mb-4"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
             <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-2">
               How Can
             </h1>

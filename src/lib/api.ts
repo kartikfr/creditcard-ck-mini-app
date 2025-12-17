@@ -314,9 +314,9 @@ export const fetchOrderDetail = async (accessToken: string, orderId: string) => 
 };
 
 // Fetch missing cashback retailers
-export const fetchMissingCashbackRetailers = async (accessToken: string, page = 1, size = 10) => {
+export const fetchMissingCashbackRetailers = async (accessToken: string, page = 1, size = 50) => {
   return callProxy(
-    `/users/missingcashback/retailers?page[number]=${page}&page[size]=${size}`,
+    `/users/missingcashback/retailers?device=Desktop&page[number]=${page}&page[size]=${size}`,
     'GET',
     undefined,
     accessToken
@@ -333,27 +333,44 @@ export const fetchExitClickDates = async (accessToken: string, storeId: string) 
   );
 };
 
-// Submit missing cashback claim
-export const submitMissingCashback = async (
+// Validate missing cashback transaction
+export const validateMissingCashback = async (
   accessToken: string,
   storeId: string,
-  exitDate: string,
-  exitId: string,
-  orderId: string,
-  amount: string
+  exitClickDate: string,
+  orderId: string
 ) => {
-  return callProxy('/users/missingcashback/queue', 'POST', {
+  return callProxy('/users/missingcashback/validate', 'POST', {
     data: {
       type: 'missingcashback',
       attributes: {
-        store_id: parseInt(storeId),
-        exit_date: exitDate,
-        exit_id: exitId,
+        storeid: storeId,
+        exitclick_date: exitClickDate,
         order_id: orderId,
-        transaction_amount: amount,
       },
     },
   }, accessToken);
+};
+
+// Fetch missing cashback claims queue
+export const fetchMissingCashbackQueue = async (
+  accessToken: string,
+  status?: string, // "Pending", "Resolved", "Rejected", or empty for all
+  page = 1,
+  size = 10
+) => {
+  const params = new URLSearchParams();
+  params.set('page[number]', String(page));
+  params.set('page[size]', String(size));
+  if (status) {
+    params.set('filter[status]', status);
+  }
+  return callProxy(
+    `/users/missingcashback/queue?${params.toString()}`,
+    'GET',
+    undefined,
+    accessToken
+  );
 };
 
 // Fetch payment info

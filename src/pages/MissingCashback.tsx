@@ -1,114 +1,290 @@
-import React, { useState } from 'react';
-import { AlertCircle, ChevronRight, Search, Calendar, Hash, IndianRupee, Clock, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, ChevronRight, Search, Calendar, Hash, Clock, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { 
+  fetchMissingCashbackRetailers, 
+  fetchExitClickDates, 
+  validateMissingCashback,
+  fetchMissingCashbackQueue 
+} from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock retailers data
-const mockRetailers = [
-  { id: '100', name: 'Amazon', logo: '🛒', clicks: 3, tracked: 1 },
-  { id: '101', name: 'Flipkart', logo: '📦', clicks: 2, tracked: 0 },
-  { id: '102', name: 'Myntra', logo: '👕', clicks: 1, tracked: 1 },
-  { id: '103', name: 'Nykaa', logo: '💄', clicks: 2, tracked: 0 },
-];
+interface Retailer {
+  id: string;
+  type: string;
+  attributes: {
+    store_id: string;
+    store_name: string;
+    store_logo: string;
+    total_clicks: number;
+    tracked_clicks: number;
+  };
+}
 
-// Mock exit clicks
-const mockExitClicks: Record<string, Array<{ date: string; id: string }>> = {
-  '100': [
-    { date: '2024-12-14', id: 'STGCHKR2970223' },
-    { date: '2024-12-12', id: 'STGCHKR2970224' },
-    { date: '2024-12-10', id: 'STGCHKR2970225' },
-  ],
-  '101': [
-    { date: '2024-12-13', id: 'STGCHKR2970226' },
-    { date: '2024-12-11', id: 'STGCHKR2970227' },
-  ],
-};
+interface ExitClick {
+  id: string;
+  type: string;
+  attributes: {
+    exit_id: string;
+    exit_date: string;
+  };
+}
 
-// Mock claims
-const mockClaims = [
-  {
-    id: 1,
-    store: 'Amazon',
-    orderId: '962-1198956-0957613',
-    amount: 2500,
-    status: 'pending',
-    submittedDate: '2024-12-15',
-  },
-  {
-    id: 2,
-    store: 'Flipkart',
-    orderId: 'OD12345678901',
-    amount: 1800,
-    status: 'resolved',
-    submittedDate: '2024-12-10',
-    resolvedDate: '2024-12-14',
-  },
-];
+interface Claim {
+  id: string;
+  type: string;
+  attributes: {
+    store_name: string;
+    order_id: string;
+    amount?: string;
+    status: string;
+    created_at: string;
+    resolved_at?: string;
+  };
+}
 
-type Step = 'retailers' | 'dates' | 'form' | 'claims';
+type Step = 'retailers' | 'dates' | 'form' | 'success';
 
 const MissingCashback: React.FC = () => {
   const { toast } = useToast();
+  const { accessToken, isAuthenticated } = useAuth();
+  
+  // Step management
   const [step, setStep] = useState<Step>('retailers');
-  const [selectedRetailer, setSelectedRetailer] = useState<typeof mockRetailers[0] | null>(null);
-  const [selectedClick, setSelectedClick] = useState<{ date: string; id: string } | null>(null);
-  const [orderId, setOrderId] = useState('');
-  const [amount, setAmount] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('new');
+  
+  // Data states
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  const [exitClicks, setExitClicks] = useState<ExitClick[]>([]);
+  const [claims, setClaims] = useState<Claim[]>([]);
+  
+  // Selection states
+  const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
+  const [selectedClick, setSelectedClick] = useState<ExitClick | null>(null);
+  const [orderId, setOrderId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Loading/error states
+  const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
+  const [isLoadingExitClicks, setIsLoadingExitClicks] = useState(false);
+  const [isLoadingClaims, setIsLoadingClaims] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [retailersError, setRetailersError] = useState<string | null>(null);
+  const [exitClicksError, setExitClicksError] = useState<string | null>(null);
+  const [claimsError, setClaimsError] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  
+  // Claims filter
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const handleSelectRetailer = (retailer: typeof mockRetailers[0]) => {
-    setSelectedRetailer(retailer);
-    setStep('dates');
+  // Load retailers on mount
+  useEffect(() => {
+    if (accessToken && activeTab === 'new') {
+      loadRetailers();
+    }
+  }, [accessToken, activeTab]);
+
+  // Load claims when tab changes
+  useEffect(() => {
+    if (accessToken && activeTab === 'claims') {
+      loadClaims();
+    }
+  }, [accessToken, activeTab, statusFilter]);
+
+  const loadRetailers = async () => {
+    if (!accessToken) return;
+    setIsLoadingRetailers(true);
+    setRetailersError(null);
+    
+    try {
+      const response = await fetchMissingCashbackRetailers(accessToken, 1, 100);
+      setRetailers(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load retailers:', error);
+      setRetailersError(error.message || 'Failed to load retailers');
+    } finally {
+      setIsLoadingRetailers(false);
+    }
   };
 
-  const handleSelectClick = (click: { date: string; id: string }) => {
+  const loadExitClicks = async (storeId: string) => {
+    if (!accessToken) return;
+    setIsLoadingExitClicks(true);
+    setExitClicksError(null);
+    
+    try {
+      const response = await fetchExitClickDates(accessToken, storeId);
+      setExitClicks(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load exit clicks:', error);
+      setExitClicksError(error.message || 'Failed to load visit dates');
+    } finally {
+      setIsLoadingExitClicks(false);
+    }
+  };
+
+  const loadClaims = async () => {
+    if (!accessToken) return;
+    setIsLoadingClaims(true);
+    setClaimsError(null);
+    
+    try {
+      const filterStatus = statusFilter === 'all' ? undefined : statusFilter;
+      const response = await fetchMissingCashbackQueue(accessToken, filterStatus, 1, 50);
+      setClaims(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load claims:', error);
+      setClaimsError(error.message || 'Failed to load claims');
+    } finally {
+      setIsLoadingClaims(false);
+    }
+  };
+
+  const handleSelectRetailer = (retailer: Retailer) => {
+    setSelectedRetailer(retailer);
+    setStep('dates');
+    loadExitClicks(retailer.attributes.store_id);
+  };
+
+  const handleSelectClick = (click: ExitClick) => {
     setSelectedClick(click);
     setStep('form');
   };
 
   const handleSubmit = async () => {
-    if (!orderId || !amount) {
+    if (!orderId || !selectedRetailer || !selectedClick) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in the Order ID',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!accessToken) {
+      toast({
+        title: 'Not Authenticated',
+        description: 'Please log in to submit a claim',
         variant: 'destructive',
       });
       return;
     }
 
     setIsSubmitting(true);
+    setValidationResult(null);
     
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    toast({
-      title: 'Claim Submitted!',
-      description: 'Your missing cashback claim has been submitted successfully.',
-    });
-
-    // Reset form
-    setStep('claims');
-    setSelectedRetailer(null);
-    setSelectedClick(null);
-    setOrderId('');
-    setAmount('');
-    setIsSubmitting(false);
-    setActiveTab('claims');
+    try {
+      const response = await validateMissingCashback(
+        accessToken,
+        selectedRetailer.attributes.store_id,
+        selectedClick.attributes.exit_date,
+        orderId
+      );
+      
+      setValidationResult(response);
+      setStep('success');
+      
+      toast({
+        title: 'Claim Submitted!',
+        description: 'Your missing cashback claim has been submitted for review.',
+      });
+    } catch (error: any) {
+      console.error('Failed to submit claim:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error.message || 'Failed to submit your claim. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
     if (step === 'dates') {
       setStep('retailers');
       setSelectedRetailer(null);
+      setExitClicks([]);
     } else if (step === 'form') {
       setStep('dates');
       setSelectedClick(null);
+      setOrderId('');
     }
   };
+
+  const handleNewClaim = () => {
+    setStep('retailers');
+    setSelectedRetailer(null);
+    setSelectedClick(null);
+    setOrderId('');
+    setValidationResult(null);
+    setActiveTab('new');
+  };
+
+  const filteredRetailers = retailers.filter(r => 
+    r.attributes.store_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return 'status-pending';
+      case 'resolved':
+        return 'status-confirmed';
+      case 'rejected':
+        return 'bg-destructive/10 text-destructive';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'pending':
+        return <Clock className="w-3 h-3 mr-1" />;
+      case 'resolved':
+        return <CheckCircle className="w-3 h-3 mr-1" />;
+      case 'rejected':
+        return <XCircle className="w-3 h-3 mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <AppLayout>
+        <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+          <div className="card-elevated p-8 text-center">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-2">Login Required</h2>
+            <p className="text-muted-foreground mb-4">Please log in to submit missing cashback claims</p>
+            <Button onClick={() => window.location.href = '/login'}>
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -131,7 +307,7 @@ const MissingCashback: React.FC = () => {
 
           <TabsContent value="new">
             {/* Progress Steps */}
-            {step !== 'claims' && (
+            {step !== 'success' && (
               <div className="flex items-center justify-center gap-2 mb-8">
                 {['retailers', 'dates', 'form'].map((s, i) => (
                   <React.Fragment key={s}>
@@ -166,26 +342,79 @@ const MissingCashback: React.FC = () => {
                 <h2 className="text-lg font-semibold text-foreground mb-4">
                   Select the store where your cashback is missing
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {mockRetailers.map((retailer) => (
-                    <button
-                      key={retailer.id}
-                      onClick={() => handleSelectRetailer(retailer)}
-                      className="card-elevated p-4 flex items-center gap-4 text-left hover:border-primary"
-                    >
-                      <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-2xl">
-                        {retailer.logo}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground">{retailer.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {retailer.clicks} clicks | {retailer.tracked} tracked
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  ))}
+                
+                {/* Search */}
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search stores..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
+
+                {isLoadingRetailers ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="card-elevated p-4 flex items-center gap-4">
+                        <Skeleton className="w-12 h-12 rounded-xl" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-24 mb-2" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : retailersError ? (
+                  <div className="card-elevated p-6 text-center">
+                    <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                    <p className="text-destructive mb-4">{retailersError}</p>
+                    <Button onClick={loadRetailers} variant="outline">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                ) : filteredRetailers.length === 0 ? (
+                  <div className="card-elevated p-8 text-center">
+                    <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">
+                      {searchQuery ? 'No stores match your search' : 'No recent store visits found'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredRetailers.map((retailer) => (
+                      <button
+                        key={retailer.id}
+                        onClick={() => handleSelectRetailer(retailer)}
+                        className="card-elevated p-4 flex items-center gap-4 text-left hover:border-primary transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
+                          {retailer.attributes.store_logo ? (
+                            <img 
+                              src={retailer.attributes.store_logo} 
+                              alt={retailer.attributes.store_name}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <span className="text-2xl">🏪</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground truncate">
+                            {retailer.attributes.store_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {retailer.attributes.total_clicks} clicks | {retailer.attributes.tracked_clicks} tracked
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -200,11 +429,19 @@ const MissingCashback: React.FC = () => {
                 </button>
                 
                 <div className="card-elevated p-4 mb-6 flex items-center gap-4">
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-2xl">
-                    {selectedRetailer.logo}
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
+                    {selectedRetailer.attributes.store_logo ? (
+                      <img 
+                        src={selectedRetailer.attributes.store_logo} 
+                        alt={selectedRetailer.attributes.store_name}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-2xl">🏪</span>
+                    )}
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{selectedRetailer.name}</p>
+                    <p className="font-semibold text-foreground">{selectedRetailer.attributes.store_name}</p>
                     <p className="text-sm text-muted-foreground">Select your visit date</p>
                   </div>
                 </div>
@@ -214,26 +451,58 @@ const MissingCashback: React.FC = () => {
                   When did you visit this store?
                 </h2>
 
-                <div className="space-y-3">
-                  {(mockExitClicks[selectedRetailer.id] || []).map((click) => (
-                    <button
-                      key={click.id}
-                      onClick={() => handleSelectClick(click)}
-                      className="card-elevated p-4 w-full flex items-center justify-between hover:border-primary"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="text-left">
-                          <p className="font-medium text-foreground">{click.date}</p>
-                          <p className="text-sm text-muted-foreground">Click ID: {click.id}</p>
+                {isLoadingExitClicks ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="card-elevated p-4 flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-lg" />
+                        <div className="flex-1">
+                          <Skeleton className="h-4 w-24 mb-2" />
+                          <Skeleton className="h-3 w-32" />
                         </div>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : exitClicksError ? (
+                  <div className="card-elevated p-6 text-center">
+                    <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                    <p className="text-destructive mb-4">{exitClicksError}</p>
+                    <Button onClick={() => loadExitClicks(selectedRetailer.attributes.store_id)} variant="outline">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                ) : exitClicks.length === 0 ? (
+                  <div className="card-elevated p-8 text-center">
+                    <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No visit history found for this store</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {exitClicks.map((click) => (
+                      <button
+                        key={click.id}
+                        onClick={() => handleSelectClick(click)}
+                        className="card-elevated p-4 w-full flex items-center justify-between hover:border-primary transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-medium text-foreground">
+                              {formatDate(click.attributes.exit_date)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Click ID: {click.attributes.exit_id}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -249,13 +518,21 @@ const MissingCashback: React.FC = () => {
 
                 <div className="card-elevated p-4 mb-6">
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-2xl">
-                      {selectedRetailer.logo}
+                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
+                      {selectedRetailer.attributes.store_logo ? (
+                        <img 
+                          src={selectedRetailer.attributes.store_logo} 
+                          alt={selectedRetailer.attributes.store_name}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-2xl">🏪</span>
+                      )}
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{selectedRetailer.name}</p>
+                      <p className="font-semibold text-foreground">{selectedRetailer.attributes.store_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Visit: {selectedClick.date}
+                        Visit: {formatDate(selectedClick.attributes.exit_date)}
                       </p>
                     </div>
                   </div>
@@ -283,93 +560,143 @@ const MissingCashback: React.FC = () => {
                     </p>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                      <IndianRupee className="w-4 h-4" />
-                      Transaction Amount
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        ₹
-                      </span>
-                      <Input
-                        type="number"
-                        placeholder="Enter order amount"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="h-12 pl-8"
-                      />
-                    </div>
-                  </div>
-
                   <Button
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !orderId || !amount}
+                    disabled={isSubmitting || !orderId}
                     className="w-full h-12 bg-gradient-primary hover:opacity-90"
                   >
-                    {isSubmitting ? 'Submitting...' : 'Submit Claim'}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Validating...
+                      </>
+                    ) : (
+                      'Submit Claim'
+                    )}
                   </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Success State */}
+            {step === 'success' && (
+              <div className="animate-fade-in">
+                <div className="card-elevated p-8 text-center">
+                  <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-success" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">Claim Submitted!</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Your missing cashback claim has been submitted and is under review.
+                  </p>
+                  
+                  {validationResult?.data?.attributes && (
+                    <div className="bg-muted/50 rounded-lg p-4 mb-6 text-left">
+                      <p className="text-sm text-muted-foreground">
+                        {validationResult.data.attributes.message || 'Your claim is being processed.'}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={handleNewClaim} variant="outline">
+                      Submit Another Claim
+                    </Button>
+                    <Button onClick={() => setActiveTab('claims')}>
+                      View My Claims
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
           </TabsContent>
 
           <TabsContent value="claims">
-            <div className="space-y-4">
-              {mockClaims.length === 0 ? (
-                <div className="card-elevated p-8 text-center">
-                  <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No claims submitted yet</p>
-                  <Button
-                    onClick={() => {
-                      setActiveTab('new');
-                      setStep('retailers');
-                    }}
-                    variant="outline"
-                    className="mt-4"
-                  >
-                    Submit a Claim
-                  </Button>
-                </div>
-              ) : (
-                mockClaims.map((claim) => (
+            {/* Status Filter */}
+            <div className="flex items-center gap-4 mb-6">
+              <span className="text-sm font-medium text-foreground">Filter:</span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isLoadingClaims ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="card-elevated p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : claimsError ? (
+              <div className="card-elevated p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <p className="text-destructive mb-4">{claimsError}</p>
+                <Button onClick={loadClaims} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            ) : claims.length === 0 ? (
+              <div className="card-elevated p-8 text-center">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  {statusFilter === 'all' ? 'No claims submitted yet' : `No ${statusFilter.toLowerCase()} claims found`}
+                </p>
+                <Button onClick={handleNewClaim} variant="outline">
+                  Submit a Claim
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {claims.map((claim) => (
                   <div key={claim.id} className="card-elevated p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <p className="font-semibold text-foreground">{claim.store}</p>
-                        <p className="text-sm text-muted-foreground">Order: {claim.orderId}</p>
+                        <p className="font-semibold text-foreground">{claim.attributes.store_name}</p>
+                        <p className="text-sm text-muted-foreground">Order: {claim.attributes.order_id}</p>
                       </div>
-                      <span
-                        className={`status-badge ${
-                          claim.status === 'pending' ? 'status-pending' : 'status-confirmed'
-                        }`}
-                      >
-                        {claim.status === 'pending' ? (
-                          <>
-                            <Clock className="w-3 h-3 mr-1" />
-                            Under Review
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Resolved
-                          </>
-                        )}
+                      <span className={`status-badge ${getStatusColor(claim.attributes.status)}`}>
+                        {getStatusIcon(claim.attributes.status)}
+                        {claim.attributes.status}
                       </span>
                     </div>
                     
                     <div className="flex items-center justify-between text-sm">
+                      {claim.attributes.amount && (
+                        <span className="text-muted-foreground">
+                          Amount: <strong className="text-foreground">₹{claim.attributes.amount}</strong>
+                        </span>
+                      )}
                       <span className="text-muted-foreground">
-                        Amount: <strong className="text-foreground">₹{claim.amount}</strong>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Submitted: {claim.submittedDate}
+                        Submitted: {formatDate(claim.attributes.created_at)}
                       </span>
                     </div>
+                    
+                    {claim.attributes.resolved_at && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Resolved: {formatDate(claim.attributes.resolved_at)}
+                      </p>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

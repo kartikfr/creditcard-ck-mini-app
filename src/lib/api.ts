@@ -265,6 +265,54 @@ export const fetchEarnings = async (accessToken: string) => {
   );
 };
 
+// Fetch user orders with filters
+export const fetchOrders = async (
+  accessToken: string,
+  pageNumber: number = 1,
+  pageSize: number = 10,
+  filters: {
+    status?: string;
+    cashbacktype?: string;
+    fromdate?: string;
+    todate?: string;
+  } = {}
+) => {
+  const params = new URLSearchParams();
+  params.set('page[number]', String(pageNumber));
+  params.set('page[size]', String(pageSize));
+  params.set('device', 'Desktop');
+  
+  if (filters.cashbacktype) {
+    params.set('filter[cashbacktype]', filters.cashbacktype);
+  }
+  if (filters.fromdate) {
+    params.set('filter[fromdate]', filters.fromdate);
+  }
+  if (filters.todate) {
+    params.set('filter[todate]', filters.todate);
+  }
+  if (filters.status) {
+    params.set('filter[status]', filters.status);
+  }
+
+  return callProxy(
+    `/users/orders?${params.toString()}`,
+    'GET',
+    undefined,
+    accessToken
+  );
+};
+
+// Fetch single order detail
+export const fetchOrderDetail = async (accessToken: string, orderId: string) => {
+  return callProxy(
+    `/users/orders/${orderId}?device=Desktop`,
+    'GET',
+    undefined,
+    accessToken
+  );
+};
+
 // Fetch missing cashback retailers
 export const fetchMissingCashbackRetailers = async (accessToken: string, page = 1, size = 10) => {
   return callProxy(

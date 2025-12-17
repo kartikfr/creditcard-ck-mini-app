@@ -12,6 +12,8 @@ import Deals from "./pages/Deals";
 import CategoryDetail from "./pages/CategoryDetail";
 import Profile from "./pages/Profile";
 import OfferDetail from "./pages/OfferDetail";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -49,6 +51,8 @@ const AppRoutes = () => {
       <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/offer/:uniqueIdentifier" element={<ProtectedRoute><OfferDetail /></ProtectedRoute>} />
       <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
+      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+      <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
       <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
       <Route path="/deals" element={<ProtectedRoute><Deals /></ProtectedRoute>} />
       <Route path="/category/*" element={<ProtectedRoute><CategoryDetail /></ProtectedRoute>} />

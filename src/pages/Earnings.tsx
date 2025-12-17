@@ -1,63 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, ChevronRight, Calendar, ArrowUpRight, Filter, Search, Wallet, CreditCard, Building2, Clock, CheckCircle, IndianRupee, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronRight, Info, Wallet, CreditCard, Building2, Clock, CheckCircle, IndianRupee, ShieldCheck } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { fetchEarnings } from '@/lib/api';
-
-// Mock data
-const mockTransactions = [
-  {
-    id: 1,
-    store: 'Amazon',
-    orderId: 'AMZ123456789',
-    amount: 150.0,
-    status: 'confirmed',
-    transactionDate: '2024-12-10',
-    confirmationDate: '2024-12-15',
-  },
-  {
-    id: 2,
-    store: 'Flipkart',
-    orderId: 'FLK987654321',
-    amount: 250.5,
-    status: 'pending',
-    transactionDate: '2024-12-12',
-    expectedConfirmation: '2024-12-27',
-  },
-  {
-    id: 3,
-    store: 'Myntra',
-    orderId: 'MYN456789123',
-    amount: 89.0,
-    status: 'confirmed',
-    transactionDate: '2024-12-08',
-    confirmationDate: '2024-12-14',
-  },
-  {
-    id: 4,
-    store: 'Nykaa',
-    orderId: 'NYK789123456',
-    amount: 75.25,
-    status: 'pending',
-    transactionDate: '2024-12-14',
-    expectedConfirmation: '2024-12-29',
-  },
-  {
-    id: 5,
-    store: 'Ajio',
-    orderId: 'AJI321654987',
-    amount: 120.0,
-    status: 'cancelled',
-    transactionDate: '2024-12-05',
-    cancelledDate: '2024-12-10',
-  },
-];
 
 // Mock payment history
 const mockPaymentHistory = [
@@ -66,52 +17,46 @@ const mockPaymentHistory = [
   { id: 3, month: 'October', year: 2024, amount: 1250, status: 'completed', date: '2024-10-20' },
 ];
 
-const statusColors: Record<string, string> = {
-  pending: 'status-pending',
-  confirmed: 'status-confirmed',
-  cancelled: 'status-cancelled',
-  paid: 'bg-primary/10 text-primary',
-};
-
 type PaymentMethod = 'upi' | 'bank' | null;
 type PaymentStep = 'method' | 'details' | 'otp' | 'confirm';
+
+interface EarningsData {
+  total_earned: string;
+  total_cashback_earned: string;
+  total_rewards_earned: string;
+  total_referral_earned: string;
+  confirmed_cashback: string;
+  pending_cashback: string;
+  paid_cashback: string;
+  confirmed_rewards: string;
+  pending_rewards: string;
+  paid_rewards: string;
+  confirmed_referrals: string;
+  pending_referrals: string;
+  paid_referrals: string;
+  payment_threshold: string;
+  currency: string;
+}
 
 const Earnings: React.FC = () => {
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const navigate = useNavigate();
 
   // Earnings API state
-  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(true);
   const [earningsError, setEarningsError] = useState<string | null>(null);
-  const [totalEarned, setTotalEarned] = useState<number | null>(null);
-  const [totalConfirmedApi, setTotalConfirmedApi] = useState<number | null>(null);
-  const [totalPendingApi, setTotalPendingApi] = useState<number | null>(null);
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
 
   useEffect(() => {
-    const run = async () => {
+    const loadEarnings = async () => {
       if (!accessToken) return;
       setIsLoadingEarnings(true);
       setEarningsError(null);
       try {
-        // This will hit /users/earnings exactly as requested
         const res = await fetchEarnings(accessToken);
         const attrs = res?.data?.attributes ?? res?.data?.[0]?.attributes;
-
-        const parseMoney = (v: any): number | null => {
-          if (typeof v === 'number') return v;
-          if (typeof v === 'string') {
-            const n = Number(v.replace(/,/g, ''));
-            return Number.isFinite(n) ? n : null;
-          }
-          return null;
-        };
-
-        setTotalEarned(parseMoney(attrs?.total_earned));
-        setTotalConfirmedApi(parseMoney(attrs?.total_confirmed));
-        setTotalPendingApi(parseMoney(attrs?.total_pending));
+        setEarnings(attrs);
       } catch (e: any) {
         setEarningsError(String(e?.message || 'Failed to load earnings'));
       } finally {
@@ -119,7 +64,7 @@ const Earnings: React.FC = () => {
       }
     };
 
-    run();
+    loadEarnings();
   }, [accessToken]);
 
   // Payment sheet state
@@ -136,24 +81,34 @@ const Earnings: React.FC = () => {
   const [countdown, setCountdown] = useState(0);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
 
-  const availableBalance = 2950.25;
-  const minimumPayout = 250;
+  const parseMoney = (v: any): number => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const n = Number(v.replace(/,/g, ''));
+      return Number.isFinite(n) ? n : 0;
+    }
+    return 0;
+  };
 
-  const filteredTransactions = mockTransactions.filter((txn) => {
-    const matchesSearch =
-      txn.store.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      txn.orderId.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTab = activeTab === 'all' || txn.status === activeTab;
-    return matchesSearch && matchesTab;
-  });
+  const totalEarned = parseMoney(earnings?.total_earned);
+  const cashbackTotal = parseMoney(earnings?.total_cashback_earned);
+  const rewardsTotal = parseMoney(earnings?.total_rewards_earned);
+  const referralsTotal = parseMoney(earnings?.total_referral_earned);
+  
+  const confirmedCashback = parseMoney(earnings?.confirmed_cashback);
+  const pendingCashback = parseMoney(earnings?.pending_cashback);
+  const paidCashback = parseMoney(earnings?.paid_cashback);
+  
+  const confirmedRewards = parseMoney(earnings?.confirmed_rewards);
+  const pendingRewards = parseMoney(earnings?.pending_rewards);
+  const paidRewards = parseMoney(earnings?.paid_rewards);
+  
+  const confirmedReferrals = parseMoney(earnings?.confirmed_referrals);
+  const pendingReferrals = parseMoney(earnings?.pending_referrals);
+  const paidReferrals = parseMoney(earnings?.paid_referrals);
 
-  const totalConfirmed = mockTransactions
-    .filter((t) => t.status === 'confirmed')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalPending = mockTransactions
-    .filter((t) => t.status === 'pending')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const paymentThreshold = parseMoney(earnings?.payment_threshold) || 250;
+  const availableBalance = confirmedCashback + confirmedRewards + confirmedReferrals;
 
   // Payment handlers
   const handleOpenPayment = () => {
@@ -236,7 +191,7 @@ const Earnings: React.FC = () => {
 
   const isDetailsValid = () => {
     const amountNum = parseFloat(amount);
-    if (!amount || amountNum < minimumPayout || amountNum > availableBalance) return false;
+    if (!amount || amountNum < paymentThreshold || amountNum > availableBalance) return false;
     
     if (selectedMethod === 'upi') {
       return upiId.includes('@');
@@ -246,158 +201,179 @@ const Earnings: React.FC = () => {
     return false;
   };
 
+  const formatMoney = (value: number) => {
+    return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+  };
+
+  if (isLoadingEarnings) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <LoadingSpinner />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
-      <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground mb-2">
-            My Earnings
-          </h1>
-          <p className="text-muted-foreground">Track all your cashback and rewards</p>
-        </header>
+      <div className="p-4 lg:p-8 max-w-4xl mx-auto">
+        {/* Breadcrumb */}
+        <nav className="text-sm text-muted-foreground mb-6">
+          <span className="cursor-pointer hover:text-foreground" onClick={() => navigate('/')}>Home</span>
+          <span className="mx-2">/</span>
+          <span className="text-foreground font-medium">My Earnings</span>
+        </nav>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* Total Earnings */}
-          <div className="card-elevated p-6 bg-gradient-primary text-primary-foreground">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-primary-foreground/80 text-sm mb-1">Total Earned</p>
-                <p className="text-3xl font-bold">
-                  {isLoadingEarnings ? '—' : `₹${(totalEarned ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-primary-foreground/20 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-            </div>
-            {earningsError ? (
-              <p className="text-sm text-primary-foreground/80">{earningsError}</p>
-            ) : (
-              <div className="flex items-center text-sm text-primary-foreground/80">
-                <ArrowUpRight className="w-4 h-4 mr-1" />
-                <span>Live from your account</span>
-              </div>
-            )}
-          </div>
-
-          {/* Confirmed */}
-          <div className="card-elevated p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-muted-foreground text-sm mb-1">Confirmed</p>
-                <p className="text-3xl font-bold text-success">
-                  ₹{(totalConfirmedApi ?? totalConfirmed).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center">
-                <ArrowUpRight className="w-5 h-5 text-success" />
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="w-full" onClick={handleOpenPayment}>
-              Request Payment
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-
-          {/* Pending */}
-          <div className="card-elevated p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-muted-foreground text-sm mb-1">Pending</p>
-                <p className="text-3xl font-bold text-warning">
-                  ₹{(totalPendingApi ?? totalPending).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-warning" />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Usually confirmed within 30-60 days
+        {/* Main Earnings Card */}
+        <div className="card-elevated p-6 mb-6">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold text-foreground mb-1">All Time Earnings</h1>
+            <p className="text-sm text-muted-foreground">
+              Your Total Earnings amount includes your Cashback + Rewards + Referral amount.
             </p>
           </div>
-        </div>
 
-        {/* Transactions */}
-        <section>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl font-semibold text-foreground">Transaction History</h2>
-            
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search orders..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-10"
-                />
+          {/* Total Amount */}
+          <div className="mb-2">
+            <p className="text-4xl lg:text-5xl font-bold text-primary">
+              {formatMoney(totalEarned)}
+            </p>
+          </div>
+
+          <p className="text-xs text-muted-foreground mb-8">
+            *Earnings will show here within 72 hours of your shopping via CashKaro app
+          </p>
+
+          {/* 3-Column Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Cashback */}
+            <div className="border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Cashback</p>
+                  <p className="text-xl font-bold text-foreground">{formatMoney(cashbackTotal)}</p>
+                </div>
+                <button className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-4 h-4" />
+                </button>
               </div>
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <Filter className="w-4 h-4" />
-              </Button>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(confirmedCashback)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success border border-success/30">
+                    ● Confirmed
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Available for payment</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(pendingCashback)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning border border-warning/30">
+                    ● Pending
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(paidCashback)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
+                    ● Paid
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rewards */}
+            <div className="border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Rewards</p>
+                  <p className="text-xl font-bold text-foreground">{formatMoney(rewardsTotal)}</p>
+                </div>
+                <button className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(confirmedRewards)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success border border-success/30">
+                    ● Confirmed
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Available for payment</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(pendingRewards)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning border border-warning/30">
+                    ● Pending
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(paidRewards)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
+                    ● Paid
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Referrals */}
+            <div className="border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Referrals</p>
+                  <p className="text-xl font-bold text-foreground">{formatMoney(referralsTotal)}</p>
+                </div>
+                <button className="text-muted-foreground hover:text-foreground">
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(confirmedReferrals)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success border border-success/30">
+                    ● Confirmed
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Available for payment</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(pendingReferrals)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning border border-warning/30">
+                    ● Pending
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{formatMoney(paidReferrals)}</span>
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
+                    ● Paid
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full md:w-auto mb-4 grid grid-cols-4 md:flex">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
-              <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-            </TabsList>
+          {/* Request Payment Button */}
+          <Button onClick={handleOpenPayment} className="w-full max-w-md mx-auto block">
+            Request Payment
+          </Button>
+        </div>
 
-            <TabsContent value={activeTab} className="space-y-3">
-              {filteredTransactions.length === 0 ? (
-                <div className="card-elevated p-8 text-center">
-                  <p className="text-muted-foreground">No transactions found</p>
-                </div>
-              ) : (
-                filteredTransactions.map((txn) => (
-                  <div
-                    key={txn.id}
-                    className="card-elevated p-4 flex items-center gap-4 cursor-pointer"
-                  >
-                    <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-xl font-bold text-primary">
-                      {txn.store.charAt(0)}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-foreground">{txn.store}</p>
-                        <span className={`status-badge ${statusColors[txn.status]}`}>
-                          {txn.status.charAt(0).toUpperCase() + txn.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        Order: {txn.orderId}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {txn.transactionDate}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className={`font-bold ${
-                        txn.status === 'cancelled' 
-                          ? 'text-muted-foreground line-through' 
-                          : txn.status === 'confirmed' 
-                            ? 'text-success' 
-                            : 'text-foreground'
-                      }`}>
-                        ₹{txn.amount.toFixed(2)}
-                      </p>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground ml-auto" />
-                    </div>
-                  </div>
-                ))
-              )}
-            </TabsContent>
-          </Tabs>
-        </section>
+        {/* Navigation Links */}
+        <div className="card-elevated divide-y">
+          <button
+            onClick={() => navigate('/orders')}
+            className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
+          >
+            <span className="font-medium text-foreground">My Order Details</span>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+          <button
+            onClick={() => navigate('/missing-cashback')}
+            className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
+          >
+            <span className="font-medium text-foreground">Get Help</span>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Payment Sheet */}
@@ -420,7 +396,7 @@ const Earnings: React.FC = () => {
                 <p className="text-primary-foreground/80 text-sm mb-1">Available Balance</p>
                 <p className="text-3xl font-bold">₹{availableBalance.toFixed(2)}</p>
                 <p className="text-sm text-primary-foreground/70 mt-1">
-                  Minimum payout: ₹{minimumPayout}
+                  Minimum payout: ₹{paymentThreshold}
                 </p>
               </div>
               <div className="w-12 h-12 bg-primary-foreground/20 rounded-xl flex items-center justify-center">

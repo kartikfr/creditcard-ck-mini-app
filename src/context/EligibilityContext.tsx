@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { checkEligibility as apiCheckEligibility } from '@/lib/api';
 
 interface EligibilityInputs {
@@ -33,6 +33,9 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
     isLoading: false,
     error: null,
   });
+  
+  // Ref to track if an API call is in progress (prevents race conditions)
+  const apiCallInProgress = useRef(false);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -72,15 +75,21 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
     monthlyIncome: number,
     employmentType: 'salaried' | 'self-employed'
   ): Promise<{ eligibleCardIds: string[]; totalEligible: number }> => {
-    // Prevent duplicate calls while loading
-    if (state.isLoading) {
+    // Prevent duplicate calls using both state and ref
+    if (state.isLoading || apiCallInProgress.current) {
+      console.log('[EligibilityContext] Skipping duplicate API call');
       return { eligibleCardIds: state.eligibleCardIds, totalEligible: state.eligibleCardIds.length };
     }
     
+    // Mark API call in progress
+    apiCallInProgress.current = true;
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
+      console.log('[EligibilityContext] Calling eligibility API...');
       const result = await apiCheckEligibility(pincode, monthlyIncome, employmentType);
+      
+      console.log('[EligibilityContext] API returned eligible card IDs:', result.eligibleCardIds);
       
       setState(prev => ({
         ...prev,
@@ -92,12 +101,15 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       return { eligibleCardIds: result.eligibleCardIds, totalEligible: result.eligibleCardIds.length };
     } catch (error: any) {
+      console.error('[EligibilityContext] API error:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'Failed to check eligibility',
       }));
       throw error;
+    } finally {
+      apiCallInProgress.current = false;
     }
   }, [state.isLoading, state.eligibleCardIds]);
 
@@ -116,9 +128,15 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, []);
 
+  // Check if a specific card/offer is eligible
+  // Matches offer.id (from CashKaro API) with ck_store_id (from BankKaro eligibility API)
   const isCardEligible = useCallback((offerId: string | number) => {
-    if (!state.isChecked || state.eligibleCardIds.length === 0) return false;
-    return state.eligibleCardIds.includes(String(offerId));
+    if (!state.isChecked || state.eligibleCardIds.length === 0) {
+      return false;
+    }
+    const offerIdStr = String(offerId);
+    const isEligible = state.eligibleCardIds.includes(offerIdStr);
+    return isEligible;
   }, [state.isChecked, state.eligibleCardIds]);
 
   return (

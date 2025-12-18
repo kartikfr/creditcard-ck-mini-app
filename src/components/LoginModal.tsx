@@ -101,11 +101,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
           setIsNewUser(false);
           setStep('otp');
           setCountdown(30);
-          
-          toast({
-            title: 'OTP Sent!',
-            description: 'Please check your phone',
-          });
           return;
         }
       } catch (loginError) {
@@ -120,11 +115,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
               setIsNewUser(true);
               setStep('otp');
               setCountdown(30);
-              
-              toast({
-                title: 'OTP Sent!',
-                description: 'Create your account',
-              });
               return;
             }
           } catch (signupError) {
@@ -174,12 +164,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       const response = await verifyOTPAndLogin(phone, otpGuid, otp, token);
       const userData = response.data.attributes;
       login(userData);
-      
-      toast({
-        title: 'Welcome Back!',
-        description: `Hello ${userData.first_name || 'there'}!`,
-      });
-      
       onOpenChange(false);
       onLoginSuccess?.();
     } catch (error) {
@@ -214,12 +198,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       const response = await signupUser(fullName.trim(), email.trim(), phone, otpGuid, otp, token);
       const userData = response.data.attributes;
       login(userData);
-      
-      toast({
-        title: 'Welcome!',
-        description: `Account created, ${fullName.split(' ')[0]}!`,
-      });
-      
       onOpenChange(false);
       onLoginSuccess?.();
     } catch (error) {
@@ -250,7 +228,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       
       setCountdown(30);
       setOtp('');
-      toast({ title: 'OTP Resent!' });
     } catch (error) {
       toast({
         title: 'Failed to Resend',

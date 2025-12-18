@@ -16,7 +16,7 @@ interface EligibilityState {
 }
 
 interface EligibilityContextType extends EligibilityState {
-  checkEligibility: (pincode: string, monthlyIncome: number, employmentType: 'salaried' | 'self-employed') => Promise<void>;
+  checkEligibility: (pincode: string, monthlyIncome: number, employmentType: 'salaried' | 'self-employed') => Promise<{ eligibleCardIds: string[]; totalEligible: number }>;
   clearEligibility: () => void;
   isCardEligible: (offerId: string | number) => boolean;
 }
@@ -71,7 +71,12 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
     pincode: string,
     monthlyIncome: number,
     employmentType: 'salaried' | 'self-employed'
-  ) => {
+  ): Promise<{ eligibleCardIds: string[]; totalEligible: number }> => {
+    // Prevent duplicate calls while loading
+    if (state.isLoading) {
+      return { eligibleCardIds: state.eligibleCardIds, totalEligible: state.eligibleCardIds.length };
+    }
+    
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -84,6 +89,8 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
         isChecked: true,
         isLoading: false,
       }));
+      
+      return { eligibleCardIds: result.eligibleCardIds, totalEligible: result.eligibleCardIds.length };
     } catch (error: any) {
       setState(prev => ({
         ...prev,
@@ -92,7 +99,7 @@ export const EligibilityProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }));
       throw error;
     }
-  }, []);
+  }, [state.isLoading, state.eligibleCardIds]);
 
   const clearEligibility = useCallback(() => {
     setState({

@@ -31,6 +31,9 @@ const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent double submission
+    if (isLoading) return;
+    
     if (!isFormValid) {
       toast({
         title: 'Invalid Input',
@@ -41,11 +44,12 @@ const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) 
     }
 
     try {
-      await checkEligibility(pincode, parseInt(monthlyIncome), employmentType);
+      const result = await checkEligibility(pincode, parseInt(monthlyIncome), employmentType);
       toast({
         title: 'Eligibility Checked',
-        description: `Found ${eligibleCardIds.length} cards you may be eligible for!`,
+        description: `Found ${result.totalEligible} cards you may be eligible for!`,
       });
+      onClose();
     } catch (error: any) {
       toast({
         title: 'Error',

@@ -20,6 +20,7 @@ import FAQ from "./pages/FAQ";
 import Feedback from "./pages/Feedback";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import KnowMore from "./pages/KnowMore";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -63,6 +64,7 @@ const AppRoutes = () => {
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/terms" element={<TermsAndConditions />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/know-more" element={<KnowMore />} />
         {/* PROTECTED ROUTES - Login required for user-specific data */}
         <Route path="/earnings" element={<ProtectedRoute><Earnings /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />

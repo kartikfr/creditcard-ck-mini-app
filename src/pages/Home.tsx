@@ -495,9 +495,18 @@ const Home: React.FC = () => {
 
         {/* How Cashback Works - 4 Step Section (Same style for mobile & desktop) */}
         <section className="py-6 md:py-10 animate-fade-in">
-          <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4 md:mb-6">
-            How Cashback Works
-          </h2>
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
+              How Cashback Works
+            </h2>
+            <Button 
+              variant="link" 
+              onClick={() => navigate('/know-more')}
+              className="text-primary text-sm p-0 h-auto"
+            >
+              Know More
+            </Button>
+          </div>
           
           {/* Horizontal Timeline - Responsive for both mobile & desktop */}
           <div className="flex items-start justify-between gap-2 md:gap-4 relative">

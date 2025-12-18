@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, LucideIcon, CreditCard } from 'lucide-react';
+import { LogIn, LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LoginPromptProps {
@@ -21,12 +21,6 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
   return (
     <div className={`flex items-center justify-center min-h-[60vh] p-4 ${className}`}>
       <div className="max-w-sm w-full text-center">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-primary-foreground" />
-          </div>
-        </div>
 
         {/* Icon */}
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">

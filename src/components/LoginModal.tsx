@@ -72,6 +72,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
     return nameRegex.test(value.trim());
   };
 
+  const validateEmail = (value: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value.trim());
+  };
+
   const maskPhone = (phoneNum: string) => {
     if (phoneNum.length !== 10) return phoneNum;
     return `${phoneNum.slice(0, 2)}XXXXX${phoneNum.slice(-2)}`;
@@ -182,6 +187,15 @@ const LoginModal: React.FC<LoginModalProps> = ({
       toast({
         title: 'Name Required',
         description: 'Please enter your name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!email.trim() || !validateEmail(email)) {
+      toast({
+        title: 'Email Required',
+        description: 'Please enter a valid email address',
         variant: 'destructive',
       });
       return;
@@ -409,14 +423,17 @@ const LoginModal: React.FC<LoginModalProps> = ({
                   Welcome! Almost done
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  Just need your name
+                  Please provide your details
                 </p>
               </div>
 
               <div>
+                <label className="text-xs font-medium text-foreground mb-1 block">
+                  Your name <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="text"
-                  placeholder="Your name"
+                  placeholder="Enter your name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="h-11 rounded-xl text-base"
@@ -425,9 +442,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
               </div>
 
               <div>
+                <label className="text-xs font-medium text-foreground mb-1 block">
+                  Email <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="email"
-                  placeholder="Email (optional)"
+                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="h-11 rounded-xl text-base"
@@ -437,7 +457,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
               <Button
                 onClick={handleCompleteSignup}
-                disabled={isLoading || !fullName.trim() || !validateName(fullName)}
+                disabled={isLoading || !fullName.trim() || !validateName(fullName) || !email.trim() || !validateEmail(email)}
                 className="w-full h-11 bg-gradient-primary hover:opacity-90 text-primary-foreground font-medium rounded-xl"
               >
                 {isLoading ? (

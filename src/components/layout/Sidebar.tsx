@@ -29,13 +29,6 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* User Info */}
-      {isAuthenticated && user && (
-        <div className="px-6 py-4 border-b border-border bg-secondary/30">
-          <p className="text-sm font-medium text-foreground">Welcome back,</p>
-          <p className="text-primary font-semibold">{user.firstName || 'User'}</p>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">

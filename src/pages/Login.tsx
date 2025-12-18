@@ -159,11 +159,25 @@ const Login: React.FC = () => {
     }
   };
 
+  const validateEmail = (value: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value.trim());
+  };
+
   const handleCompleteSignup = async () => {
     if (!fullName.trim() || !validateName(fullName)) {
       toast({
         title: 'Name Required',
         description: 'Please enter your name (letters only)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!email.trim() || !validateEmail(email)) {
+      toast({
+        title: 'Email Required',
+        description: 'Please enter a valid email address',
         variant: 'destructive',
       });
       return;
@@ -390,14 +404,14 @@ const Login: React.FC = () => {
                 Welcome! Almost done
               </h2>
               <p className="text-muted-foreground text-sm">
-                Just need your name to complete setup
+                Please provide your details to complete setup
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Your name
+                  Your name <span className="text-destructive">*</span>
                 </label>
                 <Input
                   type="text"
@@ -411,7 +425,7 @@ const Login: React.FC = () => {
 
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                  Email <span className="text-muted-foreground font-normal">(optional)</span>
+                  Email <span className="text-destructive">*</span>
                 </label>
                 <Input
                   type="email"
@@ -425,7 +439,7 @@ const Login: React.FC = () => {
 
               <Button
                 onClick={handleCompleteSignup}
-                disabled={isLoading || !fullName.trim() || !validateName(fullName)}
+                disabled={isLoading || !fullName.trim() || !validateName(fullName) || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
                 className="w-full h-12 bg-gradient-primary hover:opacity-90 text-primary-foreground font-medium rounded-xl"
               >
                 {isLoading ? (

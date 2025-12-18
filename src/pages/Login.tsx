@@ -331,7 +331,7 @@ const validateName = (value: string): boolean => {
       login(userData);
       
       toast({
-        title: 'Welcome to CashKaro!',
+        title: 'Welcome!',
         description: `Account created successfully. Hello ${fullName.split(' ')[0]}!`,
       });
       
@@ -370,11 +370,14 @@ const validateName = (value: string): boolean => {
   // Render hero section value props based on mode
   const renderHeroContent = () => (
     <div className="relative z-10 flex flex-col justify-center px-12 text-primary-foreground">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-14 h-14 bg-primary-foreground/20 backdrop-blur rounded-2xl flex items-center justify-center">
-          <IndianRupee className="w-7 h-7" />
+      <div className="flex flex-col mb-8">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-14 h-14 bg-primary-foreground/20 backdrop-blur rounded-2xl flex items-center justify-center">
+            <CreditCard className="w-7 h-7" />
+          </div>
+          <h1 className="text-2xl font-display font-bold">Credit Card Cashback</h1>
         </div>
-        <h1 className="text-3xl font-display font-bold">CashKaro</h1>
+        <p className="text-sm text-primary-foreground/70 ml-[4.25rem]">Powered by CashKaro</p>
       </div>
       
       <h2 className="text-4xl lg:text-5xl font-display font-bold mb-6 leading-tight">

@@ -23,11 +23,10 @@ const Sidebar: React.FC = () => {
           <CreditCard className="w-5 h-5 text-primary-foreground" />
         </div>
         <div className="flex flex-col">
-          <h1 className="text-lg font-display font-bold leading-tight">
-            <span className="text-primary">Cash</span>
-            <span className="text-foreground">Karo</span>
+          <h1 className="text-base font-display font-bold leading-tight text-foreground">
+            Credit Card Cashback
           </h1>
-          <p className="text-[9px] text-muted-foreground whitespace-nowrap">India's #1 Credit Card Cashback Website</p>
+          <p className="text-[9px] text-muted-foreground whitespace-nowrap">Powered by CashKaro</p>
         </div>
       </div>
 

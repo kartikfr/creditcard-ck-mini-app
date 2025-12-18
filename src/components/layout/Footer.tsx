@@ -11,9 +11,9 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div>
-            <h3 className="font-display font-bold text-lg text-foreground mb-4">About CashKaro</h3>
+            <h3 className="font-display font-bold text-lg text-foreground mb-4">Credit Card Cashback</h3>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              India's largest Cashback & Coupons site. Get extra cashback on your online shopping from 1500+ retailers including Amazon, Flipkart, Myntra, and more.
+              India's #1 Credit Card Cashback Website. Earn up to ₹2000 cashback on 50+ premium credit cards. Powered by CashKaro.
             </p>
             <div className="flex items-center gap-3">
               <a href="#" className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
@@ -104,7 +104,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <Mail className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-sm text-muted-foreground">support@cashkaro.com</span>
+                <span className="text-sm text-muted-foreground">support@creditcardcashback.in</span>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
@@ -113,7 +113,7 @@ const Footer: React.FC = () => {
               <li className="flex items-start gap-3">
                 <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                 <span className="text-sm text-muted-foreground">
-                  CashKaro.com, Gurugram,<br />
+                  Powered by CashKaro, Gurugram,<br />
                   Haryana, India - 122002
                 </span>
               </li>
@@ -125,10 +125,10 @@ const Footer: React.FC = () => {
         <div className="mt-10 pt-6 border-t border-border">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground text-center md:text-left">
-              © {currentYear} CashKaro.com. All rights reserved.
+              © {currentYear} Credit Card Cashback. Powered by CashKaro.
             </p>
             <p className="text-xs text-muted-foreground text-center md:text-right">
-              Backed by Ratan Tata | Trusted by 20 Million+ Users
+              Backed by Ratan Tata | Trusted by 1 Lakh+ Users
             </p>
           </div>
         </div>

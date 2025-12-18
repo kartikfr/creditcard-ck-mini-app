@@ -455,7 +455,11 @@ const Home: React.FC = () => {
                         alt={`Banner ${index + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/420x260/1a1a2e/ffffff?text=Offer';
+                          const target = e.target as HTMLImageElement;
+                          if (!target.dataset.fallback) {
+                            target.dataset.fallback = 'true';
+                            target.src = 'https://placehold.co/420x260/1a1a2e/ffffff?text=Offer';
+                          }
                         }}
                       />
                     </div>

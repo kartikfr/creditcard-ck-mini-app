@@ -320,7 +320,12 @@ const OfferDetail: React.FC = () => {
                     alt={attrs.name}
                     className="w-full h-40 md:h-72 object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = attrs.image_url || `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                      const target = e.target as HTMLImageElement;
+                      // Prevent infinite loop - only fallback once
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = 'true';
+                        target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                      }
                     }}
                   />
                 ) : attrs.image_url ? (
@@ -329,7 +334,11 @@ const OfferDetail: React.FC = () => {
                     alt={attrs.name}
                     className="w-full h-40 md:h-72 object-contain bg-muted/50 p-6 md:p-8"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                      const target = e.target as HTMLImageElement;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = 'true';
+                        target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                      }
                     }}
                   />
                 ) : (
@@ -366,7 +375,11 @@ const OfferDetail: React.FC = () => {
                       alt={attrs.name}
                       className="max-w-full max-h-full object-contain"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://placehold.co/100x60/f9fafb/666666?text=${encodeURIComponent((attrs.name || 'Store').slice(0, 5))}`;
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.fallback) {
+                          target.dataset.fallback = 'true';
+                          target.src = `https://placehold.co/100x60/f9fafb/666666?text=${encodeURIComponent((attrs.name || 'Store').slice(0, 5))}`;
+                        }
                       }}
                     />
                   </div>
@@ -599,7 +612,11 @@ const OfferDetail: React.FC = () => {
                       alt={attrs.name}
                       className="max-w-full max-h-full object-contain"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://placehold.co/100x60/f9fafb/666666?text=${encodeURIComponent((attrs.name || 'Store').slice(0, 5))}`;
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.fallback) {
+                          target.dataset.fallback = 'true';
+                          target.src = `https://placehold.co/100x60/f9fafb/666666?text=${encodeURIComponent((attrs.name || 'Store').slice(0, 5))}`;
+                        }
                       }}
                     />
                   </div>

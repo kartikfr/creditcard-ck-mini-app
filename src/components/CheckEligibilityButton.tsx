@@ -9,7 +9,7 @@ interface CheckEligibilityButtonProps {
 }
 
 const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ className = '' }) => {
-  const { isChecked, inputs } = useEligibility();
+  const { isChecked } = useEligibility();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -19,22 +19,9 @@ const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ classNa
           onClick={() => setIsModalOpen(true)}
           className={`group flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card hover:bg-secondary/50 hover:border-primary/30 transition-all ${className}`}
         >
-          {/* Eligibility Info */}
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-medium text-foreground">
-              ₹{inputs?.monthlyIncome?.toLocaleString() || '0'}/mo
-            </span>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              • {inputs?.pincode || 'N/A'}
-            </span>
-          </div>
-          
-          {/* Edit Button */}
-          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            <Settings2 className="w-3.5 h-3.5" />
-            <span className="text-xs font-medium">Edit</span>
-          </div>
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-sm font-medium text-foreground">Edit Eligibility</span>
+          <Settings2 className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
         </button>
       ) : (
         <Button

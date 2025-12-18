@@ -80,19 +80,13 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
       onClick={handleClick}
       className="relative block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-lg md:rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer"
     >
-      {/* Eligibility Badge */}
-      {isEligible && (
-        <div className="absolute top-2 right-2 z-10">
-          <EligibilityBadge />
-        </div>
-      )}
-
-      {/* Ribbon Badge */}
-      {ribbonText && (
-        <div className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 text-[9px] md:text-xs font-medium text-center py-1 md:py-1.5 px-1.5 md:px-2 line-clamp-1">
-          {ribbonText}
-        </div>
-      )}
+      {/* Ribbon Badge with Eligibility */}
+      <div className="flex items-center justify-between bg-rose-100 dark:bg-rose-900/40 py-1 md:py-1.5 px-1.5 md:px-2 min-h-[24px] md:min-h-[28px]">
+        <span className="text-rose-600 dark:text-rose-300 text-[9px] md:text-xs font-medium line-clamp-1 flex-1">
+          {ribbonText || '\u00A0'}
+        </span>
+        {isEligible && <EligibilityBadge className="ml-1 flex-shrink-0" />}
+      </div>
       
       {/* Logo/Image */}
       <div className="flex items-center justify-center p-3 md:p-6 min-h-[60px] md:min-h-[100px] bg-white dark:bg-card">

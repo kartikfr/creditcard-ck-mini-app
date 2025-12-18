@@ -618,28 +618,6 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        {/* API Response Debug Panel */}
-        <details className="card-elevated p-4 mt-6">
-          <summary className="cursor-pointer font-medium text-foreground text-sm flex items-center gap-2">
-            📡 API Debug {usedFallback && '(Using Fallback Data)'}
-          </summary>
-          <div className="mt-4 space-y-4">
-            <div className="text-xs space-y-1">
-              <p><strong>Banners:</strong> {banners.length}</p>
-              <p><strong>Category Offers:</strong> {categoryOffers.length} (showing {visibleOffers})</p>
-              <p><strong>Data Source:</strong> {usedFallback ? 'Fallback (API returned empty)' : 'Live API'}</p>
-              <p><strong>Page Type:</strong> {pageData?.type || 'N/A'}</p>
-              <p><strong>Page ID:</strong> {pageData?.id || 'N/A'}</p>
-            </div>
-            
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Raw API Response:</p>
-              <pre className="p-3 bg-secondary rounded-lg overflow-auto text-xs max-h-48">
-                {JSON.stringify(rawApiResponse, null, 2)}
-              </pre>
-            </div>
-          </div>
-        </details>
       </div>
     </AppLayout>
   );

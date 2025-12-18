@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEligibility } from '@/context/EligibilityContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ interface EligibilityModalProps {
 }
 
 const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) => {
-  const { inputs, isChecked, isLoading, eligibleCardIds, checkEligibility, clearEligibility } = useEligibility();
+  const { inputs, isChecked, isLoading, checkEligibility, clearEligibility } = useEligibility();
   const { toast } = useToast();
   
   const [pincode, setPincode] = useState(inputs?.pincode || '');
@@ -53,11 +53,7 @@ const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) 
     }
 
     try {
-      const result = await checkEligibility(pincode, parseInt(monthlyIncome), employmentType);
-      toast({
-        title: 'Eligibility Checked',
-        description: `Found ${result.totalEligible} cards you may be eligible for!`,
-      });
+      await checkEligibility(pincode, parseInt(monthlyIncome), employmentType);
       onClose();
     } catch (error: any) {
       toast({
@@ -139,15 +135,6 @@ const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) 
             </RadioGroup>
           </div>
 
-          {/* Status Display */}
-          {isChecked && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900">
-              <CheckCircle className="w-5 h-5 text-emerald-600" />
-              <span className="text-sm text-emerald-700 dark:text-emerald-400">
-                Found {eligibleCardIds.length} eligible cards
-              </span>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-2">

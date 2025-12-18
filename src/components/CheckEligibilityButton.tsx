@@ -9,7 +9,7 @@ interface CheckEligibilityButtonProps {
 }
 
 const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ className = '' }) => {
-  const { isChecked, eligibleCardIds, inputs } = useEligibility();
+  const { isChecked, inputs } = useEligibility();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -19,18 +19,14 @@ const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ classNa
           onClick={() => setIsModalOpen(true)}
           className={`group flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card hover:bg-secondary/50 hover:border-primary/30 transition-all ${className}`}
         >
-          {/* Eligible Count Badge */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-              {eligibleCardIds.length} Eligible
-            </span>
-          </div>
-          
           {/* Eligibility Info */}
-          <div className="hidden sm:flex flex-col items-start text-left">
-            <span className="text-[10px] text-muted-foreground leading-tight">
-              ₹{inputs?.monthlyIncome?.toLocaleString() || '0'}/mo • {inputs?.pincode || 'N/A'}
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-foreground">
+              ₹{inputs?.monthlyIncome?.toLocaleString() || '0'}/mo
+            </span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              • {inputs?.pincode || 'N/A'}
             </span>
           </div>
           

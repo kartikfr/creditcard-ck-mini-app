@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet, Headphones } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Types for API response
 interface Banner {
@@ -494,16 +493,16 @@ const Home: React.FC = () => {
         )}
 
 
-        {/* How Cashback Works - 4 Step Section */}
+        {/* How Cashback Works - 4 Step Section (Same style for mobile & desktop) */}
         <section className="py-6 md:py-10 animate-fade-in">
           <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4 md:mb-6">
             How Cashback Works
           </h2>
           
-          {/* Desktop: Horizontal Timeline */}
-          <div className="hidden md:flex items-start justify-between gap-4 relative">
+          {/* Horizontal Timeline - Responsive for both mobile & desktop */}
+          <div className="flex items-start justify-between gap-2 md:gap-4 relative">
             {/* Connection Line */}
-            <div className="absolute top-6 left-[12%] right-[12%] h-0.5 bg-border" />
+            <div className="absolute top-4 md:top-6 left-[12%] right-[12%] h-0.5 bg-border" />
             
             {[
               { step: 1, title: 'Choose a Card', desc: '50+ cards. Compare & pick.', icon: CreditCard, color: 'primary' },
@@ -512,55 +511,11 @@ const Home: React.FC = () => {
               { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet, color: 'accent' },
             ].map((item, idx) => (
               <div key={idx} className="flex-1 text-center relative z-10">
-                <div className={`w-12 h-12 mx-auto rounded-full bg-${item.color}/10 flex items-center justify-center mb-3 border-4 border-background`}>
-                  <item.icon className={`w-5 h-5 text-${item.color}`} />
+                <div className={`w-8 h-8 md:w-12 md:h-12 mx-auto rounded-full bg-${item.color}/10 flex items-center justify-center mb-2 md:mb-3 border-2 md:border-4 border-background`}>
+                  <item.icon className={`w-3.5 h-3.5 md:w-5 md:h-5 text-${item.color}`} />
                 </div>
-                <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">{item.title}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-1">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Mobile: Vertical Accordion Stepper */}
-          <Accordion type="single" collapsible className="md:hidden space-y-2">
-            {[
-              { step: 1, title: 'Choose a Card', desc: '50+ cards. Compare & pick.', icon: CreditCard },
-              { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield },
-              { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard },
-              { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet },
-            ].map((item) => (
-              <AccordionItem key={item.step} value={`step-${item.step}`} className="border rounded-xl px-4 bg-card">
-                <AccordionTrigger className="hover:no-underline py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-primary font-bold text-sm">{item.step}</span>
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{item.title}</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pb-3 pl-11">
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </section>
-
-        {/* Why Apply Through Us - Benefits Section */}
-        <section className="py-6 md:py-10 animate-fade-in">
-          <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4">
-            Why Apply Through Us?
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            {[
-              { icon: '✅', label: 'Same bank offers' },
-              { icon: '🔒', label: 'Secure redirect' },
-              { icon: '💰', label: 'Extra cashback' },
-              { icon: '📞', label: 'Support included' },
-            ].map((benefit, idx) => (
-              <div key={idx} className="flex flex-col items-center p-4 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors">
-                <span className="text-2xl mb-2">{benefit.icon}</span>
-                <span className="text-xs md:text-sm font-medium text-center text-foreground">{benefit.label}</span>
+                <h3 className="text-[10px] md:text-sm font-semibold text-foreground mb-0.5 md:mb-1 line-clamp-2">{item.title}</h3>
+                <p className="text-[9px] md:text-xs text-muted-foreground line-clamp-2 px-1">{item.desc}</p>
               </div>
             ))}
           </div>

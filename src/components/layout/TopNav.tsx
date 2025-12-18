@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Bell, CreditCard } from 'lucide-react';
+import { Wallet, CreditCard, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchEarnings } from '@/lib/api';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import avatarImage from '@/assets/avatar.png';
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate();
@@ -60,26 +58,14 @@ const TopNav: React.FC = () => {
                 ₹{totalEarnings.toLocaleString()}
               </span>
             </button>
-            
-            {/* Notifications - Desktop only */}
-            <button
-              onClick={() => navigate('/orders')}
-              className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
-            >
-              <Bell className="w-4 h-4 text-muted-foreground" />
-            </button>
 
-            {/* Profile Avatar - Desktop only */}
+            {/* Profile - Desktop only (text + icon style) */}
             <button
               onClick={() => navigate('/profile')}
-              className="relative group hidden md:block"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-secondary/50 transition-colors"
             >
-              <Avatar className="w-9 h-9 md:w-10 md:h-10 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all duration-300 group-hover:scale-105">
-                <AvatarImage src={avatarImage} alt="Profile" className="object-cover" />
-                <AvatarFallback className="bg-gradient-to-br from-primary/80 to-accent text-primary-foreground font-semibold text-sm">
-                  U
-                </AvatarFallback>
-              </Avatar>
+              <User className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Profile</span>
             </button>
           </div>
         </div>

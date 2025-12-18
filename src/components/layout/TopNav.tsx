@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, User, HelpCircle } from 'lucide-react';
+import { CreditCard, User, MessageSquare } from 'lucide-react';
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate();
@@ -25,12 +25,13 @@ const TopNav: React.FC = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Help - Mobile only */}
+            {/* Help Button - Mobile only (styled like reference image) */}
             <button
               onClick={() => navigate('/help')}
-              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
             >
-              <HelpCircle className="w-4 h-4 text-primary" />
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">Help</span>
             </button>
 
             {/* Profile - Desktop only (text + icon style) */}

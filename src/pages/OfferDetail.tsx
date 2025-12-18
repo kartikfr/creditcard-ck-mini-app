@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, ArrowRight, ChevronRight, Clock, Calendar, X } from 'lucide-react';
 import { fetchOfferDetail } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useEligibility } from '@/context/EligibilityContext';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +15,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import LoginModal from '@/components/LoginModal';
+import EligibilityBadge from '@/components/EligibilityBadge';
+import CheckEligibilityButton from '@/components/CheckEligibilityButton';
 
 interface OfferCashback {
   payment_type?: string;
@@ -94,6 +97,7 @@ const OfferDetail: React.FC = () => {
   const { uniqueIdentifier } = useParams<{ uniqueIdentifier: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { isCardEligible, isChecked: eligibilityChecked } = useEligibility();
   const [offer, setOffer] = useState<OfferDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -283,6 +287,9 @@ const OfferDetail: React.FC = () => {
   const hasFaqs = attrs.faq && attrs.faq.length > 0;
   const descriptionText = attrs.short_description_new?.info || attrs.seo_description || '';
   const shouldTruncateDescription = descriptionText.length > 150;
+  
+  // Check eligibility for this specific offer
+  const isEligible = eligibilityChecked && offer?.id && isCardEligible(String(offer.id));
 
   return (
     <AppLayout>
@@ -378,6 +385,16 @@ const OfferDetail: React.FC = () => {
                     <h2 className="font-semibold text-sm mt-1">{attrs.name}</h2>
                   </div>
                 </div>
+                
+                {/* Eligibility Badge/Button - Mobile */}
+                <div className="mt-3">
+                  {isEligible ? (
+                    <EligibilityBadge className="inline-flex" />
+                  ) : (
+                    <CheckEligibilityButton className="w-full" />
+                  )}
+                </div>
+                
                 {descriptionText && (
                   <div className="mt-3">
                     <p className="text-xs text-muted-foreground leading-relaxed">
@@ -614,6 +631,15 @@ const OfferDetail: React.FC = () => {
                     )}
                   </p>
                 )}
+                
+                {/* Eligibility Badge/Button - Desktop */}
+                <div className="mt-4">
+                  {isEligible ? (
+                    <EligibilityBadge className="inline-flex" />
+                  ) : (
+                    <CheckEligibilityButton className="w-full" />
+                  )}
+                </div>
               </div>
 
               {/* Rewards Box */}

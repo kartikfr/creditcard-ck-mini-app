@@ -400,9 +400,21 @@ const OfferDetail: React.FC = () => {
                 </div>
                 
                 {/* Eligibility Badge/Button - Mobile */}
-                <div className="mt-3">
-                  {isEligible ? (
-                    <EligibilityBadge className="inline-flex" />
+                <div className="mt-3 space-y-2">
+                  {eligibilityChecked ? (
+                    <>
+                      {isEligible ? (
+                        <EligibilityBadge className="inline-flex" />
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
+                          <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
+                            Not Eligible
+                          </span>
+                        </div>
+                      )}
+                      <CheckEligibilityButton className="w-full" />
+                    </>
                   ) : (
                     <CheckEligibilityButton className="w-full" />
                   )}
@@ -650,9 +662,21 @@ const OfferDetail: React.FC = () => {
                 )}
                 
                 {/* Eligibility Badge/Button - Desktop */}
-                <div className="mt-4">
-                  {isEligible ? (
-                    <EligibilityBadge className="inline-flex" />
+                <div className="mt-4 space-y-2">
+                  {eligibilityChecked ? (
+                    <>
+                      {isEligible ? (
+                        <EligibilityBadge className="inline-flex" />
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
+                          <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
+                            Not Eligible
+                          </span>
+                        </div>
+                      )}
+                      <CheckEligibilityButton className="w-full" />
+                    </>
                   ) : (
                     <CheckEligibilityButton className="w-full" />
                   )}

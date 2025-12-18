@@ -316,8 +316,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
 
               <Button
                 onClick={handleSendOTP}
-                disabled={isLoading || phone.length !== 10}
-                className="w-full h-11 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-xl"
+                disabled={isLoading || !validatePhone(phone)}
+                className={`w-full h-11 font-medium rounded-xl transition-colors ${
+                  validatePhone(phone) 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                }`}
               >
                 {isLoading ? <LoadingSpinner size="sm" /> : 'Continue'}
               </Button>

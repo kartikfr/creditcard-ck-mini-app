@@ -1,32 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, CreditCard, User } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { fetchEarnings } from '@/lib/api';
+import { CreditCard, User, HelpCircle } from 'lucide-react';
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, accessToken } = useAuth();
-  const [totalEarnings, setTotalEarnings] = useState(0);
-
-  useEffect(() => {
-    const loadEarnings = async () => {
-      if (!isAuthenticated || !accessToken) return;
-      
-      try {
-        const response = await fetchEarnings(accessToken);
-        const userData = Array.isArray(response?.data) ? response.data[0] : response?.data;
-        if (userData?.attributes) {
-          const total = parseFloat(userData.attributes.total_earned || userData.attributes.total_cashback_earned || '0');
-          setTotalEarnings(total);
-        }
-      } catch (err) {
-        console.error('[TopNav] Failed to load earnings:', err);
-      }
-    };
-
-    loadEarnings();
-  }, [isAuthenticated, accessToken]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border lg:left-64">
@@ -48,15 +25,12 @@ const TopNav: React.FC = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Wallet Balance - Clickable */}
+            {/* Help - Mobile only */}
             <button
-              onClick={() => navigate('/earnings')}
-              className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-full bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+              onClick={() => navigate('/help')}
+              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
             >
-              <Wallet className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
-              <span className="text-xs md:text-sm font-medium text-foreground">
-                ₹{totalEarnings.toLocaleString()}
-              </span>
+              <HelpCircle className="w-4 h-4 text-primary" />
             </button>
 
             {/* Profile - Desktop only (text + icon style) */}

@@ -433,17 +433,6 @@ const Home: React.FC = () => {
   return (
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-        {/* Refresh Button */}
-        <div className="flex justify-end mb-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleRefresh}
-            className="rounded-full w-9 h-9"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
-        </div>
 
         {/* Hero Banner Carousel - Auto-rotating Cards */}
         {banners.length > 0 && (

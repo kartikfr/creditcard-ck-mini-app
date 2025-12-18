@@ -657,3 +657,35 @@ export const fetchCategoryOffersBySlug = async (
     guestToken
   );
 };
+
+// Check eligibility for credit cards via BankKaro API
+export const checkEligibility = async (
+  pincode: string,
+  monthlyIncome: number,
+  employmentType: 'salaried' | 'self-employed'
+): Promise<{ eligibleCardIds: string[]; totalEligible: number }> => {
+  console.log('[API] Checking eligibility:', { pincode, monthlyIncome, employmentType });
+  
+  const { data, error } = await supabase.functions.invoke('eligibility-proxy', {
+    body: {
+      pincode,
+      inhandIncome: monthlyIncome,
+      empStatus: employmentType,
+    },
+  });
+
+  if (error) {
+    console.error('[API] Eligibility check error:', error);
+    throw new Error(error.message || 'Failed to check eligibility');
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  console.log('[API] Eligibility result:', data);
+  return {
+    eligibleCardIds: data?.eligibleCardIds || [],
+    totalEligible: data?.totalEligible || 0,
+  };
+};

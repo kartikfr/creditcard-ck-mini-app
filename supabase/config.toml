@@ -2,3 +2,6 @@ project_id = "nespgenidbauzmelswon"
 
 [functions.cashkaro-proxy]
 verify_jwt = false
+
+[functions.eligibility-proxy]
+verify_jwt = false

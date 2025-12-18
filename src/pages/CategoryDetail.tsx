@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import CategoryBreadcrumb, { BreadcrumbItem } from '@/components/CategoryBreadcrumb';
 import OfferCard from '@/components/OfferCard';
+import CheckEligibilityButton from '@/components/CheckEligibilityButton';
+import { useEligibility } from '@/context/EligibilityContext';
 import {
   fetchCategoryBySlug,
   fetchCategoryOffersBySlug,
@@ -70,6 +72,7 @@ interface Offer {
 const CategoryDetail: React.FC = () => {
   const { '*': slugPath } = useParams();
   const navigate = useNavigate();
+  const { isCardEligible, isChecked: eligibilityChecked } = useEligibility();
   
   const [category, setCategory] = useState<CategoryData | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -497,13 +500,26 @@ const CategoryDetail: React.FC = () => {
             {(contentType === 'offers' || contentType === 'mixed') && (
               <>
                 {contentType === 'mixed' && offers.length > 0 && (
-                  <h2 className="text-lg font-semibold text-foreground mb-4">Offers</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-foreground">Offers</h2>
+                    <CheckEligibilityButton />
+                  </div>
+                )}
+                
+                {contentType === 'offers' && offers.length > 0 && (
+                  <div className="flex justify-end mb-4">
+                    <CheckEligibilityButton />
+                  </div>
                 )}
                 
                 {offers.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {offers.map((offer) => (
-                      <OfferCard key={offer.id} offer={offer as any} />
+                      <OfferCard 
+                        key={offer.id} 
+                        offer={offer as any} 
+                        isEligible={eligibilityChecked && isCardEligible(offer.id)}
+                      />
                     ))}
                   </div>
                 ) : contentType === 'offers' && !isLoadingOffers ? (

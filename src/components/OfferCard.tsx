@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import EligibilityBadge from './EligibilityBadge';
 
 interface OfferCashback {
   payment_type?: string;
@@ -34,9 +35,10 @@ export interface Offer {
 
 interface OfferCardProps {
   offer: Offer;
+  isEligible?: boolean;
 }
 
-const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
+const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
   const navigate = useNavigate();
   const attrs = offer.attributes;
   
@@ -76,8 +78,15 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer }) => {
   return (
     <div
       onClick={handleClick}
-      className="block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-lg md:rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer"
+      className="relative block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-lg md:rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer"
     >
+      {/* Eligibility Badge */}
+      {isEligible && (
+        <div className="absolute top-2 right-2 z-10">
+          <EligibilityBadge />
+        </div>
+      )}
+
       {/* Ribbon Badge */}
       {ribbonText && (
         <div className="bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 text-[9px] md:text-xs font-medium text-center py-1 md:py-1.5 px-1.5 md:px-2 line-clamp-1">

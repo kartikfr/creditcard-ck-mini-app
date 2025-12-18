@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useEligibility } from '@/context/EligibilityContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
+import CheckEligibilityButton from '@/components/CheckEligibilityButton';
 
 // Types for API response
 interface Banner {
@@ -136,6 +138,7 @@ const DEFAULT_API_RESPONSE = {
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { user, accessToken, isAuthenticated } = useAuth();
+  const { isCardEligible, isChecked: eligibilityChecked } = useEligibility();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [pageData, setPageData] = useState<HomePageData | null>(null);
@@ -540,12 +543,17 @@ const Home: React.FC = () => {
                   ({categoryOffers.length} offers)
                 </span>
               </h2>
+              <CheckEligibilityButton />
             </div>
             
             {/* Offers Grid with Lazy Loading */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {categoryOffers.slice(0, visibleOffers).map((offer) => (
-                <OfferCard key={offer.id} offer={offer} />
+                <OfferCard 
+                  key={offer.id} 
+                  offer={offer} 
+                  isEligible={eligibilityChecked && isCardEligible(offer.id)}
+                />
               ))}
             </div>
 

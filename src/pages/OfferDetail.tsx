@@ -288,8 +288,22 @@ const OfferDetail: React.FC = () => {
   const descriptionText = attrs.short_description_new?.info || attrs.seo_description || '';
   const shouldTruncateDescription = descriptionText.length > 150;
   
-  // Check eligibility for this specific offer
-  const isEligible = eligibilityChecked && offer?.id && isCardEligible(String(offer.id));
+  // Check if this is a credit card offer (from home page credit card section)
+  const isCreditCardOffer = (() => {
+    try {
+      const stored = localStorage.getItem('credit_card_offer_ids');
+      if (!stored) return false;
+      const creditCardOffers = JSON.parse(stored) as Array<{ id: string; uniqueIdentifier: string }>;
+      return creditCardOffers.some(
+        o => o.uniqueIdentifier === uniqueIdentifier || o.id === String(offer?.id)
+      );
+    } catch {
+      return false;
+    }
+  })();
+  
+  // Check eligibility for this specific offer (only for credit card offers)
+  const isEligible = isCreditCardOffer && eligibilityChecked && offer?.id && isCardEligible(String(offer.id));
 
   return (
     <AppLayout>
@@ -399,26 +413,28 @@ const OfferDetail: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Eligibility Badge/Button - Mobile */}
-                <div className="mt-3 space-y-2">
-                  {eligibilityChecked ? (
-                    <>
-                      {isEligible ? (
-                        <EligibilityBadge className="inline-flex" />
-                      ) : (
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
-                          <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
-                            Not Eligible
-                          </span>
-                        </div>
-                      )}
+                {/* Eligibility Badge/Button - Mobile (only for credit card offers) */}
+                {isCreditCardOffer && (
+                  <div className="mt-3 space-y-2">
+                    {eligibilityChecked ? (
+                      <>
+                        {isEligible ? (
+                          <EligibilityBadge className="inline-flex" />
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
+                            <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
+                              Not Eligible
+                            </span>
+                          </div>
+                        )}
+                        <CheckEligibilityButton className="w-full" />
+                      </>
+                    ) : (
                       <CheckEligibilityButton className="w-full" />
-                    </>
-                  ) : (
-                    <CheckEligibilityButton className="w-full" />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
                 
                 {descriptionText && (
                   <div className="mt-3">
@@ -661,26 +677,28 @@ const OfferDetail: React.FC = () => {
                   </p>
                 )}
                 
-                {/* Eligibility Badge/Button - Desktop */}
-                <div className="mt-4 space-y-2">
-                  {eligibilityChecked ? (
-                    <>
-                      {isEligible ? (
-                        <EligibilityBadge className="inline-flex" />
-                      ) : (
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
-                          <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
-                            Not Eligible
-                          </span>
-                        </div>
-                      )}
+                {/* Eligibility Badge/Button - Desktop (only for credit card offers) */}
+                {isCreditCardOffer && (
+                  <div className="mt-4 space-y-2">
+                    {eligibilityChecked ? (
+                      <>
+                        {isEligible ? (
+                          <EligibilityBadge className="inline-flex" />
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 w-fit">
+                            <X className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span className="text-[10px] md:text-xs font-medium text-amber-700 dark:text-amber-400">
+                              Not Eligible
+                            </span>
+                          </div>
+                        )}
+                        <CheckEligibilityButton className="w-full" />
+                      </>
+                    ) : (
                       <CheckEligibilityButton className="w-full" />
-                    </>
-                  ) : (
-                    <CheckEligibilityButton className="w-full" />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Rewards Box */}

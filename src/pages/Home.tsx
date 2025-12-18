@@ -8,6 +8,10 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
+import CheckEligibilityButton from '@/components/CheckEligibilityButton';
+
+// Key for storing credit card offer identifiers
+const CREDIT_CARD_OFFERS_KEY = 'credit_card_offer_ids';
 
 
 // Types for API response
@@ -277,6 +281,17 @@ const Home: React.FC = () => {
       if (response?.data && Array.isArray(response.data)) {
         setCategoryOffers(response.data);
         setVisibleOffers(OFFERS_PER_LOAD); // Reset visible count
+        
+        // Store credit card offer IDs for use in OfferDetail page
+        const creditCardOfferIds = response.data.map((offer: Offer) => ({
+          id: String(offer.id),
+          uniqueIdentifier: offer.attributes?.unique_identifier || ''
+        }));
+        try {
+          localStorage.setItem(CREDIT_CARD_OFFERS_KEY, JSON.stringify(creditCardOfferIds));
+        } catch (e) {
+          console.error('[Home] Failed to store credit card offer IDs:', e);
+        }
       }
     } catch (err) {
       console.error('[Home] Failed to load category offers:', err);
@@ -540,13 +555,14 @@ const Home: React.FC = () => {
         {/* Category Offers Section */}
         {categoryOffers.length > 0 && (
           <section className="mb-6 animate-fade-in">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
-                Banking & Finance Offers
+                Credit Card Offers
                 <span className="text-xs md:text-sm font-normal text-muted-foreground ml-2">
                   ({categoryOffers.length} offers)
                 </span>
               </h2>
+              <CheckEligibilityButton />
             </div>
             
             {/* Offers Grid with Lazy Loading */}

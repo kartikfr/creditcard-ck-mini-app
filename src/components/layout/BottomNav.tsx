@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, TrendingUp, AlertCircle, Tag } from 'lucide-react';
+import { Home, Tag, HelpCircle, User } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/deals', label: 'Deals', icon: Tag },
-  { path: '/earnings', label: 'Earnings', icon: TrendingUp },
-  { path: '/missing-cashback', label: 'Claims', icon: AlertCircle },
+  { path: '/help', label: 'Help', icon: HelpCircle },
+  { path: '/profile', label: 'Profile', icon: User },
 ];
 
 const BottomNav: React.FC = () => {

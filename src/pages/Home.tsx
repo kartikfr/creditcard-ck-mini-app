@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet, Headphones } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 // Types for API response
 interface Banner {
   type: string;
@@ -492,67 +494,75 @@ const Home: React.FC = () => {
         )}
 
 
-        <section className="mb-4 md:mb-6 animate-fade-in">
-          <h2 className="text-base md:text-xl font-display font-semibold text-foreground mb-3 md:mb-4">
-            How to Earn upto ₹2200 Cashback
+        {/* How Cashback Works - 4 Step Section */}
+        <section className="py-6 md:py-10 animate-fade-in">
+          <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4 md:mb-6">
+            How Cashback Works
           </h2>
-          <div className="grid grid-cols-3 md:grid-cols-3 gap-2 md:gap-4">
-            {/* Step 1 */}
-            <div className="card-elevated p-2.5 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
-              <div className="hidden md:block absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-bl-full" />
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 text-center md:text-left">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary font-bold text-sm md:text-base">1</span>
+          
+          {/* Desktop: Horizontal Timeline */}
+          <div className="hidden md:flex items-start justify-between gap-4 relative">
+            {/* Connection Line */}
+            <div className="absolute top-6 left-[12%] right-[12%] h-0.5 bg-border" />
+            
+            {[
+              { step: 1, title: 'Choose a Card', desc: '50+ cards. Compare & pick.', icon: CreditCard, color: 'primary' },
+              { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield, color: 'accent' },
+              { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard, color: 'primary' },
+              { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet, color: 'accent' },
+            ].map((item, idx) => (
+              <div key={idx} className="flex-1 text-center relative z-10">
+                <div className={`w-12 h-12 mx-auto rounded-full bg-${item.color}/10 flex items-center justify-center mb-3 border-4 border-background`}>
+                  <item.icon className={`w-5 h-5 text-${item.color}`} />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-xs md:text-base mb-0.5 md:mb-1">Pick a Card</h3>
-                  <p className="text-[10px] md:text-sm text-muted-foreground hidden md:block">
-                    Explore 50+ credit cards and find the one that suits your lifestyle.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground md:hidden">
-                    Browse 50+ cards
-                  </p>
-                </div>
+                <h3 className="text-sm md:text-base font-semibold text-foreground mb-1">{item.title}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-1">{item.desc}</p>
               </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Step 2 */}
-            <div className="card-elevated p-2.5 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
-              <div className="hidden md:block absolute top-0 right-0 w-16 h-16 bg-accent/5 rounded-bl-full" />
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 text-center md:text-left">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-accent font-bold text-sm md:text-base">2</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-xs md:text-base mb-0.5 md:mb-1">Apply via Us</h3>
-                  <p className="text-[10px] md:text-sm text-muted-foreground hidden md:block">
-                    Click apply and we'll redirect you to the bank's secure page.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground md:hidden">
-                    Secure redirect
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Mobile: Vertical Accordion Stepper */}
+          <Accordion type="single" collapsible className="md:hidden space-y-2">
+            {[
+              { step: 1, title: 'Choose a Card', desc: '50+ cards. Compare & pick.', icon: CreditCard },
+              { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield },
+              { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard },
+              { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet },
+            ].map((item) => (
+              <AccordionItem key={item.step} value={`step-${item.step}`} className="border rounded-xl px-4 bg-card">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold text-sm">{item.step}</span>
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{item.title}</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pb-3 pl-11">
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </section>
 
-            {/* Step 3 */}
-            <div className="card-elevated p-2.5 md:p-5 relative overflow-hidden group hover:shadow-lg transition-all">
-              <div className="hidden md:block absolute top-0 right-0 w-16 h-16 bg-success/5 rounded-bl-full" />
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-4 text-center md:text-left">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-success font-bold text-sm md:text-base">3</span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-xs md:text-base mb-0.5 md:mb-1">Get upto ₹2200</h3>
-                  <p className="text-[10px] md:text-sm text-muted-foreground hidden md:block">
-                    Once approved, upto ₹2200 cashback is credited to your wallet.
-                  </p>
-                  <p className="text-[10px] text-muted-foreground md:hidden">
-                    On approval
-                  </p>
-                </div>
+        {/* Why Apply Through Us - Benefits Section */}
+        <section className="py-6 md:py-10 animate-fade-in">
+          <h2 className="text-lg md:text-xl font-display font-semibold text-foreground mb-4">
+            Why Apply Through Us?
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {[
+              { icon: '✅', label: 'Same bank offers' },
+              { icon: '🔒', label: 'Secure redirect' },
+              { icon: '💰', label: 'Extra cashback' },
+              { icon: '📞', label: 'Support included' },
+            ].map((benefit, idx) => (
+              <div key={idx} className="flex flex-col items-center p-4 bg-card rounded-xl border border-border hover:border-primary/30 transition-colors">
+                <span className="text-2xl mb-2">{benefit.icon}</span>
+                <span className="text-xs md:text-sm font-medium text-center text-foreground">{benefit.label}</span>
               </div>
-            </div>
+            ))}
           </div>
         </section>
 

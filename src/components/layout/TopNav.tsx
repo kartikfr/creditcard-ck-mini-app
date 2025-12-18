@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, HelpCircle, CreditCard } from 'lucide-react';
+import { Wallet, Bell, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchEarnings } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -61,19 +61,18 @@ const TopNav: React.FC = () => {
               </span>
             </button>
             
-            {/* Help - Desktop only */}
+            {/* Notifications - Desktop only */}
             <button
-              onClick={() => navigate('/help')}
-              className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => navigate('/orders')}
+              className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-secondary/50 hover:bg-secondary transition-colors"
             >
-              <HelpCircle className="w-4 h-4" />
-              <span>Help</span>
+              <Bell className="w-4 h-4 text-muted-foreground" />
             </button>
 
-            {/* Profile Avatar */}
+            {/* Profile Avatar - Desktop only */}
             <button
               onClick={() => navigate('/profile')}
-              className="relative group"
+              className="relative group hidden md:block"
             >
               <Avatar className="w-9 h-9 md:w-10 md:h-10 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all duration-300 group-hover:scale-105">
                 <AvatarImage src={avatarImage} alt="Profile" className="object-cover" />

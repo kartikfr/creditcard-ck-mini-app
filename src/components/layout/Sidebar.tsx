@@ -1,14 +1,13 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, TrendingUp, AlertCircle, Tag, User, LogOut, CreditCard } from 'lucide-react';
+import { Home, AlertCircle, Tag, HelpCircle, LogOut, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/deals', label: 'Deals', icon: Tag },
-  { path: '/earnings', label: 'My Earnings', icon: TrendingUp },
   { path: '/missing-cashback', label: 'Missing Cashback', icon: AlertCircle },
-  { path: '/profile', label: 'Profile', icon: User },
+  { path: '/help', label: 'Help', icon: HelpCircle },
 ];
 
 const Sidebar: React.FC = () => {

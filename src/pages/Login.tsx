@@ -79,11 +79,6 @@ const Login: React.FC = () => {
           setIsNewUser(false);
           setStep('otp');
           setCountdown(30);
-          
-          toast({
-            title: 'OTP Sent!',
-            description: 'Please check your phone for the OTP',
-          });
           return;
         }
       } catch (loginError) {
@@ -100,11 +95,6 @@ const Login: React.FC = () => {
               setIsNewUser(true);
               setStep('otp');
               setCountdown(30);
-              
-              toast({
-                title: 'OTP Sent!',
-                description: 'Create your account to get started',
-              });
               return;
             }
           } catch (signupError) {
@@ -157,12 +147,6 @@ const Login: React.FC = () => {
       const response = await verifyOTPAndLogin(phone, otpGuid, otp, token);
       const userData = response.data.attributes;
       login(userData);
-      
-      toast({
-        title: 'Welcome Back!',
-        description: `Hello ${userData.first_name || 'there'}!`,
-      });
-      
       navigate('/', { replace: true });
     } catch (error) {
       toast({
@@ -196,12 +180,6 @@ const Login: React.FC = () => {
       const response = await signupUser(fullName.trim(), email.trim(), phone, otpGuid, otp, token);
       const userData = response.data.attributes;
       login(userData);
-      
-      toast({
-        title: 'Welcome!',
-        description: `Account created successfully, ${fullName.split(' ')[0]}!`,
-      });
-      
       navigate('/', { replace: true });
     } catch (error) {
       toast({
@@ -231,10 +209,6 @@ const Login: React.FC = () => {
       
       setCountdown(30);
       setOtp('');
-      toast({
-        title: 'OTP Resent!',
-        description: 'Please check your phone',
-      });
     } catch (error) {
       toast({
         title: 'Failed to Resend',

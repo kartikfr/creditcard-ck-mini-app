@@ -398,19 +398,20 @@ const OfferDetail: React.FC = () => {
               </div>
 
               {/* Rewards Box - Mobile */}
-              <div className="md:hidden bg-gradient-to-r from-indigo-900 to-indigo-800 rounded-xl p-4 text-white">
+              <div className="md:hidden bg-card rounded-xl p-4 border border-border shadow-sm">
                 {cashbackDisplay && (
                   <>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl md:text-3xl font-bold">{cashbackDisplay.prefix} {cashbackDisplay.amount}</span>
-                      <span className="text-lg font-semibold">{cashbackDisplay.suffix}</span>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="text-xl font-bold text-foreground">{cashbackDisplay.prefix}</span>
+                      <span className="text-2xl font-bold text-orange-500">{cashbackDisplay.amount}</span>
+                      <span className="text-xl font-bold text-indigo-900 dark:text-indigo-400">{cashbackDisplay.suffix}</span>
                     </div>
-                    <p className="text-xs text-white/80 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {attrs.cashback?.details || attrs.short_description_new?.cbinfo || 'on Credit Card Activation'}
                     </p>
                     <button 
                       onClick={() => setShowRewardsRates(true)}
-                      className="mt-2 text-orange-400 text-sm font-medium flex items-center gap-1 hover:underline"
+                      className="mt-3 text-primary text-sm font-medium flex items-center gap-1.5 hover:underline"
                     >
                       View Rewards Rates
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -616,19 +617,20 @@ const OfferDetail: React.FC = () => {
               </div>
 
               {/* Rewards Box */}
-              <div className="bg-gradient-to-r from-indigo-900 to-indigo-800 rounded-2xl p-5 text-white">
+              <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
                 {cashbackDisplay && (
                   <>
-                    <div className="flex items-baseline gap-1 flex-wrap">
-                      <span className="text-3xl font-bold">{cashbackDisplay.prefix} {cashbackDisplay.amount}</span>
-                      <span className="text-xl font-semibold">{cashbackDisplay.suffix}</span>
+                    <div className="flex items-baseline gap-1.5 flex-wrap">
+                      <span className="text-2xl font-bold text-foreground">{cashbackDisplay.prefix}</span>
+                      <span className="text-3xl font-bold text-orange-500">{cashbackDisplay.amount}</span>
+                      <span className="text-2xl font-bold text-indigo-900 dark:text-indigo-400">{cashbackDisplay.suffix}</span>
                     </div>
-                    <p className="text-sm text-white/80 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {attrs.cashback?.details || attrs.short_description_new?.cbinfo || 'on Credit Card Activation'}
                     </p>
                     <button 
                       onClick={() => setShowRewardsRates(true)}
-                      className="mt-3 text-orange-400 text-sm font-medium flex items-center gap-1 hover:underline"
+                      className="mt-3 text-primary text-sm font-medium flex items-center gap-1.5 hover:underline"
                     >
                       View Rewards Rates
                       <ArrowRight className="w-4 h-4" />
@@ -737,39 +739,20 @@ const OfferDetail: React.FC = () => {
 
         {/* Rewards Rates Popup */}
         <Dialog open={showRewardsRates} onOpenChange={setShowRewardsRates}>
-          <DialogContent className="max-w-md p-0 gap-0">
-            <DialogHeader className="p-4 md:p-5 pb-3 border-b border-border">
-              <DialogTitle className="text-base md:text-lg font-semibold">Rewards Rates</DialogTitle>
+          <DialogContent className="max-w-sm p-0 gap-0">
+            <DialogHeader className="p-4 md:p-5 pb-4 border-b border-border">
+              <DialogTitle className="text-center text-base md:text-lg font-bold">Rewards Rates</DialogTitle>
             </DialogHeader>
-            <div className="p-4 md:p-5 space-y-4">
+            <div className="p-4 md:p-5">
               {attrs.cashback && (
-                <>
-                  <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/30 dark:to-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
-                    <p className="text-xs text-muted-foreground mb-1">Reward Amount</p>
-                    <p className="text-2xl font-bold text-foreground">
-                      Flat {attrs.cashback.payment_type === 'percent' ? `${attrs.cashback.amount}%` : `₹${attrs.cashback.amount}`}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">{attrs.cashback_type || 'Rewards'}</p>
-                  </div>
-                  {attrs.cashback.details && (
-                    <div>
-                      <p className="text-xs font-medium text-foreground mb-2">Reward Details</p>
-                      <p className="text-sm text-muted-foreground">{attrs.cashback.details}</p>
-                    </div>
-                  )}
-                  {attrs.short_description_new?.cbinfo && (
-                    <div>
-                      <p className="text-xs font-medium text-foreground mb-2">Additional Info</p>
-                      <p className="text-sm text-muted-foreground">{attrs.short_description_new.cbinfo}</p>
-                    </div>
-                  )}
-                  {attrs.cashback.strike_out_value && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-border">
-                      <span className="text-xs text-muted-foreground">Original Value:</span>
-                      <span className="text-sm line-through text-muted-foreground">₹{attrs.cashback.strike_out_value}</span>
-                    </div>
-                  )}
-                </>
+                <div className="flex items-center gap-4">
+                  <span className="text-xl md:text-2xl font-bold text-orange-500">
+                    {attrs.cashback.payment_type === 'percent' ? `${attrs.cashback.amount}%` : `₹${attrs.cashback.amount}`}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {attrs.cashback?.details || attrs.short_description_new?.cbinfo || 'Rewards on Card Activation'}
+                  </span>
+                </div>
               )}
             </div>
           </DialogContent>

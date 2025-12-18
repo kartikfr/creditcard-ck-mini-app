@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Loader2, X } from 'lucide-react';
 import { useEligibility } from '@/context/EligibilityContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -22,6 +22,15 @@ const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onClose }) 
   const [employmentType, setEmploymentType] = useState<'salaried' | 'self-employed'>(
     inputs?.employmentType || 'salaried'
   );
+
+  // Sync form state with context inputs when modal opens
+  useEffect(() => {
+    if (isOpen && inputs) {
+      setPincode(inputs.pincode || '');
+      setMonthlyIncome(inputs.monthlyIncome?.toString() || '');
+      setEmploymentType(inputs.employmentType || 'salaried');
+    }
+  }, [isOpen, inputs]);
 
   // Validation
   const isPincodeValid = /^\d{6}$/.test(pincode);

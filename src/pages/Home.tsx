@@ -531,7 +531,7 @@ const Home: React.FC = () => {
               { step: 1, title: 'Choose a Card', desc: '50+ cards to pick.', icon: CreditCard, color: 'primary' },
               { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield, color: 'accent' },
               { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard, color: 'primary' },
-              { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet, color: 'accent' },
+              { step: 4, title: 'Cashback Credited', desc: 'Withdraw via UPI, Bank or as Gift Cards.', icon: Wallet, color: 'accent' },
             ].map((item, idx) => (
               <div key={idx} className="flex-1 text-center relative z-10">
                 <div className={`w-8 h-8 md:w-12 md:h-12 mx-auto rounded-full bg-${item.color}/10 flex items-center justify-center mb-2 md:mb-3 border-2 md:border-4 border-background`}>

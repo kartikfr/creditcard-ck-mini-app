@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Tag, Wallet, User, MessageSquare, IndianRupee, Sparkles } from 'lucide-react';
+import { Tag, Wallet, User, MessageSquare, IndianRupee, Sparkles, HelpCircle } from 'lucide-react';
 import ProfileDropdown from './ProfileDropdown';
 import { useAuth } from '@/context/AuthContext';
 import { fetchEarnings } from '@/lib/api';
@@ -35,11 +35,6 @@ const TopNav: React.FC = () => {
     }
   };
 
-  const desktopNavItems = [
-    { path: '/deals', label: 'Deals', icon: Tag },
-    { path: '/earnings', label: 'Earning', icon: Wallet },
-  ];
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3">
@@ -65,35 +60,56 @@ const TopNav: React.FC = () => {
             </div>
           </button>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {desktopNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                    isActive 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {/* Desktop Navigation + Actions - Right aligned */}
+          <div className="hidden lg:flex items-center gap-1">
+            {/* Deals - Always visible */}
+            <button
+              onClick={() => navigate('/deals')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                location.pathname === '/deals'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+              }`}
+            >
+              <Tag className="w-4 h-4" />
+              <span>Deals</span>
+            </button>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 md:gap-3">
-            {/* Earnings Display - Desktop only */}
+            {/* Earning - Only when logged in */}
             {isAuthenticated && (
               <button
                 onClick={() => navigate('/earnings')}
-                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  location.pathname === '/earnings'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <Wallet className="w-4 h-4" />
+                <span>Earning</span>
+              </button>
+            )}
+
+            {/* Help - Only when NOT logged in */}
+            {!isAuthenticated && (
+              <button
+                onClick={() => navigate('/help')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  location.pathname === '/help'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Help</span>
+              </button>
+            )}
+
+            {/* Earnings Amount Display - Only when logged in */}
+            {isAuthenticated && (
+              <button
+                onClick={() => navigate('/earnings')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors ml-2"
               >
                 <div className="w-6 h-6 bg-primary/10 rounded-md flex items-center justify-center">
                   <Wallet className="w-3.5 h-3.5 text-primary" />
@@ -108,24 +124,27 @@ const TopNav: React.FC = () => {
               </button>
             )}
 
-            {/* Help Button - Mobile only */}
-            <button
-              onClick={() => navigate('/help')}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">Help</span>
-            </button>
-
             {/* Profile - Desktop with dropdown */}
             <ProfileDropdown>
               <button
-                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-secondary transition-colors"
               >
                 <User className="w-5 h-5 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">Profile</span>
               </button>
             </ProfileDropdown>
+          </div>
+
+          {/* Mobile Actions */}
+          <div className="flex lg:hidden items-center gap-2">
+            {/* Help Button - Mobile only */}
+            <button
+              onClick={() => navigate('/help')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">Help</span>
+            </button>
           </div>
         </div>
       </div>

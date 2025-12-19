@@ -75,21 +75,6 @@ const TopNav: React.FC = () => {
               <span>Deals</span>
             </button>
 
-            {/* Earning - Only when logged in */}
-            {isAuthenticated && (
-              <button
-                onClick={() => navigate('/earnings')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                  location.pathname === '/earnings'
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                }`}
-              >
-                <Wallet className="w-4 h-4" />
-                <span>Earning</span>
-              </button>
-            )}
-
             {/* Help - Only when NOT logged in */}
             {!isAuthenticated && (
               <button

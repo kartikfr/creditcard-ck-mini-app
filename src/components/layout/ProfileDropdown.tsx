@@ -163,7 +163,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
       <DropdownMenuTrigger asChild>
         {children}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden">
+      <DropdownMenuContent align="end" className="w-72 p-0 overflow-hidden max-h-[80vh] overflow-y-auto bg-popover">
         {/* Header with greeting and earnings */}
         <div className="p-4 bg-background border-b border-border">
           {isLoading ? (

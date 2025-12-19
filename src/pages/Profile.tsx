@@ -126,7 +126,7 @@ const Profile: React.FC = () => {
     { icon: CreditCard, label: 'Payments', path: '/payments' },
     { icon: Clock, label: 'Payments History', path: '/orders' },
     { icon: AlertCircle, label: 'Missing Cashback', path: '/missing-cashback' },
-    { icon: MessageSquare, label: 'Your Queries', path: '/help' },
+    { icon: MessageSquare, label: 'Your Queries', path: '/your-queries' },
   ];
 
   const supportItems = [

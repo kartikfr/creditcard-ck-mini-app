@@ -131,8 +131,8 @@ const Profile: React.FC = () => {
 
   const supportItems = [
     { icon: HelpCircle, label: 'Help', path: '/help' },
-    { icon: Star, label: 'Review Us', path: '/feedback' },
-    { icon: Shield, label: 'Privacy Policy', path: '/privacy-policy' },
+    { icon: Star, label: 'Review Us', path: '/review-us' },
+    { icon: Shield, label: 'Privacy Policy', path: '/privacy' },
   ];
 
   if (!isAuthenticated) {
@@ -206,7 +206,7 @@ const Profile: React.FC = () => {
 
         {/* Account Settings */}
         <button
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate('/account-settings')}
           className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:bg-secondary/50 transition-colors mb-4"
         >
           <Settings2 className="w-5 h-5 text-muted-foreground" />

@@ -306,8 +306,12 @@ const Login: React.FC = () => {
 
               <Button
                 onClick={handleSendOTP}
-                disabled={isLoading || phone.length !== 10}
-                className="w-full h-12 bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-xl"
+                disabled={isLoading || !validatePhone(phone)}
+                className={`w-full h-12 font-medium rounded-xl transition-all duration-300 ${
+                  validatePhone(phone)
+                    ? 'bg-success hover:bg-success/90 text-success-foreground'
+                    : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+                }`}
               >
                 {isLoading ? (
                   <LoadingSpinner size="sm" />

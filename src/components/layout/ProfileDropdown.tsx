@@ -129,8 +129,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
 
   const supportItems = [
     { icon: HelpCircle, label: 'Help', path: '/help' },
-    { icon: Star, label: 'Review Us', path: '/feedback' },
-    { icon: Shield, label: 'Privacy Policy', path: '/privacy-policy' },
+    { icon: Star, label: 'Review Us', path: '/review-us' },
+    { icon: Shield, label: 'Privacy Policy', path: '/privacy' },
   ];
 
   if (!isAuthenticated) {
@@ -190,7 +190,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
 
         {/* Account Settings */}
         <DropdownMenuItem
-          onClick={() => { setIsOpen(false); navigate('/profile'); }}
+          onClick={() => { setIsOpen(false); navigate('/account-settings'); }}
           className="px-4 py-3 cursor-pointer"
         >
           <Settings2 className="w-5 h-5 mr-3 text-muted-foreground" />

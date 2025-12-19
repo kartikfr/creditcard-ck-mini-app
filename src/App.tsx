@@ -13,6 +13,8 @@ import MissingCashback from "./pages/MissingCashback";
 import Deals from "./pages/Deals";
 import CategoryDetail from "./pages/CategoryDetail";
 import Profile from "./pages/Profile";
+import AccountSettings from "./pages/AccountSettings";
+import ReviewUs from "./pages/ReviewUs";
 import OfferDetail from "./pages/OfferDetail";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
@@ -72,6 +74,8 @@ const AppRoutes = () => {
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
         <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/account-settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
+        <Route path="/review-us" element={<ProtectedRoute><ReviewUs /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

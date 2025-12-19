@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Earnings from "./pages/Earnings";
 import MissingCashback from "./pages/MissingCashback";
+import YourQueries from "./pages/YourQueries";
 import Deals from "./pages/Deals";
 import CategoryDetail from "./pages/CategoryDetail";
 import Profile from "./pages/Profile";
@@ -73,6 +74,7 @@ const AppRoutes = () => {
         <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
         <Route path="/order/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
         <Route path="/missing-cashback" element={<ProtectedRoute><MissingCashback /></ProtectedRoute>} />
+        <Route path="/your-queries" element={<ProtectedRoute><YourQueries /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/account-settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
         <Route path="/review-us" element={<ProtectedRoute><ReviewUs /></ProtectedRoute>} />

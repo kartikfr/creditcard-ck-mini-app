@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import OfferCard, { Offer } from '@/components/OfferCard';
 import CheckEligibilityButton from '@/components/CheckEligibilityButton';
+import aboutRatanTata from '@/assets/about-ratan-tata.png';
+import aboutCashbackPaid from '@/assets/about-cashback-paid.png';
+import aboutTopApp from '@/assets/about-top-app.png';
 
 // Key for storing credit card offer identifiers
 const CREDIT_CARD_OFFERS_KEY = 'credit_card_offer_ids';
@@ -525,7 +528,7 @@ const Home: React.FC = () => {
             <div className="absolute top-4 md:top-6 left-[12%] right-[12%] h-0.5 bg-border" />
             
             {[
-              { step: 1, title: 'Choose a Card', desc: '50+ cards. Compare & pick.', icon: CreditCard, color: 'primary' },
+              { step: 1, title: 'Choose a Card', desc: '50+ cards to pick.', icon: CreditCard, color: 'primary' },
               { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield, color: 'accent' },
               { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard, color: 'primary' },
               { step: 4, title: 'Cashback Credited', desc: 'Added to your wallet.', icon: Wallet, color: 'accent' },
@@ -581,14 +584,6 @@ const Home: React.FC = () => {
               </div>
             )}
 
-            {/* All Loaded Indicator */}
-            {visibleOffers >= categoryOffers.length && categoryOffers.length > OFFERS_PER_LOAD && (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">
-                  ✓ All {categoryOffers.length} offers loaded
-                </p>
-              </div>
-            )}
           </section>
         )}
 
@@ -607,6 +602,36 @@ const Home: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* About Us Section */}
+        <section className="py-8 md:py-12 animate-fade-in">
+          <h2 className="text-xl md:text-2xl font-display font-semibold text-foreground text-center mb-6 md:mb-8">
+            About Us
+          </h2>
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
+            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+              <img 
+                src={aboutTopApp} 
+                alt="Top Credit Card Cashback App and Website" 
+                className="w-full h-auto object-cover"
+              />
+            </div>
+            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+              <img 
+                src={aboutCashbackPaid} 
+                alt="₹1000 Cr+ Cash back Paid - Powered by CashKaro" 
+                className="w-full h-auto object-cover"
+              />
+            </div>
+            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+              <img 
+                src={aboutRatanTata} 
+                alt="Trusted by Late Mr. Ratan Tata - Loved by Millions" 
+                className="w-full h-auto object-cover"
+              />
+            </div>
+          </div>
+        </section>
 
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6">

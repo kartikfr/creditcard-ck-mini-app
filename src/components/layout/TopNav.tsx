@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, User, MessageSquare } from 'lucide-react';
+import ProfileDropdown from './ProfileDropdown';
 
 const TopNav: React.FC = () => {
   const navigate = useNavigate();
@@ -34,14 +35,15 @@ const TopNav: React.FC = () => {
               <span className="text-xs font-medium">Help</span>
             </button>
 
-            {/* Profile - Desktop only (text + icon style) */}
-            <button
-              onClick={() => navigate('/profile')}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-secondary/50 transition-colors"
-            >
-              <User className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Profile</span>
-            </button>
+            {/* Profile - Desktop only with dropdown */}
+            <ProfileDropdown>
+              <button
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-secondary/50 transition-colors"
+              >
+                <User className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Profile</span>
+              </button>
+            </ProfileDropdown>
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="font-display font-bold text-lg text-foreground mb-4">Credit Card Cashback</h3>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              India's #1 Credit Card Cashback Website. Earn up to ₹2000 cashback on 50+ premium credit cards. Powered by CashKaro.
+              India's Top Credit Card Cashback Website, powered by CashKaro. Earn up to ₹2000 cashback on 50+ premium credit cards.
             </p>
             <div className="flex items-center gap-3">
               <a href="#" className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors">

@@ -604,26 +604,35 @@ const Home: React.FC = () => {
         )}
 
         {/* About Us Section */}
-        <section className="py-8 md:py-12 animate-fade-in">
+        <section className="py-8 md:py-12">
           <h2 className="text-xl md:text-2xl font-display font-semibold text-foreground text-center mb-6 md:mb-8">
             About Us
           </h2>
           <div className="grid grid-cols-3 gap-3 md:gap-4">
-            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+            <div 
+              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
+              style={{ animationDelay: '0ms', animationFillMode: 'forwards' }}
+            >
               <img 
                 src={aboutTopApp} 
                 alt="Top Credit Card Cashback App and Website" 
                 className="w-full h-auto object-cover"
               />
             </div>
-            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+            <div 
+              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
+              style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
+            >
               <img 
                 src={aboutCashbackPaid} 
                 alt="₹1000 Cr+ Cash back Paid - Powered by CashKaro" 
                 className="w-full h-auto object-cover"
               />
             </div>
-            <div className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]">
+            <div 
+              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
+              style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+            >
               <img 
                 src={aboutRatanTata} 
                 alt="Trusted by Late Mr. Ratan Tata - Loved by Millions" 

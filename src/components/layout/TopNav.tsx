@@ -29,7 +29,7 @@ const TopNav: React.FC = () => {
             {/* Help Button - Mobile only (styled like reference image) */}
             <button
               onClick={() => navigate('/help')}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span className="text-xs font-medium">Help</span>
@@ -38,10 +38,10 @@ const TopNav: React.FC = () => {
             {/* Profile - Desktop only with dropdown */}
             <ProfileDropdown>
               <button
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-secondary/50 transition-colors"
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-secondary transition-colors"
               >
                 <User className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Profile</span>
+                <span className="text-sm font-medium text-foreground hover:text-foreground">Profile</span>
               </button>
             </ProfileDropdown>
           </div>

@@ -21,6 +21,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { fetchEarnings, fetchProfile, logoutUser } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +61,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     if (isOpen && accessToken && isAuthenticated) {
@@ -80,9 +91,14 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = async () => {
     if (!accessToken) {
       logout();
+      setShowLogoutDialog(false);
       return;
     }
     
@@ -103,6 +119,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
     } finally {
       setIsLoggingOut(false);
       setIsOpen(false);
+      setShowLogoutDialog(false);
     }
   };
 
@@ -235,7 +252,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
 
         {/* Logout */}
         <DropdownMenuItem
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           disabled={isLoggingOut}
           className="px-4 py-3 cursor-pointer text-destructive focus:text-destructive"
         >
@@ -247,6 +264,24 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ children }) => {
           <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to Logout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will need to login again to access your account and earnings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogoutConfirm} disabled={isLoggingOut}>
+              {isLoggingOut ? 'Logging out...' : 'Yes'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DropdownMenu>
   );
 };

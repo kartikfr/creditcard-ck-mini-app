@@ -18,6 +18,16 @@ import {
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { fetchProfile, fetchEarnings, logoutUser } from '@/lib/api';
@@ -50,6 +60,7 @@ const Profile: React.FC = () => {
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     if (accessToken && isAuthenticated) {
@@ -80,9 +91,14 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = async () => {
     if (!accessToken) {
       logout();
+      setShowLogoutDialog(false);
       return;
     }
     
@@ -103,6 +119,7 @@ const Profile: React.FC = () => {
       });
     } finally {
       setIsLoggingOut(false);
+      setShowLogoutDialog(false);
     }
   };
 
@@ -263,7 +280,7 @@ const Profile: React.FC = () => {
 
         {/* Logout Button */}
         <button
-          onClick={handleLogout}
+          onClick={handleLogoutClick}
           disabled={isLoggingOut}
           className="w-full flex items-center gap-3 p-3 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
         >
@@ -274,6 +291,24 @@ const Profile: React.FC = () => {
           )}
           <span className="font-medium">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
         </button>
+
+        {/* Logout Confirmation Dialog */}
+        <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to Logout?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You will need to login again to access your account and earnings.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>No</AlertDialogCancel>
+              <AlertDialogAction onClick={handleLogoutConfirm} disabled={isLoggingOut}>
+                {isLoggingOut ? 'Logging out...' : 'Yes'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );

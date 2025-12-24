@@ -1,7 +1,7 @@
 // Earnings Page - My Earnings dashboard
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Info, Wallet, CreditCard, Building2, Clock, CheckCircle, ShieldCheck, Gift, Smartphone, Mail, Banknote } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Info, Wallet, CreditCard, Building2, Clock, CheckCircle, ShieldCheck, Gift, Smartphone, Mail, Banknote, ChevronDown, X } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import LoginPrompt from '@/components/LoginPrompt';
 import { 
   fetchEarnings, 
+  fetchPaymentHistory,
   sendPaymentRequestOTP, 
   verifyPaymentRequestOTP, 
   submitAmazonPayment, 
@@ -20,16 +21,10 @@ import {
   submitBankPayment 
 } from '@/lib/api';
 
-// Mock payment history
-const mockPaymentHistory = [
-  { id: 1, month: 'December', year: 2024, amount: 1500, status: 'completed', date: '2024-12-01' },
-  { id: 2, month: 'November', year: 2024, amount: 2000, status: 'completed', date: '2024-11-15' },
-  { id: 3, month: 'October', year: 2024, amount: 1250, status: 'completed', date: '2024-10-20' },
-];
-
 type PaymentMethod = 'amazon' | 'flipkart' | 'upi' | 'bank' | null;
 type PaymentStep = 'wallet' | 'selection' | 'method' | 'details' | 'otp' | 'success';
 type RedemptionType = 'cashback' | 'rewards' | 'combined' | null;
+type BreakdownType = 'cashback' | 'rewards' | 'referrals' | null;
 
 interface EarningsData {
   total_earned: string;
@@ -49,6 +44,16 @@ interface EarningsData {
   currency: string;
 }
 
+interface PaymentHistoryItem {
+  id: string;
+  amount: string;
+  status: string;
+  payment_mode: string;
+  created_at: string;
+  payment_type: string;
+  transaction_id?: string;
+}
+
 const PAYMENT_METHODS = [
   { id: 'amazon' as const, name: 'Amazon Pay Balance', icon: Smartphone, description: 'Transfer to Amazon Pay' },
   { id: 'flipkart' as const, name: 'Flipkart Gift Card', icon: Gift, description: 'Get Flipkart voucher' },
@@ -66,9 +71,16 @@ const Earnings: React.FC = () => {
   const [earningsError, setEarningsError] = useState<string | null>(null);
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
 
+  // Breakdown sheet state
+  const [breakdownType, setBreakdownType] = useState<BreakdownType>(null);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
+
+  // Payment history state
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
   useEffect(() => {
     const loadEarnings = async () => {
-      // If user is not logged in, don't try to load earnings and don't block UI
       if (!accessToken) {
         setIsLoadingEarnings(false);
         setEarnings(null);
@@ -143,6 +155,53 @@ const Earnings: React.FC = () => {
 
   const paymentThreshold = parseMoney(earnings?.payment_threshold) || 250;
 
+  // Get breakdown data based on type
+  const getBreakdownData = (type: BreakdownType) => {
+    switch (type) {
+      case 'cashback':
+        return {
+          title: 'Cashback Break Up',
+          total: cashbackTotal,
+          confirmed: confirmedCashback,
+          pending: pendingCashback,
+          paid: paidCashback,
+          icon: Banknote,
+          color: 'primary',
+          description: 'Your confirmed cashback is available for payment. It will be transferred to your preferred payment method within 24-48 hours of request.',
+        };
+      case 'rewards':
+        return {
+          title: 'Rewards Break Up',
+          total: rewardsTotal,
+          confirmed: confirmedRewards,
+          pending: pendingRewards,
+          paid: paidRewards,
+          icon: Gift,
+          color: 'amber-500',
+          description: 'Your confirmed rewards can be redeemed as Amazon Pay Balance or Flipkart Gift Card.',
+        };
+      case 'referrals':
+        return {
+          title: 'Referrals Break Up',
+          total: referralsTotal,
+          confirmed: confirmedReferrals,
+          pending: pendingReferrals,
+          paid: paidReferrals,
+          icon: Wallet,
+          color: 'success',
+          description: 'Referral earnings from friends who joined using your referral code.',
+        };
+      default:
+        return null;
+    }
+  };
+
+  // Handle breakdown open
+  const handleOpenBreakdown = (type: BreakdownType) => {
+    setBreakdownType(type);
+    setIsBreakdownOpen(true);
+  };
+
   // Get redemption amount based on type
   const getRedemptionAmount = (type: RedemptionType): number => {
     switch (type) {
@@ -156,10 +215,40 @@ const Earnings: React.FC = () => {
   // Get available payment methods based on redemption type
   const getAvailablePaymentMethods = () => {
     if (redemptionType === 'cashback') {
-      return PAYMENT_METHODS; // All 4 methods available
+      return PAYMENT_METHODS;
     }
-    // For rewards and combined, only Amazon and Flipkart
     return PAYMENT_METHODS.filter(m => m.id === 'amazon' || m.id === 'flipkart');
+  };
+
+  // Load payment history
+  const loadPaymentHistory = async () => {
+    if (!accessToken) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const res = await fetchPaymentHistory(accessToken);
+      const data = res?.data || [];
+      // Parse the response data
+      const history: PaymentHistoryItem[] = Array.isArray(data) ? data.map((item: any) => ({
+        id: item.id || item.attributes?.id || String(Math.random()),
+        amount: item.attributes?.amount || item.amount || '0',
+        status: item.attributes?.status || item.status || 'Unknown',
+        payment_mode: item.attributes?.payment_mode || item.payment_mode || 'Unknown',
+        created_at: item.attributes?.created_at || item.created_at || new Date().toISOString(),
+        payment_type: item.attributes?.payment_type || item.payment_type || 'cashback',
+        transaction_id: item.attributes?.transaction_id || item.transaction_id,
+      })) : [];
+      setPaymentHistory(history);
+    } catch (error: any) {
+      console.error('[Earnings] Failed to load payment history:', error);
+      toast({
+        title: 'Failed to load payment history',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   // Payment handlers
@@ -168,6 +257,11 @@ const Earnings: React.FC = () => {
     setPaymentStep('wallet');
     setShowPaymentHistory(false);
     resetPaymentForm();
+  };
+
+  const handleShowPaymentHistory = () => {
+    setShowPaymentHistory(true);
+    loadPaymentHistory();
   };
 
   const resetPaymentForm = () => {
@@ -251,10 +345,8 @@ const Earnings: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // First verify OTP
       await verifyPaymentRequestOTP(accessToken, otpGuid, otp);
 
-      // Then submit payment based on method
       const paymentType = redemptionType as 'cashback' | 'rewards' | 'combined';
       
       switch (selectedMethod) {
@@ -335,6 +427,27 @@ const Earnings: React.FC = () => {
     return `₹${value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
   };
 
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === 'completed' || s === 'success' || s === 'paid') return 'text-success bg-success/10 border-success/30';
+    if (s === 'pending' || s === 'processing') return 'text-warning bg-warning/10 border-warning/30';
+    if (s === 'failed' || s === 'rejected') return 'text-destructive bg-destructive/10 border-destructive/30';
+    return 'text-muted-foreground bg-muted border-border';
+  };
+
   // Show loading while auth is being determined
   if (isAuthLoading) {
     return (
@@ -346,7 +459,7 @@ const Earnings: React.FC = () => {
     );
   }
 
-  // Show login prompt if not authenticated (must be before loading check)
+  // Show login prompt if not authenticated
   if (!isAuthenticated) {
     return (
       <AppLayout>
@@ -370,36 +483,70 @@ const Earnings: React.FC = () => {
   }
 
   const renderPaymentSheetContent = () => {
+    // Payment History View
     if (showPaymentHistory) {
       return (
-        <div className="space-y-3">
-          {mockPaymentHistory.length === 0 ? (
-            <div className="p-8 text-center border rounded-lg">
+        <div className="space-y-4">
+          {isLoadingHistory ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : paymentHistory.length === 0 ? (
+            <div className="p-8 text-center border rounded-xl bg-muted/30">
               <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No payment history yet</p>
+              <p className="text-muted-foreground font-medium">No payment history yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Your payment requests will appear here</p>
             </div>
           ) : (
-            mockPaymentHistory.map((payment) => (
-              <div key={payment.id} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-success" />
+            <div className="space-y-3">
+              {paymentHistory.map((payment, index) => (
+                <div 
+                  key={payment.id || index} 
+                  className="p-4 border rounded-xl bg-card hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        payment.status.toLowerCase() === 'completed' || payment.status.toLowerCase() === 'paid'
+                          ? 'bg-success/10'
+                          : payment.status.toLowerCase() === 'pending'
+                          ? 'bg-warning/10'
+                          : 'bg-muted'
+                      }`}>
+                        {payment.status.toLowerCase() === 'completed' || payment.status.toLowerCase() === 'paid' ? (
+                          <CheckCircle className="w-5 h-5 text-success" />
+                        ) : payment.status.toLowerCase() === 'pending' ? (
+                          <Clock className="w-5 h-5 text-warning" />
+                        ) : (
+                          <Wallet className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground capitalize truncate">
+                          {payment.payment_mode || 'Payment'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(payment.created_at)}
+                        </p>
+                        {payment.transaction_id && (
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            ID: {payment.transaction_id}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-foreground">
-                        {payment.month} {payment.year}
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-foreground">
+                        ₹{parseMoney(payment.amount).toLocaleString()}
                       </p>
-                      <p className="text-sm text-muted-foreground">{payment.date}</p>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border mt-1 ${getStatusColor(payment.status)}`}>
+                        {payment.status}
+                      </span>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-success">₹{payment.amount}</p>
-                    <p className="text-xs text-success">Completed</p>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       );
@@ -592,7 +739,7 @@ const Earnings: React.FC = () => {
       );
     }
 
-    // Step 4: Details - Enter payment info with double confirmation
+    // Step 4: Details - Enter payment info
     if (paymentStep === 'details') {
       const amount = getRedemptionAmount(redemptionType);
       const methodInfo = PAYMENT_METHODS.find(m => m.id === selectedMethod);
@@ -618,7 +765,6 @@ const Earnings: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {/* Amazon Pay - Mobile Number */}
             {selectedMethod === 'amazon' && (
               <>
                 <div>
@@ -651,7 +797,6 @@ const Earnings: React.FC = () => {
               </>
             )}
 
-            {/* Flipkart - Email */}
             {selectedMethod === 'flipkart' && (
               <>
                 <div>
@@ -684,7 +829,6 @@ const Earnings: React.FC = () => {
               </>
             )}
 
-            {/* UPI */}
             {selectedMethod === 'upi' && (
               <>
                 <div>
@@ -717,7 +861,6 @@ const Earnings: React.FC = () => {
               </>
             )}
 
-            {/* Bank Transfer */}
             {selectedMethod === 'bank' && (
               <>
                 <div>
@@ -894,6 +1037,9 @@ const Earnings: React.FC = () => {
     return null;
   };
 
+  // Get breakdown data for the sheet
+  const breakdownData = getBreakdownData(breakdownType);
+
   return (
     <AppLayout>
       <div className="p-3 md:p-4 lg:p-8 max-w-4xl mx-auto">
@@ -909,131 +1055,84 @@ const Earnings: React.FC = () => {
           </nav>
         </div>
 
-        {/* Main Earnings Card */}
+        {/* Main Earnings Card - Redesigned */}
         <div className="card-elevated p-4 md:p-6 mb-4 md:mb-6">
-          {/* Header */}
-          <div className="mb-4 md:mb-6">
-            <h1 className="text-base md:text-xl font-semibold text-foreground mb-1">All Time Earnings</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">
-              Cashback + Rewards + Referrals
-            </p>
+          {/* Header with dropdown */}
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-base md:text-xl font-semibold text-foreground">All Time Earnings</h1>
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </div>
+          <p className="text-xs md:text-sm text-muted-foreground mb-4">
+            Your Total Earnings amount includes your Cashback + Rewards + Referral amount.
+          </p>
 
-          {/* Total Amount */}
-          <div className="mb-1 md:mb-2">
-            <p className="text-2xl md:text-4xl lg:text-5xl font-bold text-primary">
+          {/* Total Amount - Large & Primary */}
+          <div className="mb-6">
+            <p className="text-3xl md:text-5xl lg:text-6xl font-bold text-primary">
               {formatMoney(totalEarned)}
             </p>
           </div>
 
-          <p className="text-[10px] md:text-xs text-muted-foreground mb-4 md:mb-8">
-            *Earnings show within 72 hours
-          </p>
+          {/* 3 Clickable Rows */}
+          <div className="space-y-3 mb-6">
+            {/* Cashback Row */}
+            <button
+              onClick={() => handleOpenBreakdown('cashback')}
+              className="w-full flex items-center justify-between p-3 md:p-4 border rounded-xl hover:border-primary hover:bg-primary/5 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-primary" />
+                </div>
+                <span className="font-medium text-foreground">Cashback</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground">{formatMoney(cashbackTotal)}</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </button>
 
-          {/* 3-Column Breakdown */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6">
-            {/* Cashback */}
-            <div className="border rounded-lg md:rounded-xl p-2 md:p-4">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <div>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">Cashback</p>
-                  <p className="text-sm md:text-xl font-bold text-foreground">{formatMoney(cashbackTotal)}</p>
+            {/* Rewards Row */}
+            <button
+              onClick={() => handleOpenBreakdown('rewards')}
+              className="w-full flex items-center justify-between p-3 md:p-4 border rounded-xl hover:border-amber-500 hover:bg-amber-500/5 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-amber-500" />
                 </div>
-                <button className="text-muted-foreground hover:text-foreground hidden md:block">
-                  <Info className="w-4 h-4" />
-                </button>
+                <span className="font-medium text-foreground">Rewards</span>
               </div>
-              <div className="space-y-1 md:space-y-2">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(confirmedCashback)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-success/10 text-success border border-success/30 w-fit">
-                    Confirmed
-                  </span>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(pendingCashback)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-warning/10 text-warning border border-warning/30 w-fit">
-                    Pending
-                  </span>
-                </div>
-                <div className="hidden md:flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{formatMoney(paidCashback)}</span>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
-                    Paid
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground">{formatMoney(rewardsTotal)}</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
               </div>
-            </div>
+            </button>
 
-            {/* Rewards */}
-            <div className="border rounded-lg md:rounded-xl p-2 md:p-4">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <div>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">Rewards</p>
-                  <p className="text-sm md:text-xl font-bold text-foreground">{formatMoney(rewardsTotal)}</p>
+            {/* Referrals Row */}
+            <button
+              onClick={() => handleOpenBreakdown('referrals')}
+              className="w-full flex items-center justify-between p-3 md:p-4 border rounded-xl hover:border-success hover:bg-success/5 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-success" />
                 </div>
-                <button className="text-muted-foreground hover:text-foreground hidden md:block">
-                  <Info className="w-4 h-4" />
-                </button>
+                <span className="font-medium text-foreground">Referrals</span>
               </div>
-              <div className="space-y-1 md:space-y-2">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(confirmedRewards)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-success/10 text-success border border-success/30 w-fit">
-                    Confirmed
-                  </span>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(pendingRewards)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-warning/10 text-warning border border-warning/30 w-fit">
-                    Pending
-                  </span>
-                </div>
-                <div className="hidden md:flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{formatMoney(paidRewards)}</span>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
-                    Paid
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-foreground">{formatMoney(referralsTotal)}</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-success transition-colors" />
               </div>
-            </div>
-
-            {/* Referrals */}
-            <div className="border rounded-lg md:rounded-xl p-2 md:p-4">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <div>
-                  <p className="text-[10px] md:text-sm text-muted-foreground">Referrals</p>
-                  <p className="text-sm md:text-xl font-bold text-foreground">{formatMoney(referralsTotal)}</p>
-                </div>
-                <button className="text-muted-foreground hover:text-foreground hidden md:block">
-                  <Info className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-1 md:space-y-2">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(confirmedReferrals)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-success/10 text-success border border-success/30 w-fit">
-                    Confirmed
-                  </span>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-0.5">
-                  <span className="text-[10px] md:text-sm text-muted-foreground">{formatMoney(pendingReferrals)}</span>
-                  <span className="px-1.5 md:px-2 py-0.5 rounded text-[8px] md:text-xs font-medium bg-warning/10 text-warning border border-warning/30 w-fit">
-                    Pending
-                  </span>
-                </div>
-                <div className="hidden md:flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">{formatMoney(paidReferrals)}</span>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/30">
-                    Paid
-                  </span>
-                </div>
-              </div>
-            </div>
+            </button>
           </div>
 
+          <p className="text-[10px] md:text-xs text-muted-foreground mb-4">
+            *Earnings will show here within 72 hours of your shopping via CashKaro app
+          </p>
+
           {/* Request Payment Button */}
-          <Button onClick={handleOpenPayment} className="w-full max-w-md mx-auto block">
+          <Button onClick={handleOpenPayment} className="w-full h-12">
             Request Payment
           </Button>
         </div>
@@ -1056,6 +1155,79 @@ const Earnings: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Breakdown Bottom Sheet */}
+      <Sheet open={isBreakdownOpen} onOpenChange={setIsBreakdownOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto">
+          {breakdownData && (
+            <div className="p-4 md:p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-foreground">{breakdownData.title}</h2>
+                <button 
+                  onClick={() => setIsBreakdownOpen(false)}
+                  className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Total Amount */}
+              <div className="mb-6">
+                <p className="text-3xl md:text-4xl font-bold text-primary">
+                  {formatMoney(breakdownData.total)}
+                </p>
+              </div>
+
+              {/* Status Breakdown */}
+              <div className="space-y-3 mb-6">
+                {/* Confirmed */}
+                <div className="flex items-center justify-between p-3 bg-success/5 border border-success/20 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-success text-white">
+                      Confirmed
+                    </span>
+                  </div>
+                  <span className="font-bold text-foreground">{formatMoney(breakdownData.confirmed)}</span>
+                </div>
+
+                {/* Pending */}
+                <div className="flex items-center justify-between p-3 bg-warning/5 border border-warning/20 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-warning text-white">
+                      Pending
+                    </span>
+                  </div>
+                  <span className="font-bold text-foreground">{formatMoney(breakdownData.pending)}</span>
+                </div>
+
+                {/* Paid */}
+                <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary text-white">
+                      Paid
+                    </span>
+                  </div>
+                  <span className="font-bold text-foreground">{formatMoney(breakdownData.paid)}</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-muted-foreground mb-6">
+                {breakdownData.description}
+              </p>
+
+              {/* Action Button */}
+              <Button 
+                onClick={() => setIsBreakdownOpen(false)} 
+                className="w-full h-12"
+              >
+                Yes
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Payment Sheet */}
       <Sheet open={isPaymentSheetOpen} onOpenChange={setIsPaymentSheetOpen}>
@@ -1087,7 +1259,7 @@ const Earnings: React.FC = () => {
             <Button
               variant={showPaymentHistory ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setShowPaymentHistory(true)}
+              onClick={handleShowPaymentHistory}
               className="flex-1"
             >
               Payment History

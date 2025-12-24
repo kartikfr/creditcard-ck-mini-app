@@ -27,7 +27,7 @@ const BottomNav: React.FC = () => {
         const response = await fetchEarnings(accessToken);
         const userData = Array.isArray(response?.data) ? response.data[0] : response?.data;
         if (userData?.attributes) {
-          const total = parseFloat(userData.attributes.total_cashback_earned || '0');
+          const total = parseFloat(userData.attributes.total_earned || '0');
           setTotalEarnings(total);
         }
       } catch (err) {

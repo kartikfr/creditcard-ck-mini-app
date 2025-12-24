@@ -575,7 +575,7 @@ export const submitBankPayment = async (
 
 // Fetch payment history
 export const fetchPaymentHistory = async (accessToken: string) => {
-  return callProxy('/payment/history', 'GET', undefined, accessToken);
+  return callProxy('/payment/payment?device=Desktop&paymentautomation=true', 'GET', undefined, accessToken);
 };
 
 // Fetch all categories (uses GUEST TOKEN - offers scope)

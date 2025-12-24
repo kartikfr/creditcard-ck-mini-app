@@ -538,7 +538,7 @@ const OrderDetail: React.FC = () => {
             </div>
 
             {/* Raise a Query Button - Only show if allowed and no existing ticket */}
-            {canRaiseQuery() && !getExistingTicket() && getConfigurations().length > 0 && (
+            {canRaiseQuery() && !getExistingTicket() && (
               <Button 
                 className="w-full max-w-xs mx-auto block" 
                 onClick={() => setShowQueryModal(true)}
@@ -694,7 +694,7 @@ const OrderDetail: React.FC = () => {
           </div>
 
           {/* Raise a Query Button - Only show if allowed and no existing ticket */}
-          {canRaiseQuery() && !getExistingTicket() && getConfigurations().length > 0 && (
+          {canRaiseQuery() && !getExistingTicket() && (
             <Button 
               className="w-full mt-6" 
               onClick={() => setShowQueryModal(true)}

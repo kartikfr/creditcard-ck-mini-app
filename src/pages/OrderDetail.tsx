@@ -230,7 +230,7 @@ const OrderDetail: React.FC = () => {
             )}
             <div className="p-4 flex justify-between">
               <span className="text-muted-foreground">Order ID</span>
-              <span className="font-medium text-foreground">{attrs.order_id || 'N/A'}</span>
+              <span className="font-medium text-foreground">{order.id || 'N/A'}</span>
             </div>
             {attrs.transaction_date && (
               <div className="p-4 flex justify-between">

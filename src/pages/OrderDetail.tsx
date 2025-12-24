@@ -12,6 +12,27 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import RaiseQueryModal from '@/components/RaiseQueryModal';
+
+interface Configuration {
+  id: number;
+  type: string;
+  attributes: {
+    create_ticket?: string;
+    question?: string;
+    answer?: any;
+    section?: any;
+    image?: string;
+    title?: string;
+    content?: string[];
+    type?: string;
+    sub_type?: string;
+    attachment_required?: string;
+    button_text?: string;
+    action_url?: string;
+    app_action_url?: string;
+  };
+}
 
 interface OrderDetailData {
   id: string;
@@ -62,25 +83,7 @@ interface OrderDetailData {
   };
   relationships?: {
     configurations?: {
-      data?: Array<{
-        type: string;
-        id: number;
-        attributes?: {
-          create_ticket?: string;
-          question?: string;
-          answer?: any;
-          section?: any;
-          image?: string;
-          title?: string;
-          content?: string[];
-          type?: string;
-          sub_type?: string;
-          attachment_required?: string;
-          button_text?: string;
-          action_url?: string;
-          app_action_url?: string;
-        };
-      }>;
+      data?: Configuration[];
     };
     ticket?: {
       data?: {
@@ -114,6 +117,51 @@ const statusColors: Record<string, string> = {
   requested: 'bg-blue-100 text-blue-600 border border-blue-300',
 };
 
+// Helper to format HTML content from API
+const formatHtmlContent = (html: string): string => {
+  if (!html) return '';
+  
+  // Replace common HTML tags with readable text
+  let text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li>/gi, '• ')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<p>/gi, '')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<div>/gi, '')
+    .replace(/<ul>/gi, '')
+    .replace(/<\/ul>/gi, '')
+    .replace(/<ol>/gi, '')
+    .replace(/<\/ol>/gi, '')
+    .replace(/<strong>/gi, '')
+    .replace(/<\/strong>/gi, '')
+    .replace(/<em>/gi, '')
+    .replace(/<\/em>/gi, '')
+    .replace(/<b>/gi, '')
+    .replace(/<\/b>/gi, '')
+    .replace(/<i>/gi, '')
+    .replace(/<\/i>/gi, '')
+    .replace(/<a[^>]*>/gi, '')
+    .replace(/<\/a>/gi, '')
+    .replace(/<span[^>]*>/gi, '')
+    .replace(/<\/span>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+  
+  // Remove any remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Clean up multiple newlines
+  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  
+  return text;
+};
+
 const OrderDetail: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -123,6 +171,7 @@ const OrderDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showKnowMore, setShowKnowMore] = useState(false);
+  const [showQueryModal, setShowQueryModal] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -184,29 +233,39 @@ const OrderDetail: React.FC = () => {
     const attrs = order.attributes;
     const status = attrs.cashback_status?.toLowerCase() || 'pending';
     
+    let comment = '';
+    
     // Check for admin comment first
-    if (attrs.admin_comment) return attrs.admin_comment;
-    
-    // Check for delay validation comments if delayed
-    if (attrs.is_delayed === 'yes' && attrs.delay_validation_comments) {
-      return attrs.delay_validation_comments;
+    if (attrs.admin_comment) {
+      comment = attrs.admin_comment;
+    } else if (attrs.is_delayed === 'yes' && attrs.delay_validation_comments) {
+      // Check for delay validation comments if delayed
+      comment = attrs.delay_validation_comments;
+    } else {
+      // Status-specific comments
+      switch (status) {
+        case 'pending':
+          comment = attrs.pending_comments || attrs.comments || 'Your transaction will remain in Pending status till the return/cancellation period is over and the retailer has shared the final report with us.';
+          break;
+        case 'confirmed':
+          comment = attrs.confirmed_comments || attrs.comments || 'Great news! Your cashback has been confirmed and will be paid out soon.';
+          break;
+        case 'cancelled':
+          comment = attrs.cancelled_comments || attrs.comments || 'This transaction has been cancelled.';
+          break;
+        case 'paid':
+          comment = attrs.comments || 'Your cashback has been paid to your account.';
+          break;
+        case 'requested':
+          comment = attrs.comments || 'Your payment request has been submitted and is being processed.';
+          break;
+        default:
+          comment = attrs.comments || '';
+      }
     }
     
-    // Status-specific comments
-    switch (status) {
-      case 'pending':
-        return attrs.pending_comments || attrs.comments || 'Your transaction will remain in Pending status till the return/cancellation period is over and the retailer has shared the final report with us.';
-      case 'confirmed':
-        return attrs.confirmed_comments || attrs.comments || 'Great news! Your cashback has been confirmed and will be paid out soon.';
-      case 'cancelled':
-        return attrs.cancelled_comments || attrs.comments || 'This transaction has been cancelled.';
-      case 'paid':
-        return attrs.comments || 'Your cashback has been paid to your account.';
-      case 'requested':
-        return attrs.comments || 'Your payment request has been submitted and is being processed.';
-      default:
-        return attrs.comments || '';
-    }
+    // Format HTML content
+    return formatHtmlContent(comment);
   };
 
   // Check if raise query is allowed
@@ -219,6 +278,35 @@ const OrderDetail: React.FC = () => {
   // Check if there's an existing ticket
   const getExistingTicket = () => {
     return order?.relationships?.ticket?.data?.attributes;
+  };
+
+  // Get configurations for raise query
+  const getConfigurations = (): Configuration[] => {
+    return order?.relationships?.configurations?.data || [];
+  };
+
+  // Get order context for modal
+  const getOrderContext = () => {
+    if (!order) return null;
+    const attrs = order.attributes;
+    
+    // Extract store ID from links or use merchant name
+    const storeId = attrs.groupid || '0';
+    
+    // Extract exit click date from transaction date
+    const exitClickDate = attrs.transaction_date 
+      ? attrs.transaction_date.split('T')[0] 
+      : new Date().toISOString().split('T')[0];
+    
+    return {
+      exitClickDate,
+      storeId,
+      exitId: attrs.exit_id || order.id,
+      storeName: attrs.merchant_name || attrs.report_merchant_name || 'Store',
+      orderId: attrs.order_id || order.id,
+      orderAmount: attrs.order_amount || '',
+      cashbackId: order.id,
+    };
   };
 
   if (isLoading) {
@@ -260,6 +348,7 @@ const OrderDetail: React.FC = () => {
 
   const attrs = order.attributes;
   const status = attrs.cashback_status?.toLowerCase() || 'pending';
+  const orderContext = getOrderContext();
 
   return (
     <AppLayout>
@@ -317,7 +406,7 @@ const OrderDetail: React.FC = () => {
                 <ChevronDown className={`w-4 h-4 transition-transform ${showKnowMore ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
-                <div className="text-left text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                <div className="text-left text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-line">
                   {getStatusComment()}
                 </div>
               </CollapsibleContent>
@@ -352,7 +441,7 @@ const OrderDetail: React.FC = () => {
                 {/* Order ID */}
                 <div className="bg-card p-6 text-center">
                   <p className="text-sm text-muted-foreground mb-1">Order ID</p>
-                  <p className="text-xl font-bold text-foreground break-all">{order.id || 'N/A'}</p>
+                  <p className="text-xl font-bold text-foreground break-all">{attrs.order_id || order.id || 'N/A'}</p>
                 </div>
                 
                 {/* Paid Date (for paid status) */}
@@ -410,14 +499,24 @@ const OrderDetail: React.FC = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     <p className="font-semibold text-foreground mb-1">Query Already Raised</p>
                     <p className="text-sm text-muted-foreground">
                       Status: <span className="font-medium">{getExistingTicket()?.status || 'In Progress'}</span>
                     </p>
-                    {getExistingTicket()?.expected_resolution_time && (
-                      <p className="text-sm text-muted-foreground">
+                    {getExistingTicket()?.question && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Query: {getExistingTicket()?.question}
+                      </p>
+                    )}
+                    {getExistingTicket()?.expected_resolution_time && getExistingTicket()?.show_resolution_time === 'yes' && (
+                      <p className="text-sm text-muted-foreground mt-1">
                         Expected Resolution: {getExistingTicket()?.expected_resolution_time}
+                      </p>
+                    )}
+                    {getExistingTicket()?.remarks && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Remarks: {getExistingTicket()?.remarks}
                       </p>
                     )}
                   </div>
@@ -439,10 +538,10 @@ const OrderDetail: React.FC = () => {
             </div>
 
             {/* Raise a Query Button - Only show if allowed and no existing ticket */}
-            {canRaiseQuery() && !getExistingTicket() && (
+            {canRaiseQuery() && !getExistingTicket() && getConfigurations().length > 0 && (
               <Button 
                 className="w-full max-w-xs mx-auto block" 
-                onClick={() => navigate('/missing-cashback')}
+                onClick={() => setShowQueryModal(true)}
               >
                 Raise a Query
               </Button>
@@ -492,7 +591,7 @@ const OrderDetail: React.FC = () => {
                 <ChevronDown className={`w-4 h-4 transition-transform ${showKnowMore ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
-                <div className="text-left text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                <div className="text-left text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-line">
                   {getStatusComment()}
                 </div>
               </CollapsibleContent>
@@ -509,7 +608,7 @@ const OrderDetail: React.FC = () => {
             )}
             <div className="p-4 flex justify-between">
               <span className="text-muted-foreground">Order ID</span>
-              <span className="font-medium text-foreground">{order.id || 'N/A'}</span>
+              <span className="font-medium text-foreground">{attrs.order_id || order.id || 'N/A'}</span>
             </div>
             {attrs.transaction_date && (
               <div className="p-4 flex justify-between">
@@ -561,11 +660,21 @@ const OrderDetail: React.FC = () => {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-foreground mb-1">Query Already Raised</p>
                   <p className="text-sm text-muted-foreground">
                     Status: <span className="font-medium">{getExistingTicket()?.status || 'In Progress'}</span>
                   </p>
+                  {getExistingTicket()?.question && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Query: {getExistingTicket()?.question}
+                    </p>
+                  )}
+                  {getExistingTicket()?.expected_resolution_time && getExistingTicket()?.show_resolution_time === 'yes' && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Expected Resolution: {getExistingTicket()?.expected_resolution_time}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -585,16 +694,27 @@ const OrderDetail: React.FC = () => {
           </div>
 
           {/* Raise a Query Button - Only show if allowed and no existing ticket */}
-          {canRaiseQuery() && !getExistingTicket() && (
+          {canRaiseQuery() && !getExistingTicket() && getConfigurations().length > 0 && (
             <Button 
               className="w-full mt-6" 
-              onClick={() => navigate('/missing-cashback')}
+              onClick={() => setShowQueryModal(true)}
             >
               Raise a Query
             </Button>
           )}
         </div>
       </div>
+
+      {/* Raise Query Modal */}
+      {orderContext && (
+        <RaiseQueryModal
+          isOpen={showQueryModal}
+          onClose={() => setShowQueryModal(false)}
+          accessToken={accessToken || ''}
+          orderContext={orderContext}
+          configurations={getConfigurations()}
+        />
+      )}
     </AppLayout>
   );
 };

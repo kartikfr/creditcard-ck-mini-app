@@ -1,65 +1,101 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Clock, CheckCircle, XCircle, Loader2, RefreshCw, FileText } from 'lucide-react';
+import { ChevronLeft, Clock, CheckCircle, XCircle, Loader2, RefreshCw, FileText, MessageSquare, ExternalLink } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/AuthContext';
-import { fetchMissingCashbackQueue } from '@/lib/api';
+import { fetchOrders } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 
-interface Claim {
+interface TicketData {
+  cashbackid?: number;
+  freshdesk_id?: number;
+  status?: string;
+  status_code?: number;
+  question?: string;
+  remarks?: string;
+  query_raised_at?: string;
+  has_revised?: string;
+  expected_resolution_time?: string;
+  query_resolved_at?: string;
+  cancelled_option?: string;
+  show_resolution_time?: string;
+  imageurl?: string;
+}
+
+interface OrderWithTicket {
   id: string;
   type: string;
   attributes: {
-    store_name: string;
-    order_id: string;
-    amount?: string;
-    status: string;
-    created_at: string;
-    resolved_at?: string;
+    merchant_name?: string;
+    merchant_image_url?: string;
+    cashback_amount?: string;
+    cashback_status?: string;
+    order_id?: string;
+    transaction_date?: string;
   };
+  ticket: TicketData;
 }
 
 const YourQueries: React.FC = () => {
   const navigate = useNavigate();
   const { accessToken, isAuthenticated } = useAuth();
   
-  const [claims, setClaims] = useState<Claim[]>([]);
+  const [queries, setQueries] = useState<OrderWithTicket[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('Pending');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     if (accessToken) {
-      loadClaims();
+      loadQueries();
     }
-  }, [accessToken, statusFilter]);
+  }, [accessToken]);
 
-  const loadClaims = async () => {
+  const loadQueries = async () => {
     if (!accessToken) return;
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetchMissingCashbackQueue(accessToken, statusFilter, 1, 50);
-      const claimsData = response?.data;
-      setClaims(Array.isArray(claimsData) ? claimsData : []);
+      // Fetch orders and filter for those with tickets
+      const response = await fetchOrders(accessToken, 1, 100, {});
+      const ordersData = response?.data || [];
+      
+      // Filter orders that have ticket data in relationships
+      const ordersWithTickets: OrderWithTicket[] = [];
+      
+      for (const order of ordersData) {
+        const ticketData = order.relationships?.ticket?.data?.attributes;
+        if (ticketData && ticketData.status) {
+          ordersWithTickets.push({
+            id: order.id,
+            type: order.type,
+            attributes: order.attributes,
+            ticket: ticketData,
+          });
+        }
+      }
+      
+      setQueries(ordersWithTickets);
     } catch (err: any) {
-      console.error('Failed to load claims:', err);
+      console.error('Failed to load queries:', err);
       const errorMsg = err.message?.toLowerCase() || '';
       if (errorMsg.includes('not found') || errorMsg.includes('no data') || errorMsg.includes('empty')) {
-        setClaims([]);
+        setQueries([]);
       } else {
-        setError(err.message || 'Failed to load claims');
+        setError(err.message || 'Failed to load queries');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return 'N/A';
     try {
       return new Date(dateStr).toLocaleDateString('en-IN', {
         year: 'numeric',
@@ -71,31 +107,54 @@ const YourQueries: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
+      case 'open':
       case 'pending':
-        return 'status-pending';
+        return 'bg-warning/10 text-warning border border-warning/30';
       case 'resolved':
-        return 'status-confirmed';
+      case 'closed':
+        return 'bg-success/10 text-success border border-success/30';
       case 'rejected':
-        return 'bg-destructive/10 text-destructive';
+        return 'bg-destructive/10 text-destructive border border-destructive/30';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted text-muted-foreground border border-muted';
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: string) => {
     switch (status?.toLowerCase()) {
+      case 'open':
       case 'pending':
-        return <Clock className="w-3 h-3 mr-1" />;
+        return <Clock className="w-3 h-3" />;
       case 'resolved':
-        return <CheckCircle className="w-3 h-3 mr-1" />;
+      case 'closed':
+        return <CheckCircle className="w-3 h-3" />;
       case 'rejected':
-        return <XCircle className="w-3 h-3 mr-1" />;
+        return <XCircle className="w-3 h-3" />;
       default:
-        return null;
+        return <MessageSquare className="w-3 h-3" />;
     }
   };
+
+  const filteredQueries = queries.filter(q => {
+    if (statusFilter === 'all') return true;
+    const status = q.ticket.status?.toLowerCase() || '';
+    if (statusFilter === 'open') return status === 'open' || status === 'pending';
+    if (statusFilter === 'resolved') return status === 'resolved' || status === 'closed';
+    if (statusFilter === 'rejected') return status === 'rejected';
+    return true;
+  });
+
+  const openCount = queries.filter(q => {
+    const s = q.ticket.status?.toLowerCase();
+    return s === 'open' || s === 'pending';
+  }).length;
+
+  const resolvedCount = queries.filter(q => {
+    const s = q.ticket.status?.toLowerCase();
+    return s === 'resolved' || s === 'closed';
+  }).length;
 
   if (!isAuthenticated) {
     return (
@@ -122,19 +181,33 @@ const YourQueries: React.FC = () => {
           </h1>
         </div>
 
-        {/* Section Header */}
-        <h2 className="text-lg font-semibold text-foreground mb-6">
-          Your Recent Queries
-        </h2>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="card-elevated p-4 text-center">
+            <p className="text-2xl font-bold text-foreground">{queries.length}</p>
+            <p className="text-xs text-muted-foreground">Total</p>
+          </div>
+          <div className="card-elevated p-4 text-center">
+            <p className="text-2xl font-bold text-warning">{openCount}</p>
+            <p className="text-xs text-muted-foreground">Open</p>
+          </div>
+          <div className="card-elevated p-4 text-center">
+            <p className="text-2xl font-bold text-success">{resolvedCount}</p>
+            <p className="text-xs text-muted-foreground">Resolved</p>
+          </div>
+        </div>
 
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card-elevated p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-3 w-32" />
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-12 w-12 rounded" />
+                    <div>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
                   </div>
                   <Skeleton className="h-6 w-20" />
                 </div>
@@ -148,12 +221,12 @@ const YourQueries: React.FC = () => {
               <XCircle className="w-full h-full" />
             </div>
             <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={loadClaims} variant="outline">
+            <Button onClick={loadQueries} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
           </div>
-        ) : claims.length === 0 ? (
+        ) : queries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             {/* Notepad Illustration */}
             <div className="w-32 h-32 mb-6 relative">
@@ -181,69 +254,118 @@ const YourQueries: React.FC = () => {
             </div>
             
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Sorry, No Queries Found in your Account
+              No Queries Found
             </h3>
             <p className="text-sm text-muted-foreground max-w-xs">
-              The queries you raise on your tracked Cashback/Rewards are shown here.
+              Queries you raise on your tracked orders will appear here.
             </p>
             
             <Button 
-              onClick={() => navigate('/missing-cashback')} 
+              onClick={() => navigate('/orders')} 
               className="mt-6"
             >
-              Raise a Query
+              View Orders
             </Button>
           </div>
         ) : (
           <>
-            {/* Status Filter */}
-            <div className="flex items-center gap-4 mb-6">
-              <span className="text-sm font-medium text-foreground">Filter:</span>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Resolved">Resolved</SelectItem>
-                  <SelectItem value="Rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Filter Tabs */}
+            <Tabs value={statusFilter} onValueChange={setStatusFilter} className="mb-6">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="all">All ({queries.length})</TabsTrigger>
+                <TabsTrigger value="open">Open ({openCount})</TabsTrigger>
+                <TabsTrigger value="resolved">Resolved ({resolvedCount})</TabsTrigger>
+                <TabsTrigger value="rejected">Rejected</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             <div className="space-y-4">
-              {claims.map((claim) => (
-                <div key={claim.id} className="card-elevated p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-semibold text-foreground">{claim.attributes.store_name}</p>
-                      <p className="text-sm text-muted-foreground">Order: {claim.attributes.order_id}</p>
+              {filteredQueries.map((query) => (
+                <div 
+                  key={query.id} 
+                  className="card-elevated p-4 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => navigate(`/order/${query.id}`)}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Store Logo */}
+                    <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                      {query.attributes.merchant_image_url ? (
+                        <img
+                          src={query.attributes.merchant_image_url}
+                          alt={query.attributes.merchant_name || 'Store'}
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <span className="text-lg font-bold text-primary">
+                          {(query.attributes.merchant_name || 'S').charAt(0)}
+                        </span>
+                      )}
                     </div>
-                    <span className={`status-badge ${getStatusColor(claim.attributes.status)}`}>
-                      {getStatusIcon(claim.attributes.status)}
-                      {claim.attributes.status}
-                    </span>
+
+                    {/* Query Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {query.attributes.merchant_name || 'Store'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Order: {query.attributes.order_id || query.id}
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium shrink-0 ${getStatusColor(query.ticket.status)}`}>
+                          {getStatusIcon(query.ticket.status)}
+                          {query.ticket.status || 'Unknown'}
+                        </span>
+                      </div>
+
+                      {/* Query Question */}
+                      {query.ticket.question && (
+                        <p className="text-sm text-foreground mt-2 line-clamp-2">
+                          {query.ticket.question}
+                        </p>
+                      )}
+
+                      {/* Meta Info */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                        {query.ticket.query_raised_at && (
+                          <span>Raised: {formatDate(query.ticket.query_raised_at)}</span>
+                        )}
+                        {query.ticket.expected_resolution_time && query.ticket.show_resolution_time === 'yes' && (
+                          <span>Expected: {query.ticket.expected_resolution_time}</span>
+                        )}
+                        {query.ticket.query_resolved_at && (
+                          <span>Resolved: {formatDate(query.ticket.query_resolved_at)}</span>
+                        )}
+                      </div>
+
+                      {/* Remarks */}
+                      {query.ticket.remarks && (
+                        <p className="text-xs text-muted-foreground mt-2 bg-muted/50 p-2 rounded">
+                          <span className="font-medium">Remarks:</span> {query.ticket.remarks}
+                        </p>
+                      )}
+
+                      {/* Amount */}
+                      {query.attributes.cashback_amount && (
+                        <p className="text-sm font-medium text-foreground mt-2">
+                          ₹{query.attributes.cashback_amount}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Arrow */}
+                    <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
                   </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    {claim.attributes.amount && (
-                      <span className="text-muted-foreground">
-                        Amount: <strong className="text-foreground">₹{claim.attributes.amount}</strong>
-                      </span>
-                    )}
-                    <span className="text-muted-foreground">
-                      Submitted: {formatDate(claim.attributes.created_at)}
-                    </span>
-                  </div>
-                  
-                  {claim.attributes.resolved_at && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Resolved: {formatDate(claim.attributes.resolved_at)}
-                    </p>
-                  )}
                 </div>
               ))}
             </div>
+
+            {filteredQueries.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No queries match this filter.</p>
+              </div>
+            )}
           </>
         )}
       </div>

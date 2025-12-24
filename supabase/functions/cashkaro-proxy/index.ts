@@ -27,6 +27,56 @@ const CASHKARO_CONFIG = {
   APP_VERSION: '4.6',
 };
 
+// Helper to create multipart form data boundary
+const generateBoundary = (): string => {
+  return `----FormBoundary${Date.now()}${Math.random().toString(36).substring(2)}`;
+};
+
+// Helper to create multipart form data body
+const createMultipartBody = (
+  formFields: Record<string, string>,
+  files: Array<{ name: string; data: string; filename: string; contentType: string }>,
+  boundary: string
+): Uint8Array => {
+  const encoder = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  
+  // Add form fields
+  for (const [key, value] of Object.entries(formFields)) {
+    const fieldPart = `--${boundary}\r\nContent-Disposition: form-data; name="${key}"\r\n\r\n${value}\r\n`;
+    parts.push(encoder.encode(fieldPart));
+  }
+  
+  // Add file fields
+  for (const file of files) {
+    const headerPart = `--${boundary}\r\nContent-Disposition: form-data; name="${file.name}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`;
+    parts.push(encoder.encode(headerPart));
+    
+    // Decode base64 to binary
+    const binaryString = atob(file.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    parts.push(bytes);
+    parts.push(encoder.encode('\r\n'));
+  }
+  
+  // Add closing boundary
+  parts.push(encoder.encode(`--${boundary}--\r\n`));
+  
+  // Combine all parts
+  const totalLength = parts.reduce((acc, part) => acc + part.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  
+  return result;
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -34,11 +84,12 @@ serve(async (req) => {
   }
 
   try {
-    const { endpoint, method = 'GET', body, userAccessToken } = await req.json();
+    const { endpoint, method = 'GET', body, userAccessToken, isMultipart, formFields, files } = await req.json();
 
     console.log(`[CashKaro Proxy] ${method} ${endpoint}`);
     console.log(`[CashKaro Proxy] Request body:`, JSON.stringify(body, null, 2));
     console.log(`[CashKaro Proxy] Has userAccessToken:`, !!userAccessToken);
+    console.log(`[CashKaro Proxy] Is multipart:`, !!isMultipart);
 
     // Build the full URL
     const url = `${CASHKARO_CONFIG.BASE_URL}${endpoint}`;
@@ -46,22 +97,33 @@ serve(async (req) => {
     // Build headers
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.api+json',
-      'Content-Type': 'application/vnd.api+json',
       'x-api-key': CASHKARO_CONFIG.API_KEY,
       'x-chkr-app-version': CASHKARO_CONFIG.APP_VERSION,
     };
 
     // Determine authorization strategy based on endpoint
     if (endpoint === '/token') {
-      // Token generation always uses Basic Auth
       headers['Authorization'] = CASHKARO_CONFIG.AUTH_HEADER;
       console.log(`[CashKaro Proxy] Using Basic Auth for /token endpoint`);
     } else if (userAccessToken) {
-      // All other endpoints use Bearer token (either guest or user token)
       headers['Authorization'] = `Bearer ${userAccessToken}`;
       console.log(`[CashKaro Proxy] Using Bearer token for ${endpoint}`);
     } else {
       console.warn(`[CashKaro Proxy] WARNING: No token provided for ${endpoint} - this may fail`);
+    }
+
+    let requestBody: BodyInit | undefined;
+    
+    // Handle multipart form data for file uploads
+    if (isMultipart && formFields) {
+      const boundary = generateBoundary();
+      headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+      const multipartData = createMultipartBody(formFields, files || [], boundary);
+      requestBody = multipartData.buffer.slice(multipartData.byteOffset, multipartData.byteOffset + multipartData.byteLength) as ArrayBuffer;
+      console.log(`[CashKaro Proxy] Created multipart body with ${files?.length || 0} files`);
+    } else if (body) {
+      headers['Content-Type'] = 'application/vnd.api+json';
+      requestBody = JSON.stringify(body);
     }
 
     console.log(`[CashKaro Proxy] Making request to: ${url}`);
@@ -71,7 +133,7 @@ serve(async (req) => {
     const response = await fetch(url, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: requestBody,
     });
 
     const responseText = await response.text();
@@ -86,7 +148,6 @@ serve(async (req) => {
     }
 
     // Always return 200 from the edge function so client can read error details
-    // (Supabase throws before we can read body on non-2xx status)
     if (!response.ok) {
       console.error(`[CashKaro Proxy] API Error: ${response.status}`, data);
       return new Response(JSON.stringify({ 
@@ -94,7 +155,7 @@ serve(async (req) => {
         status: response.status,
         data 
       }), {
-        status: 200, // Return 200 so client can read error details
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

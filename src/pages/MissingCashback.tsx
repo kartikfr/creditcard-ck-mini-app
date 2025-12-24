@@ -1041,6 +1041,19 @@ const MissingCashback: React.FC = () => {
                             Upload Screenshot →
                           </button>
                         )}
+                        
+                        {/* View Detail button for Closed claims - navigates to order detail using cashback_id */}
+                        {claimStatusFilter === 'Closed' && claim.attributes.cashback_id && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => navigate(`/order/${claim.attributes.cashback_id}`)}
+                          >
+                            View Detail
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

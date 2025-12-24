@@ -429,6 +429,27 @@ export const fetchMissingCashbackQueue = async (
   );
 };
 
+// Submit missing cashback to queue (after validation passes)
+export const submitMissingCashbackQueue = async (
+  accessToken: string,
+  storeId: string,
+  exitClickDate: string,
+  orderId: string,
+  orderAmount: string
+) => {
+  return callProxy('/users/missingcashback/queue', 'POST', {
+    data: {
+      type: 'missingcashback',
+      attributes: {
+        storeid: storeId,
+        exitclick_date: exitClickDate,
+        order_id: orderId,
+        order_amount: orderAmount,
+      },
+    },
+  }, accessToken);
+};
+
 // Fetch payment info
 export const fetchPaymentInfo = async (accessToken: string) => {
   const device = getDeviceType();

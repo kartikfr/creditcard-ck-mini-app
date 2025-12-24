@@ -52,7 +52,8 @@ const Payments: React.FC = () => {
       }
       try {
         const response = await fetchEarnings(accessToken);
-        const attrs = response?.data?.attributes;
+        // Handle both response formats like Earnings page
+        const attrs = response?.data?.attributes ?? response?.data?.[0]?.attributes;
         if (attrs) {
           setCashbackBalance(parseFloat(attrs.confirmed_cashback) || 0);
           setRewardsBalance(parseFloat(attrs.confirmed_rewards) || 0);

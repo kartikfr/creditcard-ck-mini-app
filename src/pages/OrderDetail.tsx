@@ -8,25 +8,31 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
-interface OrderDetail {
+interface OrderDetailData {
   id: string;
   type: string;
   attributes: {
-    store_name?: string;
-    store_logo?: string;
+    merchant_image_url?: string;
+    merchant_name?: string;
     cashback_type?: string;
-    amount?: string;
-    status?: string;
+    cashback_amount?: string;
+    cashback_status?: string;
     order_id?: string;
+    order_amount?: string;
     referral_name?: string;
     bonus_type?: string;
-    note?: string;
+    comments?: string;
+    currency?: string;
+    groupid?: string;
     transaction_date?: string;
+    paid_date?: string;
     expected_confirmation_date?: string;
     confirmation_date?: string;
     important_info?: string;
-    status_message?: string;
-    tracking_info?: string;
+    tracking_speed?: string;
+  };
+  links?: {
+    self?: string;
   };
 }
 
@@ -43,9 +49,10 @@ const OrderDetail: React.FC = () => {
   const navigate = useNavigate();
   const { accessToken } = useAuth();
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
+  const [order, setOrder] = useState<OrderDetailData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showKnowMore, setShowKnowMore] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -71,18 +78,23 @@ const OrderDetail: React.FC = () => {
   const getOrderTypeLabel = () => {
     if (!order) return '';
     const attrs = order.attributes;
-    if (attrs.cashback_type === 'referral' || attrs.referral_name) {
+    const cashbackType = attrs.cashback_type?.toLowerCase();
+    
+    if (cashbackType === 'referral' || attrs.referral_name) {
       return 'Referral';
     }
-    if (attrs.cashback_type === 'bonus' || attrs.bonus_type) {
+    if (attrs.bonus_type) {
       return 'Bonus';
+    }
+    if (cashbackType === 'rewards') {
+      return 'Rewards';
     }
     return 'Cashback';
   };
 
   const getStatusLabel = () => {
     if (!order) return '';
-    const status = order.attributes.status?.toLowerCase() || 'pending';
+    const status = order.attributes.cashback_status?.toLowerCase() || 'pending';
     const type = getOrderTypeLabel();
     return `${type} ${status.charAt(0).toUpperCase() + status.slice(1)}`;
   };
@@ -134,7 +146,7 @@ const OrderDetail: React.FC = () => {
   }
 
   const attrs = order.attributes;
-  const status = attrs.status?.toLowerCase() || 'pending';
+  const status = attrs.cashback_status?.toLowerCase() || 'pending';
 
   return (
     <AppLayout>
@@ -150,131 +162,131 @@ const OrderDetail: React.FC = () => {
           <span className="text-foreground font-medium">{orderId}</span>
         </nav>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left Column - Order Summary */}
-          <div className="w-full lg:w-64 shrink-0">
-            <div className="card-elevated p-6 text-center">
-              {/* Store Logo */}
-              <div className="w-24 h-24 mx-auto bg-background border rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-                {attrs.store_logo ? (
-                  <img
-                    src={attrs.store_logo}
-                    alt={attrs.store_name || 'Store'}
-                    className="w-full h-full object-contain p-2"
-                  />
-                ) : (
-                  <span className="text-3xl font-bold text-primary">
-                    {(attrs.store_name || 'C').charAt(0)}
-                  </span>
+        <div className="max-w-md mx-auto">
+          {/* Order Summary Card */}
+          <div className="card-elevated p-6 text-center mb-6">
+            {/* Store Logo */}
+            <div className="w-32 h-20 mx-auto bg-background border rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+              {attrs.merchant_image_url ? (
+                <img
+                  src={attrs.merchant_image_url}
+                  alt={attrs.merchant_name || 'Store'}
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <span className="text-3xl font-bold text-primary">
+                  {(attrs.merchant_name || 'C').charAt(0)}
+                </span>
+              )}
+            </div>
+
+            {/* Status Badge */}
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium mb-4 ${statusColors[status]}`}>
+              <span className={`w-2 h-2 rounded-full ${
+                status === 'pending' ? 'bg-warning' :
+                status === 'confirmed' ? 'bg-success' :
+                status === 'paid' ? 'bg-primary' :
+                'bg-destructive'
+              }`} />
+              {getStatusLabel()}
+            </span>
+
+            {/* Amount */}
+            <p className="text-3xl font-bold text-foreground">
+              ₹{attrs.cashback_amount || '0'}
+            </p>
+            
+            {/* Know More Toggle */}
+            <button 
+              onClick={() => setShowKnowMore(!showKnowMore)}
+              className="text-sm text-muted-foreground mt-2 flex items-center gap-1 mx-auto"
+            >
+              Know More 
+              <span className={`transition-transform ${showKnowMore ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            
+            {showKnowMore && (
+              <div className="mt-4 text-left text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                {attrs.comments || (
+                  status === 'pending'
+                    ? 'Your transaction will remain in Pending status till the return/cancellation period is over and the retailer has shared the final report with us.'
+                    : status === 'confirmed'
+                    ? 'Great news! Your cashback has been confirmed and will be paid out soon.'
+                    : status === 'paid'
+                    ? 'Your cashback has been paid to your account.'
+                    : 'This transaction has been cancelled.'
                 )}
               </div>
+            )}
+          </div>
 
-              {/* Amount */}
-              <p className="text-3xl font-bold text-foreground mb-3">
-                ₹{attrs.amount || '0'}
-              </p>
+          {/* Order Details */}
+          <div className="card-elevated divide-y">
+            {attrs.order_amount && (
+              <div className="p-4 flex justify-between">
+                <span className="text-muted-foreground">Order Amount</span>
+                <span className="font-medium text-foreground">₹{attrs.order_amount}</span>
+              </div>
+            )}
+            <div className="p-4 flex justify-between">
+              <span className="text-muted-foreground">Order ID</span>
+              <span className="font-medium text-foreground">{attrs.order_id || 'N/A'}</span>
+            </div>
+            {attrs.transaction_date && (
+              <div className="p-4 flex justify-between">
+                <span className="text-muted-foreground">Transaction Date</span>
+                <span className="font-medium text-foreground">{formatDate(attrs.transaction_date)}</span>
+              </div>
+            )}
+            {attrs.paid_date && (
+              <div className="p-4 flex justify-between">
+                <span className="text-muted-foreground">Paid Date</span>
+                <span className="font-medium text-foreground">{formatDate(attrs.paid_date)}</span>
+              </div>
+            )}
+            {attrs.referral_name && (
+              <div className="p-4 flex justify-between">
+                <span className="text-muted-foreground">Referral Name</span>
+                <span className="font-medium text-foreground">{attrs.referral_name}</span>
+              </div>
+            )}
+            {attrs.bonus_type && (
+              <div className="p-4 flex justify-between">
+                <span className="text-muted-foreground">Bonus Type</span>
+                <span className="font-medium text-foreground">{attrs.bonus_type}</span>
+              </div>
+            )}
+          </div>
 
-              {/* Status Badge */}
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${statusColors[status]}`}>
-                <span className={`w-2 h-2 rounded-full ${
-                  status === 'pending' ? 'bg-warning' :
-                  status === 'confirmed' ? 'bg-success' :
-                  status === 'paid' ? 'bg-primary' :
-                  'bg-destructive'
-                }`} />
-                {getStatusLabel()}
-              </span>
-
-              {/* Status Message */}
-              <div className="mt-6 text-left">
-                <p className="font-semibold text-foreground mb-2">Hey, You've Done It!</p>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {attrs.status_message || (
-                    status === 'pending'
-                      ? 'Your transaction will remain in Pending status till the return/cancellation period is over and the retailer has shared the final report with us. Please check your expected confirmation date.'
-                      : status === 'confirmed'
-                      ? 'Great news! Your cashback has been confirmed and will be paid out soon.'
-                      : status === 'paid'
-                      ? 'Your cashback has been paid to your account.'
-                      : 'This transaction has been cancelled.'
+          {/* Important Information */}
+          <div className="bg-warning/5 border border-warning/20 rounded-lg p-4 mt-6">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-foreground mb-1">Important Information</p>
+                <p className="text-sm text-muted-foreground">
+                  {attrs.important_info || (
+                    attrs.cashback_type?.toLowerCase() === 'rewards'
+                      ? 'Amazon Rewards are paid on the order amount excluding GST amount. If you have multiple items in your order, each will track separately, within 48 Hours after the item ships.'
+                      : attrs.referral_name
+                      ? "Your Referral Cashback will get confirmed once your Referral's Cashback is Confirmed."
+                      : 'Your cashback will be confirmed after the return/cancellation period ends.'
                   )}
+                </p>
+                <p className="text-sm text-primary mt-2">
+                  If you still have a query then please tap on the button below
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Details */}
-          <div className="flex-1">
-            {/* Info Bar */}
-            <div className="bg-warning/10 border-t-4 border-warning rounded-lg overflow-hidden mb-6">
-              <div className="grid grid-cols-2 divide-x divide-warning/20">
-                <div className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {attrs.referral_name ? 'Referral Name' : attrs.order_id ? 'Order ID' : 'Transaction ID'}
-                  </p>
-                  <p className="font-semibold text-foreground">
-                    {attrs.referral_name || attrs.order_id || order.id}
-                  </p>
-                </div>
-                <div className="p-4 text-center">
-                  <p className="text-sm text-muted-foreground mb-1">Expected Confirmation</p>
-                  <p className="font-semibold text-foreground">
-                    {formatDate(attrs.expected_confirmation_date || attrs.confirmation_date)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Important Information */}
-            <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-foreground mb-1">Important Information</p>
-                  <p className="text-sm text-muted-foreground">
-                    {attrs.important_info || (
-                      attrs.referral_name
-                        ? "Your Referral Cashback will get confirmed once your Referral's Cashback is Confirmed."
-                        : 'Your cashback will be confirmed after the return/cancellation period ends.'
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional Details */}
-            {(attrs.transaction_date || attrs.tracking_info || attrs.bonus_type || attrs.note) && (
-              <div className="card-elevated p-4 mt-6">
-                <h3 className="font-semibold text-foreground mb-4">Additional Details</h3>
-                <div className="space-y-3 text-sm">
-                  {attrs.transaction_date && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transaction Date</span>
-                      <span className="text-foreground">{formatDate(attrs.transaction_date)}</span>
-                    </div>
-                  )}
-                  {attrs.bonus_type && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Bonus Type</span>
-                      <span className="text-foreground">{attrs.bonus_type}</span>
-                    </div>
-                  )}
-                  {attrs.note && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Note</span>
-                      <span className="text-foreground">{attrs.note}</span>
-                    </div>
-                  )}
-                  {attrs.tracking_info && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tracking Info</span>
-                      <span className="text-foreground">{attrs.tracking_info}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Raise a Query Button */}
+          <Button 
+            className="w-full mt-6" 
+            onClick={() => navigate('/missing-cashback')}
+          >
+            Raise a Query
+          </Button>
         </div>
       </div>
     </AppLayout>

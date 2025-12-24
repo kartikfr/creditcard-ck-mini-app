@@ -18,16 +18,19 @@ interface Order {
   id: string;
   type: string;
   attributes: {
-    store_name?: string;
-    store_logo?: string;
+    merchant_image_url?: string;
     cashback_type?: string;
-    amount?: string;
-    status?: string;
+    cashback_amount?: string;
+    cashback_status?: string;
     order_id?: string;
     referral_name?: string;
     bonus_type?: string;
-    note?: string;
-    transaction_date?: string;
+    comments?: string;
+    currency?: string;
+    groupid?: string;
+  };
+  links?: {
+    self?: string;
   };
 }
 
@@ -154,11 +157,16 @@ const Orders: React.FC = () => {
 
   const getOrderTypeLabel = (order: Order) => {
     const attrs = order.attributes;
-    if (attrs.cashback_type === 'referral' || attrs.referral_name) {
+    const cashbackType = attrs.cashback_type?.toLowerCase();
+    
+    if (cashbackType === 'referral' || attrs.referral_name) {
       return 'Referral';
     }
-    if (attrs.cashback_type === 'bonus' || attrs.bonus_type) {
+    if (attrs.bonus_type) {
       return 'Bonus';
+    }
+    if (cashbackType === 'rewards') {
+      return 'Rewards';
     }
     return 'Cashback';
   };
@@ -169,7 +177,7 @@ const Orders: React.FC = () => {
       return `Referral Name: ${attrs.referral_name}`;
     }
     if (attrs.bonus_type) {
-      return `Bonus Type: ${attrs.bonus_type}`;
+      return `${attrs.bonus_type}`;
     }
     if (attrs.order_id) {
       return `Order ID: ${attrs.order_id}`;
@@ -431,41 +439,36 @@ const Orders: React.FC = () => {
                     >
                       {/* Store Logo */}
                       <div className="w-16 h-16 bg-background border rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                        {order.attributes.store_logo ? (
+                        {order.attributes.merchant_image_url ? (
                           <img
-                            src={order.attributes.store_logo}
-                            alt={order.attributes.store_name || 'Store'}
+                            src={order.attributes.merchant_image_url}
+                            alt="Store"
                             className="w-full h-full object-contain p-2"
                           />
                         ) : (
                           <span className="text-xl font-bold text-primary">
-                            {(order.attributes.store_name || 'C').charAt(0)}
+                            C
                           </span>
                         )}
                       </div>
 
                       {/* Order Info */}
                       <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusColors[order.attributes.cashback_status?.toLowerCase() || 'pending']}`}>
+                            {order.attributes.cashback_status || 'Pending'}
+                          </span>
+                        </div>
                         <p className="font-semibold text-foreground">
-                          {getOrderTypeLabel(order)}: ₹{order.attributes.amount || '0'}
+                          {getOrderTypeLabel(order)}: ₹{order.attributes.cashback_amount || '0'}
                         </p>
                         <p className="text-sm text-muted-foreground truncate">
                           {getOrderSubtitle(order)}
                         </p>
-                        {order.attributes.note && (
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            Note: {order.attributes.note}
-                          </p>
-                        )}
                       </div>
 
-                      {/* Status & Arrow */}
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[order.attributes.status?.toLowerCase() || 'pending']}`}>
-                          {order.attributes.status || 'Pending'}
-                        </span>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                      </div>
+                      {/* Arrow */}
+                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
                     </div>
                   ))
                 )}

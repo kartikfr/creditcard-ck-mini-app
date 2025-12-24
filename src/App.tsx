@@ -25,6 +25,7 @@ import Feedback from "./pages/Feedback";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import KnowMore from "./pages/KnowMore";
+import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -67,6 +68,7 @@ const AppRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/account-settings" element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} />
         <Route path="/review-us" element={<ProtectedRoute><ReviewUs /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

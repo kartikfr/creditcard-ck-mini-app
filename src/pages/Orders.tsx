@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Filter, AlertCircle, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Filter, AlertCircle, Loader2 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -56,10 +56,16 @@ const Orders: React.FC = () => {
   // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalRecords, setTotalRecords] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
+  
+  // Infinite scroll observer
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   // Collapsible state
   const [statusOpen, setStatusOpen] = useState(true);
@@ -73,41 +79,92 @@ const Orders: React.FC = () => {
   // Count active filters
   const activeFilterCount = statusFilters.length + cashbackTypeFilters.length + (dateFilter ? 1 : 0);
 
-  // Load orders with current filters - called automatically when filters change
-  useEffect(() => {
-    const loadOrders = async () => {
-      if (!accessToken) return;
+  const pageSize = 10;
+
+  // Load orders with current filters
+  const loadOrders = useCallback(async (page: number, append: boolean = false) => {
+    if (!accessToken) return;
+    
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
       setIsLoading(true);
-      setError(null);
+    }
+    setError(null);
 
-      try {
-        const filters = {
-          status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
-          cashbacktype: cashbackTypeFilters.length > 0 ? cashbackTypeFilters.join(',') : 'cashback,rewards',
-          fromdate: fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined,
-          todate: toDate ? format(toDate, 'yyyy-MM-dd') : undefined,
-        };
+    try {
+      const filters = {
+        status: statusFilters.length > 0 ? statusFilters.join(',') : undefined,
+        cashbacktype: cashbackTypeFilters.length > 0 ? cashbackTypeFilters.join(',') : 'cashback,rewards',
+        fromdate: fromDate ? format(fromDate, 'yyyy-MM-dd') : undefined,
+        todate: toDate ? format(toDate, 'yyyy-MM-dd') : undefined,
+      };
 
-        console.log('Fetching orders with filters:', filters, 'page:', currentPage);
-        const response = await fetchOrders(accessToken, currentPage, 10, filters);
-        console.log('Orders response:', response);
-        setOrders(response.data || []);
-        setTotalRecords(response.meta?.total_records || 0);
-      } catch (e: any) {
-        setError(e.message || 'Failed to load orders');
-      } finally {
-        setIsLoading(false);
+      console.log('Fetching orders with filters:', filters, 'page:', page);
+      const response = await fetchOrders(accessToken, page, pageSize, filters);
+      console.log('Orders response:', response);
+      
+      const newOrders = response.data || [];
+      const total = response.meta?.total_records || 0;
+      
+      if (append) {
+        setOrders(prev => [...prev, ...newOrders]);
+      } else {
+        setOrders(newOrders);
+      }
+      
+      setTotalRecords(total);
+      setHasMore(page * pageSize < total);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load orders');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [accessToken, statusFilters, cashbackTypeFilters, fromDate, toDate]);
+
+  // Initial load and filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+    loadOrders(1, false);
+  }, [accessToken, statusFilters, cashbackTypeFilters, fromDate, toDate, retryKey, loadOrders]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          const nextPage = currentPage + 1;
+          setCurrentPage(nextPage);
+          loadOrders(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
     };
-
-    loadOrders();
-  }, [accessToken, currentPage, statusFilters, cashbackTypeFilters, fromDate, toDate, retryKey]);
+  }, [hasMore, isLoading, isLoadingMore, currentPage, loadOrders]);
 
   const handleRetry = () => setRetryKey(prev => prev + 1);
 
   const handleApplyFilters = () => {
-    // Reset to page 1 when applying filters manually
+    // Reset state - the useEffect will handle loading
     setCurrentPage(1);
+    setOrders([]);
+    setHasMore(true);
   };
 
   const handleResetFilters = () => {
@@ -117,6 +174,8 @@ const Orders: React.FC = () => {
     setFromDate(subMonths(new Date(), 3));
     setToDate(new Date());
     setCurrentPage(1);
+    setOrders([]);
+    setHasMore(true);
   };
 
   const toggleStatusFilter = (status: string) => {
@@ -475,10 +534,21 @@ const Orders: React.FC = () => {
               </div>
             )}
 
-            {/* Pagination info */}
+            {/* Infinite Scroll Trigger */}
+            <div ref={loadMoreRef} className="h-10" />
+            
+            {/* Loading More Indicator */}
+            {isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            )}
+
+            {/* End of list info */}
             {!isLoading && orders.length > 0 && (
               <p className="text-sm text-muted-foreground text-center mt-4">
                 Showing {orders.length} of {totalRecords} orders
+                {!hasMore && orders.length === totalRecords && ' • All orders loaded'}
               </p>
             )}
           </div>

@@ -152,7 +152,6 @@ const OrderDetail: React.FC = () => {
 
   const attrs = order.attributes;
   const status = attrs.cashback_status?.toLowerCase() || 'pending';
-  const showExpectedConfirmationDate = (status === 'confirmed' || status === 'paid') && attrs.expected_confirmation_date;
 
   return (
     <AppLayout>
@@ -264,10 +263,10 @@ const OrderDetail: React.FC = () => {
                   </div>
                 )}
                 
-                {/* Expected Confirmation Date (for confirmed/paid status) */}
-                {showExpectedConfirmationDate && (
+                {/* Expected Confirmation */}
+                {attrs.expected_confirmation_date && (
                   <div className="bg-card p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Expected Confirmation Date</p>
+                    <p className="text-sm text-muted-foreground mb-1">Expected Confirmation</p>
                     <p className="text-xl font-bold text-foreground">{formatDate(attrs.expected_confirmation_date)}</p>
                   </div>
                 )}
@@ -402,10 +401,10 @@ const OrderDetail: React.FC = () => {
                 <span className="font-medium text-foreground">{formatDate(attrs.paid_date)}</span>
               </div>
             )}
-            {/* Expected Confirmation Date for Confirmed/Paid status */}
-            {showExpectedConfirmationDate && (
+            {/* Expected Confirmation */}
+            {attrs.expected_confirmation_date && (
               <div className="p-4 flex justify-between">
-                <span className="text-muted-foreground">Expected Confirmation Date</span>
+                <span className="text-muted-foreground">Expected Confirmation</span>
                 <span className="font-medium text-foreground">{formatDate(attrs.expected_confirmation_date)}</span>
               </div>
             )}

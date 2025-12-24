@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Loader2, ChevronRight, ArrowLeft, CheckCircle, Upload, X, HelpCircle, FileText, Image } from 'lucide-react';
+import { Loader2, ChevronRight, ArrowLeft, CheckCircle, Upload, X, HelpCircle, FileText, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,17 +13,27 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { raiseTicket } from '@/lib/api';
 
+interface AnswerContent {
+  subtitle?: string;
+  description?: string;
+}
+
+interface AnswerSection {
+  image?: string;
+  appimage?: string;
+  title?: string;
+  content?: AnswerContent[];
+}
+
 interface Configuration {
   id: number;
   type: string;
   attributes: {
     create_ticket?: string;
     question?: string;
-    answer?: any;
-    section?: any;
-    image?: string;
-    title?: string;
-    content?: string[];
+    answer?: {
+      section?: AnswerSection;
+    } | null;
     type?: string;
     sub_type?: string;
     attachment_required?: string;
@@ -69,7 +79,7 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [step, setStep] = useState<'questions' | 'form' | 'success'>('questions');
+  const [step, setStep] = useState<'questions' | 'form' | 'answer' | 'success'>('questions');
   const [selectedConfig, setSelectedConfig] = useState<Configuration | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -196,7 +206,14 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
 
   const handleQuestionSelect = (config: Configuration) => {
     setSelectedConfig(config);
-    setStep('form');
+    
+    // Route based on create_ticket value
+    if (config.attributes.create_ticket === 'yes') {
+      setStep('form');
+    } else {
+      // Show static answer
+      setStep('answer');
+    }
   };
 
   const handleSubmit = async () => {
@@ -257,28 +274,64 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
   };
 
   const handleBack = () => {
-    if (step === 'form') {
+    if (step === 'form' || step === 'answer') {
       setStep('questions');
       setSelectedConfig(null);
     }
   };
 
-  // Filter configurations that can create tickets
-  const ticketConfigs = configurations.filter(
-    config => config.attributes?.create_ticket === 'yes' && config.attributes?.question
-  );
+  const handleAnswerAction = () => {
+    const actionUrl = selectedConfig?.attributes?.action_url;
+    const appActionUrl = selectedConfig?.attributes?.app_action_url;
+    
+    if (actionUrl) {
+      window.open(actionUrl, '_blank');
+    } else if (appActionUrl) {
+      // For app_action_url, check if it contains order details path
+      if (appActionUrl.includes('order-details')) {
+        // Close modal and stay on current page
+        handleClose();
+      } else {
+        window.open(appActionUrl, '_blank');
+      }
+    } else {
+      // No URL, just close modal
+      handleClose();
+    }
+  };
+
+  // Get all configurations with questions (both ticket and non-ticket)
+  const allConfigs = configurations.filter(config => config.attributes?.question);
+
+  const getDialogTitle = () => {
+    switch (step) {
+      case 'questions':
+        return 'Raise a Query';
+      case 'form':
+        return 'Submit Details';
+      case 'answer':
+        return selectedConfig?.attributes?.answer?.section?.title || 'Information';
+      case 'success':
+        return 'Query Submitted';
+      default:
+        return 'Raise a Query';
+    }
+  };
+
+  // Check if attachments should be shown
+  const showAttachments = selectedConfig?.attributes?.attachment_required === 'yes';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {step === 'form' && (
+            {(step === 'form' || step === 'answer') && (
               <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 -ml-2">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
-            {step === 'questions' ? 'Raise a Query' : step === 'form' ? 'Submit Details' : 'Query Submitted'}
+            {getDialogTitle()}
           </DialogTitle>
         </DialogHeader>
 
@@ -306,10 +359,10 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
             {/* Dashed separator */}
             <div className="border-t-2 border-dashed border-muted my-4" />
 
-            {/* Question List */}
-            {ticketConfigs.length > 0 ? (
+            {/* Question List - Show ALL configurations */}
+            {allConfigs.length > 0 ? (
               <div className="space-y-2">
-                {ticketConfigs.map((config) => (
+                {allConfigs.map((config) => (
                   <button
                     key={config.id}
                     onClick={() => handleQuestionSelect(config)}
@@ -328,20 +381,70 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
               </p>
             )}
           </div>
+        ) : step === 'answer' ? (
+          // Static Answer Step
+          <div className="space-y-4">
+            {selectedConfig?.attributes?.answer?.section && (
+              <>
+                {/* Image */}
+                {selectedConfig.attributes.answer.section.image && (
+                  <div className="flex justify-center py-4">
+                    <img 
+                      src={selectedConfig.attributes.answer.section.image} 
+                      alt="Info" 
+                      className="w-24 h-24 object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* Title */}
+                {selectedConfig.attributes.answer.section.title && (
+                  <h3 className="text-center text-lg font-semibold text-foreground">
+                    {selectedConfig.attributes.answer.section.title}
+                  </h3>
+                )}
+
+                {/* Dashed separator */}
+                <div className="border-t-2 border-dashed border-muted my-4" />
+
+                {/* Content */}
+                {selectedConfig.attributes.answer.section.content && (
+                  <div className="space-y-4">
+                    {selectedConfig.attributes.answer.section.content.map((item, idx) => (
+                      <div key={idx} className="space-y-2">
+                        {item.subtitle && (
+                          <h4 className="font-medium text-foreground">{item.subtitle}</h4>
+                        )}
+                        {item.description && (
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Action Button */}
+            <Button
+              onClick={handleAnswerAction}
+              className="w-full mt-4"
+            >
+              {selectedConfig?.attributes?.button_text || 'Okay'}
+              {(selectedConfig?.attributes?.action_url || 
+                (selectedConfig?.attributes?.app_action_url && !selectedConfig.attributes.app_action_url.includes('order-details'))) && (
+                <ExternalLink className="w-4 h-4 ml-2" />
+              )}
+            </Button>
+          </div>
         ) : step === 'form' ? (
           <div className="space-y-4">
-            {/* Selected Question */}
+            {/* Selected Question - Without type/sub_type */}
             {selectedConfig && (
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
                 <p className="text-sm font-medium text-foreground">
                   {selectedConfig.attributes.question}
                 </p>
-                {selectedConfig.attributes.type && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Type: {selectedConfig.attributes.type}
-                    {selectedConfig.attributes.sub_type && ` - ${selectedConfig.attributes.sub_type}`}
-                  </p>
-                )}
               </div>
             )}
 
@@ -415,67 +518,67 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
               )}
             </div>
 
-            {/* File Attachments */}
-            <div className="space-y-2">
-              <Label>
-                Attachments {selectedConfig?.attributes?.attachment_required === 'yes' ? '*' : '(Optional)'}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Max {MAX_FILES} files, 2MB each (JPEG, PNG, GIF, PDF)
-              </p>
-              
-              {/* File Preview Grid */}
-              {attachments.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 my-2">
-                  {attachments.map((att, idx) => (
-                    <div key={idx} className="relative group">
-                      {att.preview ? (
-                        <img
-                          src={att.preview}
-                          alt={att.file.name}
-                          className="w-full h-20 object-cover rounded-lg border"
-                        />
-                      ) : (
-                        <div className="w-full h-20 bg-muted rounded-lg border flex items-center justify-center">
-                          <FileText className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeAttachment(idx)}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <p className="text-xs text-muted-foreground truncate mt-1">{att.file.name}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* File Attachments - Only show when attachment_required is "yes" */}
+            {showAttachments && (
+              <div className="space-y-2">
+                <Label>Attachments *</Label>
+                <p className="text-xs text-muted-foreground">
+                  Max {MAX_FILES} files, 2MB each (JPEG, PNG, GIF, PDF)
+                </p>
+                
+                {/* File Preview Grid */}
+                {attachments.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 my-2">
+                    {attachments.map((att, idx) => (
+                      <div key={idx} className="relative group">
+                        {att.preview ? (
+                          <img
+                            src={att.preview}
+                            alt={att.file.name}
+                            className="w-full h-20 object-cover rounded-lg border"
+                          />
+                        ) : (
+                          <div className="w-full h-20 bg-muted rounded-lg border flex items-center justify-center">
+                            <FileText className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeAttachment(idx)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <p className="text-xs text-muted-foreground truncate mt-1">{att.file.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              {/* Upload Button */}
-              {attachments.length < MAX_FILES && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Add Attachment ({attachments.length}/{MAX_FILES})
-                </Button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ALLOWED_TYPES.join(',')}
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              {errors.attachments && (
-                <p className="text-xs text-destructive">{errors.attachments}</p>
-              )}
-            </div>
+                {/* Upload Button */}
+                {attachments.length < MAX_FILES && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Add Attachment ({attachments.length}/{MAX_FILES})
+                  </Button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ALLOWED_TYPES.join(',')}
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                {errors.attachments && (
+                  <p className="text-xs text-destructive">{errors.attachments}</p>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
             <Button
@@ -498,9 +601,11 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
             <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-success" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Query Submitted!</h3>
-            <p className="text-muted-foreground mb-6">
-              Your query has been submitted successfully. We'll review it and get back to you soon.
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Query Submitted Successfully!
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              We've received your query and will get back to you soon. You can track the status in "Your Queries" section.
             </p>
             <Button onClick={handleClose} className="w-full">
               Done

@@ -12,8 +12,7 @@ import {
   fetchExitClickDates, 
   validateMissingCashback,
   submitMissingCashbackQueue,
-  fetchMissingCashbackQueue,
-  updateMissingCashbackQueue
+  fetchMissingCashbackQueue
 } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
@@ -96,7 +95,7 @@ interface QueueSubmitResponse {
   };
 }
 
-type Step = 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'additionalDetails' | 'success';
+type Step = 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'success';
 
 const MissingCashback: React.FC = () => {
   const navigate = useNavigate();
@@ -128,10 +127,7 @@ const MissingCashback: React.FC = () => {
   const [orderIdFormatError, setOrderIdFormatError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Additional details for B1/C1 groups
-  const [queueId, setQueueId] = useState<string | null>(null);
-  const [userType, setUserType] = useState<string>(''); // For B1 group
-  const [category, setCategory] = useState<string>(''); // For C1 group
+  // Submission result
   const [submissionResult, setSubmissionResult] = useState<QueueSubmitResponse | null>(null);
   
   // Loading/error states
@@ -381,36 +377,17 @@ const MissingCashback: React.FC = () => {
       );
       
       setSubmissionResult(response);
+      setStep('success');
       
-      // Check if additional details are needed based on store group
-      const storeGroup = selectedRetailer.attributes.group?.toUpperCase();
-      const returnedQueueId = response?.data?.id;
-      
-      if (returnedQueueId) {
-        setQueueId(String(returnedQueueId));
-      }
-      
-      // B1 group needs user_type, C1 group needs category
-      if (storeGroup === 'B1' || storeGroup === 'C1') {
-        setStep('additionalDetails');
-        toast({
-          title: 'Almost Done!',
-          description: 'Please provide additional details to complete your claim.',
-        });
-      } else {
-        // Direct success for groups A, B2, C2
-        setStep('success');
+      // Show appropriate message based on response
+      const successMessage = response?.meta?.cashback_id 
+        ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
+        : 'Your missing cashback claim has been added to the queue.';
         
-        // Show appropriate message based on response
-        const successMessage = response?.meta?.cashback_id 
-          ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
-          : 'Your missing cashback claim has been added to the queue.';
-          
-        toast({
-          title: 'Claim Submitted!',
-          description: successMessage,
-        });
-      }
+      toast({
+        title: 'Claim Submitted!',
+        description: successMessage,
+      });
     } catch (error: any) {
       console.error('Failed to submit claim:', error);
       toast({
@@ -424,59 +401,6 @@ const MissingCashback: React.FC = () => {
   };
 
   // Handle additional details submission for B1/C1 groups
-  const handleSubmitAdditionalDetails = async () => {
-    if (!queueId || !accessToken) return;
-    
-    const storeGroup = selectedRetailer?.attributes.group?.toUpperCase();
-    
-    if (storeGroup === 'B1' && !userType) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select whether you are a new or existing customer.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    if (storeGroup === 'C1' && !category) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select the order category.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      const response = await updateMissingCashbackQueue(accessToken, queueId, {
-        user_type: storeGroup === 'B1' ? userType : undefined,
-        category: storeGroup === 'C1' ? category : undefined,
-      });
-      
-      setSubmissionResult(response);
-      setStep('success');
-      
-      const successMessage = response?.meta?.cashback_id 
-        ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
-        : 'Your missing cashback claim has been submitted successfully.';
-        
-      toast({
-        title: 'Claim Submitted!',
-        description: successMessage,
-      });
-    } catch (error: any) {
-      console.error('Failed to submit additional details:', error);
-      toast({
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit additional details.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleBack = () => {
     if (step === 'dates') {
@@ -492,10 +416,6 @@ const MissingCashback: React.FC = () => {
     } else if (step === 'orderAmount') {
       setStep('orderId');
       setOrderAmount('');
-    } else if (step === 'additionalDetails') {
-      setStep('orderAmount');
-      setUserType('');
-      setCategory('');
     }
   };
 
@@ -507,9 +427,6 @@ const MissingCashback: React.FC = () => {
     setOrderAmount('');
     setOrderIdMeta(null);
     setOrderIdFormatError(null);
-    setQueueId(null);
-    setUserType('');
-    setCategory('');
     setSubmissionResult(null);
     setActiveTab('new');
   };
@@ -616,7 +533,6 @@ const MissingCashback: React.FC = () => {
               {step === 'dates' && 'Select your shopping date'}
               {step === 'orderId' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} order ID`}
               {step === 'orderAmount' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} Order Amount`}
-              {step === 'additionalDetails' && 'Just one more step'}
               {step === 'success' && (submissionResult?.meta?.cashback_id ? 'Cashback Added!' : 'Claim Submitted')}
             </h1>
           </div>
@@ -943,107 +859,6 @@ const MissingCashback: React.FC = () => {
                       </>
                     ) : (
                       'Continue'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Additional Details (B1/C1 groups) */}
-            {step === 'additionalDetails' && selectedRetailer && (
-              <div className="animate-fade-in">
-                {/* Selected Retailer Badge */}
-                <div className="mb-6">
-                  <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="w-6 h-6 bg-white rounded overflow-hidden">
-                      {getRetailerImage(selectedRetailer) ? (
-                        <img 
-                          src={getRetailerImage(selectedRetailer)} 
-                          alt={getRetailerName(selectedRetailer)}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <span className="text-xs">{getRetailerName(selectedRetailer).charAt(0)}</span>
-                      )}
-                    </div>
-                    <span className="text-sm font-medium text-amber-700">
-                      {getRetailerName(selectedRetailer)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {/* B1 Group - User Type Selection */}
-                  {selectedRetailer.attributes.group?.toUpperCase() === 'B1' && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Are you a new or existing customer at {getRetailerName(selectedRetailer)}?
-                      </p>
-                      <div className="space-y-3">
-                        {['New', 'Existing'].map((type) => (
-                          <button
-                            key={type}
-                            onClick={() => setUserType(type)}
-                            className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
-                              userType === type
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            <span className="font-medium text-foreground">{type} Customer</span>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {type === 'New' 
-                                ? 'This is my first order on this platform'
-                                : 'I have ordered from this platform before'
-                              }
-                            </p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* C1 Group - Category Selection */}
-                  {selectedRetailer.attributes.group?.toUpperCase() === 'C1' && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Please select the category of your order:
-                      </p>
-                      <div className="space-y-3">
-                        {[
-                          { value: 'Mobile Recharge', label: 'Mobile Recharge', desc: 'Prepaid/Postpaid recharge, DTH, etc.' },
-                          { value: 'No Cashback', label: 'No Cashback Category', desc: 'Product falls in no-cashback category' },
-                          { value: 'Other Category', label: 'Other Category', desc: 'General products & services' },
-                        ].map((cat) => (
-                          <button
-                            key={cat.value}
-                            onClick={() => setCategory(cat.value)}
-                            className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
-                              category === cat.value
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            <span className="font-medium text-foreground">{cat.label}</span>
-                            <p className="text-sm text-muted-foreground mt-1">{cat.desc}</p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleSubmitAdditionalDetails}
-                    disabled={isSubmitting || (selectedRetailer.attributes.group?.toUpperCase() === 'B1' && !userType) || (selectedRetailer.attributes.group?.toUpperCase() === 'C1' && !category)}
-                    className="w-full h-12"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit Claim'
                     )}
                   </Button>
                 </div>

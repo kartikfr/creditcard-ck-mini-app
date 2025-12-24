@@ -268,11 +268,9 @@ const OrderDetail: React.FC = () => {
     return formatHtmlContent(comment);
   };
 
-  // Check if raise query is allowed
+  // Check if raise query is allowed - always show if order exists
   const canRaiseQuery = () => {
-    if (!order) return false;
-    const raisequery = order.attributes.raisequery;
-    return raisequery === 'yes' || raisequery === 'true' || raisequery === '1';
+    return !!order;
   };
 
   // Check if there's an existing ticket

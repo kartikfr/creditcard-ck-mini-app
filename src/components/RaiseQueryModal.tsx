@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Loader2, X, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Loader2, ChevronRight, ArrowLeft, CheckCircle, Upload, X, HelpCircle, FileText, Image } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,26 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { raiseTicket } from '@/lib/api';
 
+interface Configuration {
+  id: number;
+  type: string;
+  attributes: {
+    create_ticket?: string;
+    question?: string;
+    answer?: any;
+    section?: any;
+    image?: string;
+    title?: string;
+    content?: string[];
+    type?: string;
+    sub_type?: string;
+    attachment_required?: string;
+    button_text?: string;
+    action_url?: string;
+    app_action_url?: string;
+  };
+}
+
 interface RaiseQueryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,16 +43,21 @@ interface RaiseQueryModalProps {
     exitId: string;
     storeName: string;
     orderId?: string;
-    queueId?: number;
+    orderAmount?: string;
+    cashbackId?: string;
   };
-  configurations?: Array<{
-    question?: string;
-    title?: string;
-    content?: string[];
-    attachment_required?: string;
-    button_text?: string;
-  }>;
+  configurations?: Configuration[];
 }
+
+interface FileAttachment {
+  file: File;
+  preview: string;
+  base64: string;
+}
+
+const MAX_FILES = 3;
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'application/pdf'];
 
 const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
   isOpen,
@@ -42,15 +67,18 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
   configurations = [],
 }) => {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [step, setStep] = useState<'form' | 'success'>('form');
+  const [step, setStep] = useState<'questions' | 'form' | 'success'>('questions');
+  const [selectedConfig, setSelectedConfig] = useState<Configuration | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form fields
   const [transactionId, setTransactionId] = useState(orderContext.orderId || '');
-  const [totalAmount, setTotalAmount] = useState('');
+  const [totalAmount, setTotalAmount] = useState(orderContext.orderAmount || '');
   const [couponCode, setCouponCode] = useState('');
   const [transactionDetails, setTransactionDetails] = useState('');
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -84,9 +112,91 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
     if (transactionDetails && transactionDetails.length > 750) {
       newErrors.transactionDetails = 'Details must be 750 characters or less';
     }
+
+    // Check if attachment is required
+    if (selectedConfig?.attributes?.attachment_required === 'yes' && attachments.length === 0) {
+      newErrors.attachments = 'At least one attachment is required';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newAttachments: FileAttachment[] = [];
+    
+    for (const file of Array.from(files)) {
+      if (attachments.length + newAttachments.length >= MAX_FILES) {
+        toast({
+          title: 'File limit reached',
+          description: `Maximum ${MAX_FILES} files allowed`,
+          variant: 'destructive',
+        });
+        break;
+      }
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Only JPEG, PNG, GIF, and PDF files are allowed',
+          variant: 'destructive',
+        });
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        toast({
+          title: 'File too large',
+          description: `${file.name} exceeds 2MB limit`,
+          variant: 'destructive',
+        });
+        continue;
+      }
+
+      // Convert to base64
+      const base64 = await fileToBase64(file);
+      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+      
+      newAttachments.push({ file, preview, base64 });
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix to get pure base64
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => {
+      const newAttachments = [...prev];
+      if (newAttachments[index].preview) {
+        URL.revokeObjectURL(newAttachments[index].preview);
+      }
+      newAttachments.splice(index, 1);
+      return newAttachments;
+    });
+  };
+
+  const handleQuestionSelect = (config: Configuration) => {
+    setSelectedConfig(config);
+    setStep('form');
   };
 
   const handleSubmit = async () => {
@@ -94,6 +204,13 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
     
     setIsSubmitting(true);
     try {
+      const fileData = attachments.map((att, idx) => ({
+        name: `attachment${idx + 1}`,
+        data: att.base64,
+        filename: att.file.name,
+        contentType: att.file.type,
+      }));
+
       await raiseTicket(
         accessToken,
         orderContext.exitClickDate,
@@ -104,14 +221,17 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
           total_amount_paid: parseFloat(totalAmount),
           coupon_code_used: couponCode || undefined,
           transaction_details: transactionDetails || undefined,
-          missing_txn_queue_id: orderContext.queueId,
-        }
+          query_type: selectedConfig?.attributes?.type,
+          query_sub_type: selectedConfig?.attributes?.sub_type,
+          cashback_id: orderContext.cashbackId ? parseInt(orderContext.cashbackId) : undefined,
+        },
+        fileData
       );
       
       setStep('success');
       toast({
         title: 'Query Submitted',
-        description: 'Your cashback query has been submitted successfully.',
+        description: 'Your query has been submitted successfully.',
       });
     } catch (error: any) {
       toast({
@@ -125,25 +245,44 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
   };
 
   const handleClose = () => {
-    setStep('form');
+    setStep('questions');
+    setSelectedConfig(null);
     setTransactionId(orderContext.orderId || '');
-    setTotalAmount('');
+    setTotalAmount(orderContext.orderAmount || '');
     setCouponCode('');
     setTransactionDetails('');
+    setAttachments([]);
     setErrors({});
     onClose();
   };
+
+  const handleBack = () => {
+    if (step === 'form') {
+      setStep('questions');
+      setSelectedConfig(null);
+    }
+  };
+
+  // Filter configurations that can create tickets
+  const ticketConfigs = configurations.filter(
+    config => config.attributes?.create_ticket === 'yes' && config.attributes?.question
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {step === 'form' ? 'Raise a Query' : 'Query Submitted'}
+            {step === 'form' && (
+              <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 -ml-2">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
+            {step === 'questions' ? 'Raise a Query' : step === 'form' ? 'Submit Details' : 'Query Submitted'}
           </DialogTitle>
         </DialogHeader>
 
-        {step === 'form' ? (
+        {step === 'questions' ? (
           <div className="space-y-4">
             {/* Store Context */}
             <div className="bg-muted/50 rounded-lg p-3 text-sm">
@@ -152,18 +291,57 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
               </p>
             </div>
 
-            {/* Configuration Questions */}
-            {configurations.length > 0 && (
+            {/* Question Icon */}
+            <div className="flex justify-center py-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <HelpCircle className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+
+            {/* What is your query about? */}
+            <h3 className="text-center font-semibold text-foreground">
+              What is your query about?
+            </h3>
+
+            {/* Dashed separator */}
+            <div className="border-t-2 border-dashed border-muted my-4" />
+
+            {/* Question List */}
+            {ticketConfigs.length > 0 ? (
               <div className="space-y-2">
-                {configurations.map((config, index) => (
-                  <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                    {config.title && <p className="font-medium text-foreground mb-1">{config.title}</p>}
-                    {config.question && <p className="text-muted-foreground">{config.question}</p>}
-                    {config.content && config.content.map((text, i) => (
-                      <p key={i} className="text-muted-foreground">{text}</p>
-                    ))}
-                  </div>
+                {ticketConfigs.map((config) => (
+                  <button
+                    key={config.id}
+                    onClick={() => handleQuestionSelect(config)}
+                    className="w-full flex items-center justify-between p-4 bg-card border rounded-lg hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <span className="text-sm text-foreground pr-2">
+                      {config.attributes.question}
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  </button>
                 ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground text-sm py-4">
+                No query options available for this order.
+              </p>
+            )}
+          </div>
+        ) : step === 'form' ? (
+          <div className="space-y-4">
+            {/* Selected Question */}
+            {selectedConfig && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                <p className="text-sm font-medium text-foreground">
+                  {selectedConfig.attributes.question}
+                </p>
+                {selectedConfig.attributes.type && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Type: {selectedConfig.attributes.type}
+                    {selectedConfig.attributes.sub_type && ` - ${selectedConfig.attributes.sub_type}`}
+                  </p>
+                )}
               </div>
             )}
 
@@ -237,6 +415,68 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
               )}
             </div>
 
+            {/* File Attachments */}
+            <div className="space-y-2">
+              <Label>
+                Attachments {selectedConfig?.attributes?.attachment_required === 'yes' ? '*' : '(Optional)'}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Max {MAX_FILES} files, 2MB each (JPEG, PNG, GIF, PDF)
+              </p>
+              
+              {/* File Preview Grid */}
+              {attachments.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 my-2">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="relative group">
+                      {att.preview ? (
+                        <img
+                          src={att.preview}
+                          alt={att.file.name}
+                          className="w-full h-20 object-cover rounded-lg border"
+                        />
+                      ) : (
+                        <div className="w-full h-20 bg-muted rounded-lg border flex items-center justify-center">
+                          <FileText className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeAttachment(idx)}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <p className="text-xs text-muted-foreground truncate mt-1">{att.file.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Button */}
+              {attachments.length < MAX_FILES && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Add Attachment ({attachments.length}/{MAX_FILES})
+                </Button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ALLOWED_TYPES.join(',')}
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              {errors.attachments && (
+                <p className="text-xs text-destructive">{errors.attachments}</p>
+              )}
+            </div>
+
             {/* Submit Button */}
             <Button
               onClick={handleSubmit}
@@ -260,7 +500,7 @@ const RaiseQueryModal: React.FC<RaiseQueryModalProps> = ({
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Query Submitted!</h3>
             <p className="text-muted-foreground mb-6">
-              Your cashback query has been submitted. We'll review it and get back to you soon.
+              Your query has been submitted successfully. We'll review it and get back to you soon.
             </p>
             <Button onClick={handleClose} className="w-full">
               Done

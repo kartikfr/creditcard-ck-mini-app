@@ -467,7 +467,7 @@ export const updateMissingCashbackQueue = async (
   }, accessToken);
 };
 
-// Raise a missing cashback ticket
+// Raise a ticket from order detail page
 export const raiseTicket = async (
   accessToken: string,
   exitClickDate: string,
@@ -479,32 +479,71 @@ export const raiseTicket = async (
     coupon_code_used?: string;
     transaction_details?: string;
     missing_txn_queue_id?: number;
+    query_type?: string;
+    query_sub_type?: string;
+    cashback_id?: number;
   },
-  attachments?: File[]
+  files?: Array<{ name: string; data: string; filename: string; contentType: string }>
 ) => {
-  // For multipart form data, we need to handle this differently
-  // The edge function will need to support FormData
-  const formData: Record<string, any> = {
+  // Build form fields for multipart request
+  const formFields: Record<string, string> = {
     transaction_id: ticketData.transaction_id,
-    total_amount_paid: ticketData.total_amount_paid,
+    total_amount_paid: String(ticketData.total_amount_paid),
   };
   
   if (ticketData.coupon_code_used) {
-    formData.coupon_code_used = ticketData.coupon_code_used;
+    formFields.coupon_code_used = ticketData.coupon_code_used;
   }
   if (ticketData.transaction_details) {
-    formData.transaction_details = ticketData.transaction_details;
+    formFields.transaction_details = ticketData.transaction_details;
   }
   if (ticketData.missing_txn_queue_id) {
-    formData.missing_txn_queue_id = ticketData.missing_txn_queue_id;
+    formFields.missing_txn_queue_id = String(ticketData.missing_txn_queue_id);
+  }
+  if (ticketData.query_type) {
+    formFields.type = ticketData.query_type;
+  }
+  if (ticketData.query_sub_type) {
+    formFields.sub_type = ticketData.query_sub_type;
+  }
+  if (ticketData.cashback_id) {
+    formFields.cashback_id = String(ticketData.cashback_id);
   }
 
-  // Note: File attachments require multipart/form-data support in edge function
-  // For now, we'll submit without attachments
+  // If we have files, use multipart form data
+  if (files && files.length > 0) {
+    const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
+      body: {
+        endpoint: `/users/tickets/${exitClickDate}/${storeId}/${exitId}`,
+        method: 'POST',
+        userAccessToken: accessToken,
+        isMultipart: true,
+        formFields,
+        files,
+      },
+    });
+
+    if (error) {
+      console.error('[API] Proxy error:', error);
+      throw new Error(error.message || 'API call failed');
+    }
+
+    if (data?.error) {
+      const errors = data.data?.errors;
+      if (Array.isArray(errors) && errors.length > 0) {
+        throw new Error(errors[0].detail || errors[0].title || 'API request failed');
+      }
+      throw new Error(typeof data.error === 'string' ? data.error : `API Error ${data.status}`);
+    }
+
+    return data;
+  }
+
+  // No files, use regular JSON request
   return callProxy(
     `/users/tickets/${exitClickDate}/${storeId}/${exitId}`,
     'POST',
-    formData,
+    formFields,
     accessToken
   );
 };

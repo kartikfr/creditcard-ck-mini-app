@@ -18,14 +18,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 
 interface Retailer {
-  id: string;
+  id: string | number;
   type: string;
   attributes: {
-    store_id: string;
-    store_name: string;
-    store_logo: string;
-    total_clicks: number;
-    tracked_clicks: number;
+    store_id?: string;
+    store_name?: string;
+    store_logo?: string;
+    total_clicks?: number;
+    tracked_clicks?: number;
+    // API response fields
+    report_merchant_name?: string;
+    group?: string;
+    tracking_speed?: string;
+    image_url?: string;
   };
 }
 
@@ -159,7 +164,7 @@ const MissingCashback: React.FC = () => {
   const handleSelectRetailer = (retailer: Retailer) => {
     setSelectedRetailer(retailer);
     setStep('dates');
-    loadExitClicks(retailer.attributes.store_id);
+    loadExitClicks(getRetailerId(retailer));
   };
 
   const handleSelectClick = (click: ExitClick) => {
@@ -192,7 +197,7 @@ const MissingCashback: React.FC = () => {
     try {
       const response = await validateMissingCashback(
         accessToken,
-        selectedRetailer.attributes.store_id,
+        getRetailerId(selectedRetailer),
         selectedClick.attributes.exit_date,
         orderId
       );
@@ -237,9 +242,19 @@ const MissingCashback: React.FC = () => {
     setActiveTab('new');
   };
 
-  const filteredRetailers = retailers.filter(r => 
-    r.attributes.store_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getRetailerName = (retailer: Retailer) => 
+    retailer.attributes.store_name || retailer.attributes.report_merchant_name || 'Unknown Store';
+  
+  const getRetailerImage = (retailer: Retailer) => 
+    retailer.attributes.store_logo || retailer.attributes.image_url || '';
+  
+  const getRetailerId = (retailer: Retailer) => 
+    retailer.attributes.store_id || String(retailer.id);
+
+  const filteredRetailers = retailers.filter(r => {
+    const name = getRetailerName(r);
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const formatDate = (dateStr: string) => {
     try {
@@ -402,10 +417,10 @@ const MissingCashback: React.FC = () => {
                         className="card-elevated p-4 flex items-center gap-4 text-left hover:border-primary transition-colors"
                       >
                         <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
-                          {retailer.attributes.store_logo ? (
+                          {getRetailerImage(retailer) ? (
                             <img 
-                              src={retailer.attributes.store_logo} 
-                              alt={retailer.attributes.store_name}
+                              src={getRetailerImage(retailer)} 
+                              alt={getRetailerName(retailer)}
                               className="w-full h-full object-contain"
                             />
                           ) : (
@@ -414,10 +429,10 @@ const MissingCashback: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-foreground truncate">
-                            {retailer.attributes.store_name}
+                            {getRetailerName(retailer)}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {retailer.attributes.total_clicks} clicks | {retailer.attributes.tracked_clicks} tracked
+                            {retailer.attributes.tracking_speed ? `Tracking: ${retailer.attributes.tracking_speed}` : 'Tap to select'}
                           </p>
                         </div>
                         <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
@@ -440,10 +455,10 @@ const MissingCashback: React.FC = () => {
                 
                 <div className="card-elevated p-4 mb-6 flex items-center gap-4">
                   <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
-                    {selectedRetailer.attributes.store_logo ? (
+                    {getRetailerImage(selectedRetailer) ? (
                       <img 
-                        src={selectedRetailer.attributes.store_logo} 
-                        alt={selectedRetailer.attributes.store_name}
+                        src={getRetailerImage(selectedRetailer)} 
+                        alt={getRetailerName(selectedRetailer)}
                         className="w-full h-full object-contain"
                       />
                     ) : (
@@ -451,7 +466,7 @@ const MissingCashback: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <p className="font-semibold text-foreground">{selectedRetailer.attributes.store_name}</p>
+                    <p className="font-semibold text-foreground">{getRetailerName(selectedRetailer)}</p>
                     <p className="text-sm text-muted-foreground">Select your visit date</p>
                   </div>
                 </div>
@@ -477,7 +492,7 @@ const MissingCashback: React.FC = () => {
                   <div className="card-elevated p-6 text-center">
                     <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
                     <p className="text-destructive mb-4">{exitClicksError}</p>
-                    <Button onClick={() => loadExitClicks(selectedRetailer.attributes.store_id)} variant="outline">
+                    <Button onClick={() => loadExitClicks(getRetailerId(selectedRetailer))} variant="outline">
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Retry
                     </Button>
@@ -529,10 +544,10 @@ const MissingCashback: React.FC = () => {
                 <div className="card-elevated p-4 mb-6">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center overflow-hidden">
-                      {selectedRetailer.attributes.store_logo ? (
+                      {getRetailerImage(selectedRetailer) ? (
                         <img 
-                          src={selectedRetailer.attributes.store_logo} 
-                          alt={selectedRetailer.attributes.store_name}
+                          src={getRetailerImage(selectedRetailer)} 
+                          alt={getRetailerName(selectedRetailer)}
                           className="w-full h-full object-contain"
                         />
                       ) : (
@@ -540,7 +555,7 @@ const MissingCashback: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{selectedRetailer.attributes.store_name}</p>
+                      <p className="font-semibold text-foreground">{getRetailerName(selectedRetailer)}</p>
                       <p className="text-sm text-muted-foreground">
                         Visit: {formatDate(selectedClick.attributes.exit_date)}
                       </p>

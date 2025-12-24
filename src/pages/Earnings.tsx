@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useIsMobile } from '@/hooks/use-mobile';
 import LoginPrompt from '@/components/LoginPrompt';
 import { 
   fetchEarnings, 
@@ -65,6 +66,7 @@ const Earnings: React.FC = () => {
   const { toast } = useToast();
   const { user, accessToken, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Earnings API state
   const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
@@ -253,6 +255,12 @@ const Earnings: React.FC = () => {
 
   // Payment handlers
   const handleOpenPayment = () => {
+    // On desktop, navigate to dedicated payments page
+    if (!isMobile) {
+      navigate('/payments');
+      return;
+    }
+    // On mobile, open the sheet
     setIsPaymentSheetOpen(true);
     setPaymentStep('wallet');
     setShowPaymentHistory(false);

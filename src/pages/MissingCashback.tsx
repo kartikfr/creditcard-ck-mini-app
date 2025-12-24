@@ -12,7 +12,8 @@ import {
   fetchExitClickDates, 
   validateMissingCashback,
   submitMissingCashbackQueue,
-  fetchMissingCashbackQueue 
+  fetchMissingCashbackQueue,
+  updateMissingCashbackQueue
 } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
@@ -51,6 +52,7 @@ interface Claim {
   attributes: {
     store_name?: string;
     merchant_name?: string;
+    report_store_name?: string;
     order_id: string;
     order_amount?: string;
     amount?: string;
@@ -59,10 +61,42 @@ interface Claim {
     resolved_at?: string;
     status_text?: string;
     image_url?: string;
+    store_id?: string;
+    exit_id?: string;
+    click_date?: string;
+    details?: string;
+    callback_id?: string;
+    ticket_id?: string;
+    cashback_id?: string;
+    cashbackvalue?: number;
+    user_type?: string;
+    category?: string;
+    groupid?: string;
+    status_update?: string;
+    comments?: string;
+    ticket_comments?: string;
+    ticket_status?: string;
+    missing_txn_cashback_type?: string;
+    missing_txn_cashback?: string;
   };
 }
 
-type Step = 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'success';
+interface QueueSubmitResponse {
+  data: {
+    type: string;
+    id: string | number;
+  };
+  meta?: {
+    message?: string;
+    cashback_id?: number;
+    status?: string;
+    cashbackvalue?: string;
+    cashback_type?: string;
+    under_tracking?: string;
+  };
+}
+
+type Step = 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'additionalDetails' | 'success';
 
 const MissingCashback: React.FC = () => {
   const navigate = useNavigate();
@@ -94,6 +128,12 @@ const MissingCashback: React.FC = () => {
   const [orderIdFormatError, setOrderIdFormatError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Additional details for B1/C1 groups
+  const [queueId, setQueueId] = useState<string | null>(null);
+  const [userType, setUserType] = useState<string>(''); // For B1 group
+  const [category, setCategory] = useState<string>(''); // For C1 group
+  const [submissionResult, setSubmissionResult] = useState<QueueSubmitResponse | null>(null);
+  
   // Loading/error states
   const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
   const [isLoadingExitClicks, setIsLoadingExitClicks] = useState(false);
@@ -104,8 +144,13 @@ const MissingCashback: React.FC = () => {
   const [exitClicksError, setExitClicksError] = useState<string | null>(null);
   const [claimsError, setClaimsError] = useState<string | null>(null);
   
-  // Claims filter tabs
+  // Claims filter tabs & counts
   const [claimStatusFilter, setClaimStatusFilter] = useState<string>('In Review');
+  const [claimCounts, setClaimCounts] = useState<{pending: number; resolved: number; others: number}>({
+    pending: 0,
+    resolved: 0,
+    others: 0,
+  });
 
   // Load retailers on mount
   useEffect(() => {
@@ -222,6 +267,15 @@ const MissingCashback: React.FC = () => {
       const response = await fetchMissingCashbackQueue(accessToken, apiStatus, 1, 50);
       const claimsData = response?.data;
       setClaims(Array.isArray(claimsData) ? claimsData : []);
+      
+      // Update counts from meta
+      if (response?.meta) {
+        setClaimCounts({
+          pending: response.meta.pending || 0,
+          resolved: response.meta.resolved || 0,
+          others: response.meta.others || 0,
+        });
+      }
     } catch (error: any) {
       console.error('Failed to load claims:', error);
       const errorMsg = error.message?.toLowerCase() || '';
@@ -318,7 +372,7 @@ const MissingCashback: React.FC = () => {
     
     try {
       const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
-      await submitMissingCashbackQueue(
+      const response = await submitMissingCashbackQueue(
         accessToken,
         getRetailerId(selectedRetailer),
         exitDate,
@@ -326,17 +380,97 @@ const MissingCashback: React.FC = () => {
         orderAmount
       );
       
-      setStep('success');
+      setSubmissionResult(response);
       
-      toast({
-        title: 'Claim Submitted!',
-        description: 'Your missing cashback claim has been added to the queue.',
-      });
+      // Check if additional details are needed based on store group
+      const storeGroup = selectedRetailer.attributes.group?.toUpperCase();
+      const returnedQueueId = response?.data?.id;
+      
+      if (returnedQueueId) {
+        setQueueId(String(returnedQueueId));
+      }
+      
+      // B1 group needs user_type, C1 group needs category
+      if (storeGroup === 'B1' || storeGroup === 'C1') {
+        setStep('additionalDetails');
+        toast({
+          title: 'Almost Done!',
+          description: 'Please provide additional details to complete your claim.',
+        });
+      } else {
+        // Direct success for groups A, B2, C2
+        setStep('success');
+        
+        // Show appropriate message based on response
+        const successMessage = response?.meta?.cashback_id 
+          ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
+          : 'Your missing cashback claim has been added to the queue.';
+          
+        toast({
+          title: 'Claim Submitted!',
+          description: successMessage,
+        });
+      }
     } catch (error: any) {
       console.error('Failed to submit claim:', error);
       toast({
         title: 'Submission Failed',
         description: error.message || 'Failed to submit your claim. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle additional details submission for B1/C1 groups
+  const handleSubmitAdditionalDetails = async () => {
+    if (!queueId || !accessToken) return;
+    
+    const storeGroup = selectedRetailer?.attributes.group?.toUpperCase();
+    
+    if (storeGroup === 'B1' && !userType) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select whether you are a new or existing customer.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (storeGroup === 'C1' && !category) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select the order category.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const response = await updateMissingCashbackQueue(accessToken, queueId, {
+        user_type: storeGroup === 'B1' ? userType : undefined,
+        category: storeGroup === 'C1' ? category : undefined,
+      });
+      
+      setSubmissionResult(response);
+      setStep('success');
+      
+      const successMessage = response?.meta?.cashback_id 
+        ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
+        : 'Your missing cashback claim has been submitted successfully.';
+        
+      toast({
+        title: 'Claim Submitted!',
+        description: successMessage,
+      });
+    } catch (error: any) {
+      console.error('Failed to submit additional details:', error);
+      toast({
+        title: 'Submission Failed',
+        description: error.message || 'Failed to submit additional details.',
         variant: 'destructive',
       });
     } finally {
@@ -358,6 +492,10 @@ const MissingCashback: React.FC = () => {
     } else if (step === 'orderAmount') {
       setStep('orderId');
       setOrderAmount('');
+    } else if (step === 'additionalDetails') {
+      setStep('orderAmount');
+      setUserType('');
+      setCategory('');
     }
   };
 
@@ -369,6 +507,10 @@ const MissingCashback: React.FC = () => {
     setOrderAmount('');
     setOrderIdMeta(null);
     setOrderIdFormatError(null);
+    setQueueId(null);
+    setUserType('');
+    setCategory('');
+    setSubmissionResult(null);
     setActiveTab('new');
   };
 
@@ -472,9 +614,10 @@ const MissingCashback: React.FC = () => {
             <h1 className="text-xl font-display font-bold text-foreground">
               {step === 'retailers' && 'Did you shop?'}
               {step === 'dates' && 'Select your shopping date'}
-              {step === 'orderId' && `Now, tell us your ${getRetailerName(selectedRetailer!)} order ID`}
-              {step === 'orderAmount' && `Now, tell us your ${getRetailerName(selectedRetailer!)} Order Amount`}
-              {step === 'success' && 'Claim Submitted'}
+              {step === 'orderId' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} order ID`}
+              {step === 'orderAmount' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} Order Amount`}
+              {step === 'additionalDetails' && 'Just one more step'}
+              {step === 'success' && (submissionResult?.meta?.cashback_id ? 'Cashback Added!' : 'Claim Submitted')}
             </h1>
           </div>
         </div>
@@ -806,6 +949,107 @@ const MissingCashback: React.FC = () => {
               </div>
             )}
 
+            {/* Step 5: Additional Details (B1/C1 groups) */}
+            {step === 'additionalDetails' && selectedRetailer && (
+              <div className="animate-fade-in">
+                {/* Selected Retailer Badge */}
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="w-6 h-6 bg-white rounded overflow-hidden">
+                      {getRetailerImage(selectedRetailer) ? (
+                        <img 
+                          src={getRetailerImage(selectedRetailer)} 
+                          alt={getRetailerName(selectedRetailer)}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-xs">{getRetailerName(selectedRetailer).charAt(0)}</span>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-amber-700">
+                      {getRetailerName(selectedRetailer)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {/* B1 Group - User Type Selection */}
+                  {selectedRetailer.attributes.group?.toUpperCase() === 'B1' && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Are you a new or existing customer at {getRetailerName(selectedRetailer)}?
+                      </p>
+                      <div className="space-y-3">
+                        {['New', 'Existing'].map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => setUserType(type)}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                              userType === type
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            <span className="font-medium text-foreground">{type} Customer</span>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {type === 'New' 
+                                ? 'This is my first order on this platform'
+                                : 'I have ordered from this platform before'
+                              }
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* C1 Group - Category Selection */}
+                  {selectedRetailer.attributes.group?.toUpperCase() === 'C1' && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Please select the category of your order:
+                      </p>
+                      <div className="space-y-3">
+                        {[
+                          { value: 'Mobile Recharge', label: 'Mobile Recharge', desc: 'Prepaid/Postpaid recharge, DTH, etc.' },
+                          { value: 'No Cashback', label: 'No Cashback Category', desc: 'Product falls in no-cashback category' },
+                          { value: 'Other Category', label: 'Other Category', desc: 'General products & services' },
+                        ].map((cat) => (
+                          <button
+                            key={cat.value}
+                            onClick={() => setCategory(cat.value)}
+                            className={`w-full p-4 rounded-lg border-2 text-left transition-colors ${
+                              category === cat.value
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            <span className="font-medium text-foreground">{cat.label}</span>
+                            <p className="text-sm text-muted-foreground mt-1">{cat.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleSubmitAdditionalDetails}
+                    disabled={isSubmitting || (selectedRetailer.attributes.group?.toUpperCase() === 'B1' && !userType) || (selectedRetailer.attributes.group?.toUpperCase() === 'C1' && !category)}
+                    className="w-full h-12"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Claim'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Success State */}
             {step === 'success' && (
               <div className="animate-fade-in">
@@ -813,9 +1057,14 @@ const MissingCashback: React.FC = () => {
                   <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-success" />
                   </div>
-                  <h2 className="text-xl font-semibold text-foreground mb-2">Claim Submitted!</h2>
+                  <h2 className="text-xl font-semibold text-foreground mb-2">
+                    {submissionResult?.meta?.cashback_id ? 'Cashback Added!' : 'Claim Submitted!'}
+                  </h2>
                   <p className="text-muted-foreground mb-6">
-                    Your missing cashback claim has been added to the review queue.
+                    {submissionResult?.meta?.cashback_id 
+                      ? `₹${submissionResult.meta.cashbackvalue || '0'} ${submissionResult.meta.cashback_type || 'Cashback'} has been added to your account.`
+                      : 'Your missing cashback claim has been added to the review queue.'
+                    }
                   </p>
                   
                   <div className="bg-muted/50 rounded-lg p-4 mb-6 text-left">
@@ -823,6 +1072,9 @@ const MissingCashback: React.FC = () => {
                       <p><strong>Store:</strong> {selectedRetailer && getRetailerName(selectedRetailer)}</p>
                       <p><strong>Order ID:</strong> {orderId}</p>
                       <p><strong>Amount:</strong> ₹{orderAmount}</p>
+                      {submissionResult?.meta?.under_tracking === 'no' && (
+                        <p className="text-success"><strong>Status:</strong> Cashback resolved immediately</p>
+                      )}
                     </div>
                   </div>
                   
@@ -847,20 +1099,23 @@ const MissingCashback: React.FC = () => {
 
             {/* Status Filter Tabs */}
             <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-              {['In Review', 'Closed', 'Others'].map((status) => {
-                const count = status === 'In Review' ? 1 : status === 'Closed' ? 3 : 0;
-                const isActive = claimStatusFilter === status;
+              {[
+                { key: 'In Review', count: claimCounts.pending },
+                { key: 'Closed', count: claimCounts.resolved },
+                { key: 'Others', count: claimCounts.others },
+              ].map(({ key, count }) => {
+                const isActive = claimStatusFilter === key;
                 return (
                   <button
-                    key={status}
-                    onClick={() => setClaimStatusFilter(status)}
+                    key={key}
+                    onClick={() => setClaimStatusFilter(key)}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                       isActive 
                         ? 'bg-primary text-primary-foreground' 
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}
                   >
-                    {status}
+                    {key}
                     {count > 0 && (
                       <span className={`px-1.5 py-0.5 rounded text-xs ${
                         isActive ? 'bg-primary-foreground/20' : 'bg-foreground/10'
@@ -929,16 +1184,16 @@ const MissingCashback: React.FC = () => {
                         {/* Store name and status badge */}
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <span className="font-medium text-foreground">
-                            {claim.attributes.store_name || claim.attributes.merchant_name}
+                            {claim.attributes.store_name || claim.attributes.merchant_name || claim.attributes.report_store_name}
                           </span>
                           <Badge className={`${getStatusBadgeStyle(claim.attributes.status)} text-xs`}>
                             {getClaimStatusText(claim.attributes.status)}
                           </Badge>
                         </div>
                         
-                        {/* Status text */}
+                        {/* Details/Status text */}
                         <p className="text-sm text-primary mb-2">
-                          {claim.attributes.status_text || 'We need more details from you to track your Cashback'}
+                          {claim.attributes.details || claim.attributes.status_text || 'Waiting for auto tracking'}
                         </p>
                         
                         {/* Order details */}
@@ -947,10 +1202,25 @@ const MissingCashback: React.FC = () => {
                           {(claim.attributes.order_amount || claim.attributes.amount) && (
                             <p>Order Amount: ₹{claim.attributes.order_amount || claim.attributes.amount}</p>
                           )}
+                          {claim.attributes.click_date && (
+                            <p>Visit Date: {formatFullDate(claim.attributes.click_date)}</p>
+                          )}
+                          {claim.attributes.cashbackvalue && claim.attributes.cashbackvalue > 0 && (
+                            <p className="text-success font-medium">
+                              Cashback Added: ₹{claim.attributes.cashbackvalue}
+                            </p>
+                          )}
+                          {claim.attributes.ticket_status && (
+                            <p>Ticket Status: {claim.attributes.ticket_status}</p>
+                          )}
+                          {claim.attributes.ticket_comments && (
+                            <p className="text-xs italic mt-1">"{claim.attributes.ticket_comments}"</p>
+                          )}
                         </div>
                         
-                        {/* Upload Screenshot link */}
-                        {claim.attributes.status?.toLowerCase() === 'pending' && (
+                        {/* Upload Screenshot link - only for pending claims needing details */}
+                        {claim.attributes.status?.toLowerCase() === 'pending' && 
+                         claim.attributes.details?.toLowerCase().includes('waiting') && (
                           <button className="flex items-center gap-1.5 text-primary text-sm mt-3 hover:underline">
                             <Upload className="w-4 h-4" />
                             Upload Screenshot →

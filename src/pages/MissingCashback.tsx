@@ -78,11 +78,20 @@ const MissingCashback: React.FC = () => {
   const [exitClicks, setExitClicks] = useState<ExitClick[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
   
+  // Meta info from exit clicks API for order ID validation
+  const [orderIdMeta, setOrderIdMeta] = useState<{
+    sample_orderid?: string;
+    orderid_hint_message?: string;
+    orderid_format?: Record<string, string>;
+    report_merchant_name?: string;
+  } | null>(null);
+  
   // Selection states
   const [selectedRetailer, setSelectedRetailer] = useState<Retailer | null>(null);
   const [selectedClick, setSelectedClick] = useState<ExitClick | null>(null);
   const [orderId, setOrderId] = useState('');
   const [orderAmount, setOrderAmount] = useState('');
+  const [orderIdFormatError, setOrderIdFormatError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   // Loading/error states
@@ -132,15 +141,65 @@ const MissingCashback: React.FC = () => {
     if (!accessToken) return;
     setIsLoadingExitClicks(true);
     setExitClicksError(null);
+    setOrderIdMeta(null);
     
     try {
       const response = await fetchExitClickDates(accessToken, storeId);
       setExitClicks(response.data || []);
+      
+      // Store meta info for order ID validation
+      if (response.meta) {
+        setOrderIdMeta({
+          sample_orderid: response.meta.sample_orderid,
+          orderid_hint_message: response.meta.orderid_hint_message,
+          orderid_format: response.meta.orderid_format,
+          report_merchant_name: response.meta.report_merchant_name,
+        });
+      }
     } catch (error: any) {
       console.error('Failed to load exit clicks:', error);
       setExitClicksError(error.message || 'Failed to load visit dates');
     } finally {
       setIsLoadingExitClicks(false);
+    }
+  };
+
+  // Validate order ID format against regex patterns
+  const validateOrderIdFormat = (value: string): boolean => {
+    if (!orderIdMeta?.orderid_format || Object.keys(orderIdMeta.orderid_format).length === 0) {
+      return true; // No format specified, consider valid
+    }
+    
+    // Check against each regex pattern
+    for (const [, regexStr] of Object.entries(orderIdMeta.orderid_format)) {
+      try {
+        // Parse regex string like "/^40[0-9]{1,1}-[0-9]{7,7}-[0-9]{7,7}$/i"
+        const match = regexStr.match(/^\/(.+)\/([gimsuy]*)$/);
+        if (match) {
+          const pattern = new RegExp(match[1], match[2]);
+          if (pattern.test(value)) {
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Invalid regex pattern:', regexStr, e);
+      }
+    }
+    return false;
+  };
+
+  const handleOrderIdChange = (value: string) => {
+    setOrderId(value);
+    
+    if (value && orderIdMeta?.orderid_format && Object.keys(orderIdMeta.orderid_format).length > 0) {
+      const isValid = validateOrderIdFormat(value);
+      if (!isValid) {
+        setOrderIdFormatError(`Order ID should look like ${orderIdMeta.sample_orderid || 'the expected format'}`);
+      } else {
+        setOrderIdFormatError(null);
+      }
+    } else {
+      setOrderIdFormatError(null);
     }
   };
 
@@ -290,10 +349,12 @@ const MissingCashback: React.FC = () => {
       setStep('retailers');
       setSelectedRetailer(null);
       setExitClicks([]);
+      setOrderIdMeta(null);
     } else if (step === 'orderId') {
       setStep('dates');
       setSelectedClick(null);
       setOrderId('');
+      setOrderIdFormatError(null);
     } else if (step === 'orderAmount') {
       setStep('orderId');
       setOrderAmount('');
@@ -306,6 +367,8 @@ const MissingCashback: React.FC = () => {
     setSelectedClick(null);
     setOrderId('');
     setOrderAmount('');
+    setOrderIdMeta(null);
+    setOrderIdFormatError(null);
     setActiveTab('new');
   };
 
@@ -641,21 +704,36 @@ const MissingCashback: React.FC = () => {
                     </label>
                     <Input
                       type="text"
-                      placeholder="e.g., 962-1198956-0957613"
+                      placeholder={orderIdMeta?.sample_orderid ? `e.g., ${orderIdMeta.sample_orderid}` : "Enter your order ID"}
                       value={orderId}
-                      onChange={(e) => setOrderId(e.target.value)}
-                      className="h-14 text-lg"
+                      onChange={(e) => handleOrderIdChange(e.target.value)}
+                      className={`h-14 text-lg ${orderIdFormatError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                     />
-                    <p className="text-xs text-primary mt-2">
-                      Please use {getRetailerName(selectedRetailer)} Registered Mobile Number
-                    </p>
+                    {/* Show sample order ID hint */}
+                    {orderIdMeta?.sample_orderid && (
+                      <p className="text-xs text-primary mt-2">
+                        Order ID should look like {orderIdMeta.sample_orderid}
+                      </p>
+                    )}
+                    {/* Show hint message if available */}
+                    {orderIdMeta?.orderid_hint_message && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {orderIdMeta.orderid_hint_message}
+                      </p>
+                    )}
+                    {/* Show format validation error */}
+                    {orderIdFormatError && (
+                      <p className="text-xs text-destructive mt-1">
+                        {orderIdFormatError}
+                      </p>
+                    )}
                   </div>
 
                   <Button
                     onClick={handleValidateOrderId}
-                    disabled={isValidating || !orderId}
+                    disabled={isValidating || !orderId || !!orderIdFormatError}
                     className="w-full h-12"
-                    variant={orderId ? 'default' : 'secondary'}
+                    variant={orderId && !orderIdFormatError ? 'default' : 'secondary'}
                   >
                     {isValidating ? (
                       <>

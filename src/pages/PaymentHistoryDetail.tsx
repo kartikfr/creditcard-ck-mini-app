@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -33,41 +33,100 @@ interface PaymentMeta {
   total_amount: string;
 }
 
+const PAGE_SIZE = 20;
+
 const PaymentHistoryDetail = () => {
   const navigate = useNavigate();
   const { cashoutId } = useParams<{ cashoutId: string }>();
   const { accessToken, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [downloadingExcel, setDownloadingExcel] = useState(false);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [meta, setMeta] = useState<PaymentMeta | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const fetchDetails = useCallback(async (page: number, isLoadMore = false) => {
+    if (!accessToken || !cashoutId) return;
+    
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    
+    try {
+      const response = await fetchPaymentHistoryDetail(accessToken, parseInt(cashoutId), page, PAGE_SIZE);
+      const newTransactions = response?.data || [];
+      const responseMeta = response?.meta;
+      
+      if (isLoadMore) {
+        setTransactions(prev => [...prev, ...newTransactions]);
+      } else {
+        setTransactions(newTransactions);
+      }
+      
+      setMeta(responseMeta || null);
+      
+      // Check if there are more pages
+      if (responseMeta) {
+        const totalPages = Math.ceil(responseMeta.total_records / PAGE_SIZE);
+        setHasMore(page < totalPages);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment history detail:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load payment details',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [accessToken, cashoutId, toast]);
 
   useEffect(() => {
-    const fetchDetails = async () => {
-      if (!accessToken || !cashoutId) return;
-      setLoading(true);
-      try {
-        const response = await fetchPaymentHistoryDetail(accessToken, parseInt(cashoutId), 1, 20);
-        setTransactions(response?.data || []);
-        setMeta(response?.meta || null);
-      } catch (error) {
-        console.error('Failed to fetch payment history detail:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load payment details',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
+    if (isAuthenticated && cashoutId) {
+      setCurrentPage(1);
+      setTransactions([]);
+      setHasMore(true);
+      fetchDetails(1, false);
+    }
+  }, [accessToken, cashoutId, isAuthenticated, fetchDetails]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (loading || !hasMore) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          const nextPage = currentPage + 1;
+          setCurrentPage(nextPage);
+          fetchDetails(nextPage, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
       }
     };
-
-    if (isAuthenticated && cashoutId) {
-      fetchDetails();
-    }
-  }, [accessToken, cashoutId, isAuthenticated]);
+  }, [loading, hasMore, loadingMore, currentPage, fetchDetails]);
 
   const handleDownloadExcel = async () => {
     if (!accessToken || !cashoutId) return;
@@ -168,9 +227,11 @@ const PaymentHistoryDetail = () => {
                 <h2 className="text-xl font-semibold text-foreground">
                   Request ID: {cashoutId}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Only 10 orders are shown here. To see more, click Download
-                </p>
+                {meta && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Showing {transactions.length} of {meta.total_records} orders
+                  </p>
+                )}
               </div>
               
               <div className="flex gap-3">
@@ -242,6 +303,19 @@ const PaymentHistoryDetail = () => {
                     ))}
                   </TableBody>
                 </Table>
+                
+                {/* Load More Trigger */}
+                <div ref={loadMoreRef} className="py-4 flex justify-center">
+                  {loadingMore && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Loading more...</span>
+                    </div>
+                  )}
+                  {!hasMore && transactions.length > 0 && (
+                    <p className="text-sm text-muted-foreground">No more transactions</p>
+                  )}
+                </div>
               </div>
             )}
 

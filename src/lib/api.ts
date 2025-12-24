@@ -19,80 +19,9 @@ import { supabase } from '@/integrations/supabase/client';
 // Token refresh interval (10 minutes = 600000ms)
 const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000;
 
-// Retry configuration
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 500; // 500ms
-
-// Cache configuration
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const CACHE_KEYS = {
-  HOMEPAGE: 'api_cache_homepage',
-  CATEGORY_OFFERS: 'api_cache_category_offers',
-};
-
 // Token state
 let currentGuestToken: string | null = null;
 let tokenRefreshTimer: NodeJS.Timeout | null = null;
-let tokenRefreshInProgress: Promise<string> | null = null; // Prevents race conditions
-
-// ============= CACHING UTILITIES =============
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const setCache = <T>(key: string, data: T): void => {
-  try {
-    const entry: CacheEntry<T> = { data, timestamp: Date.now() };
-    localStorage.setItem(key, JSON.stringify(entry));
-    console.log(`[Cache] Saved ${key}`);
-  } catch (e) {
-    console.warn('[Cache] Failed to save:', e);
-  }
-};
-
-const getCache = <T>(key: string): T | null => {
-  try {
-    const stored = localStorage.getItem(key);
-    if (!stored) return null;
-    
-    const entry: CacheEntry<T> = JSON.parse(stored);
-    const isExpired = Date.now() - entry.timestamp > CACHE_TTL;
-    
-    if (isExpired) {
-      console.log(`[Cache] ${key} expired`);
-      localStorage.removeItem(key);
-      return null;
-    }
-    
-    console.log(`[Cache] Hit for ${key}`);
-    return entry.data;
-  } catch (e) {
-    console.warn('[Cache] Failed to read:', e);
-    return null;
-  }
-};
-
-export const clearApiCache = (): void => {
-  Object.values(CACHE_KEYS).forEach(key => {
-    localStorage.removeItem(key);
-  });
-  console.log('[Cache] Cleared all API cache');
-};
-
-// ============= RETRY LOGIC =============
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const isRetryableError = (error: any, status?: number): boolean => {
-  // Retry on 5xx errors or network failures
-  if (status && status >= 500) return true;
-  if (error?.message?.includes('API Error 5')) return true;
-  if (error?.message?.includes('fetch failed')) return true;
-  if (error?.message?.includes('network')) return true;
-  return false;
-};
 
 // Helper to decode JWT and get expiration time
 const getTokenExpiration = (token: string): number | null => {
@@ -111,68 +40,38 @@ const isTokenExpired = (token: string): boolean => {
   return Date.now() >= exp - 60000; // 60 second buffer before expiration
 };
 
-// Helper to call the proxy edge function with retry logic
-const callProxy = async (endpoint: string, method = 'GET', body?: any, accessToken?: string): Promise<any> => {
+// Helper to call the proxy edge function
+const callProxy = async (endpoint: string, method = 'GET', body?: any, accessToken?: string) => {
   console.log(`[API] Calling proxy: ${method} ${endpoint}`);
   console.log(`[API] Using token:`, accessToken ? 'Bearer token provided' : 'No token (will use Basic Auth for /token)');
   
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
-        body: {
-          endpoint,
-          method,
-          body,
-          userAccessToken: accessToken,
-        },
-      });
+  const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
+    body: {
+      endpoint,
+      method,
+      body,
+      userAccessToken: accessToken,
+    },
+  });
 
-      if (error) {
-        console.error('[API] Proxy error:', error);
-        throw new Error(error.message || 'API call failed');
-      }
-
-      // Handle API-level errors (edge fn now returns 200 with error in body)
-      if (data?.error) {
-        console.error('[API] API error:', data);
-        const status = data.status;
-        
-        // Check if retryable (5xx error)
-        if (isRetryableError(null, status) && attempt < MAX_RETRIES - 1) {
-          const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-          console.log(`[API] Retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})...`);
-          await sleep(delay);
-          continue;
-        }
-        
-        // Extract user-friendly message from CashKaro error format
-        const errors = data.data?.errors;
-        if (Array.isArray(errors) && errors.length > 0) {
-          const firstError = errors[0];
-          throw new Error(firstError.detail || firstError.title || 'API request failed');
-        }
-        throw new Error(typeof data.error === 'string' ? data.error : `API Error ${status}`);
-      }
-
-      return data;
-    } catch (err: any) {
-      lastError = err;
-      
-      // Check if this error is retryable
-      if (isRetryableError(err) && attempt < MAX_RETRIES - 1) {
-        const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt);
-        console.log(`[API] Retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})...`);
-        await sleep(delay);
-        continue;
-      }
-      
-      throw err;
-    }
+  if (error) {
+    console.error('[API] Proxy error:', error);
+    throw new Error(error.message || 'API call failed');
   }
-  
-  throw lastError || new Error('Max retries exceeded');
+
+  // Handle API-level errors (edge fn now returns 200 with error in body)
+  if (data?.error) {
+    console.error('[API] API error:', data);
+    // Extract user-friendly message from CashKaro error format
+    const errors = data.data?.errors;
+    if (Array.isArray(errors) && errors.length > 0) {
+      const firstError = errors[0];
+      throw new Error(firstError.detail || firstError.title || 'API request failed');
+    }
+    throw new Error(typeof data.error === 'string' ? data.error : `API Error ${data.status}`);
+  }
+
+  return data;
 };
 
 // Generate initial access token
@@ -185,29 +84,12 @@ export const generateToken = async (): Promise<string> => {
   return token;
 };
 
-// Initialize and maintain guest token (with lock to prevent race conditions)
+// Initialize and maintain guest token
 export const initGuestToken = async (): Promise<string> => {
-  // If a refresh is already in progress, wait for it
-  if (tokenRefreshInProgress) {
-    console.log('[API] Token refresh already in progress, waiting...');
-    return tokenRefreshInProgress;
-  }
-  
   if (!currentGuestToken || isTokenExpired(currentGuestToken)) {
     console.log('[API] Token missing or expired, generating new one...');
-    
-    // Create a promise for this refresh operation
-    tokenRefreshInProgress = (async () => {
-      try {
-        currentGuestToken = await generateToken();
-        startTokenRefresh();
-        return currentGuestToken;
-      } finally {
-        tokenRefreshInProgress = null;
-      }
-    })();
-    
-    return tokenRefreshInProgress;
+    currentGuestToken = await generateToken();
+    startTokenRefresh();
   }
   return currentGuestToken;
 };
@@ -387,101 +269,34 @@ export const refreshToken = async (refreshTokenStr: string, currentAccessToken: 
   );
 };
 
-// Fetch dynamic homepage (uses GUEST TOKEN - offers scope) with caching
+// Fetch dynamic homepage (uses GUEST TOKEN - offers scope)
 // NOTE: Always use Desktop device type because Mobile API returns different structure without page_elements
-export const fetchDynamicPage = async (useCache = true) => {
-  // Try cache first
-  if (useCache) {
-    const cached = getCache<any>(CACHE_KEYS.HOMEPAGE);
-    if (cached) {
-      console.log('[API] Returning cached homepage data');
-      return cached;
-    }
-  }
-  
+export const fetchDynamicPage = async () => {
   const guestToken = await getGuestToken();
   console.log('[API] fetchDynamicPage using guest token');
-  
-  try {
-    const response = await callProxy(
-      `/dynamicpage/api-homepage?device=Desktop&include=seo_content&filter[deal_card_type]=flash_site`,
-      'GET',
-      undefined,
-      guestToken
-    );
-    
-    // Cache successful response
-    if (response?.data) {
-      setCache(CACHE_KEYS.HOMEPAGE, response);
-    }
-    
-    return response;
-  } catch (error) {
-    // On error, try to return cached data even if expired
-    console.log('[API] fetchDynamicPage failed, checking stale cache...');
-    const staleData = localStorage.getItem(CACHE_KEYS.HOMEPAGE);
-    if (staleData) {
-      try {
-        const entry = JSON.parse(staleData);
-        console.log('[API] Returning stale cached homepage data');
-        return entry.data;
-      } catch {}
-    }
-    throw error;
-  }
+  return callProxy(
+    `/dynamicpage/api-homepage?device=Desktop&include=seo_content&filter[deal_card_type]=flash_site`,
+    'GET',
+    undefined,
+    guestToken
+  );
 };
 
-// Fetch category offers with pagination (uses GUEST TOKEN - offers scope) with caching
+// Fetch category offers with pagination (uses GUEST TOKEN - offers scope)
 export const fetchCategoryOffers = async (
   categoryPath: string = 'home-categories-exclusive/banking-finance-offers',
   pageNumber: number = 1,
   pageSize: number = 100,
-  sort: string = 'Popularity',
-  useCache = true
+  sort: string = 'Popularity'
 ) => {
-  const cacheKey = `${CACHE_KEYS.CATEGORY_OFFERS}_${categoryPath}_${pageNumber}`;
-  
-  // Try cache first (only for page 1)
-  if (useCache && pageNumber === 1) {
-    const cached = getCache<any>(cacheKey);
-    if (cached) {
-      console.log('[API] Returning cached category offers');
-      return cached;
-    }
-  }
-  
   const guestToken = await getGuestToken();
   console.log(`[API] fetchCategoryOffers page=${pageNumber} size=${pageSize}`);
-  
-  try {
-    const response = await callProxy(
-      `/offers/category/${categoryPath}?device=Desktop&sort=${sort}&page[number]=${pageNumber}&page[size]=${pageSize}`,
-      'GET',
-      undefined,
-      guestToken
-    );
-    
-    // Cache successful response (only for page 1)
-    if (response?.data && pageNumber === 1) {
-      setCache(cacheKey, response);
-    }
-    
-    return response;
-  } catch (error) {
-    // On error, try to return cached data even if expired
-    if (pageNumber === 1) {
-      console.log('[API] fetchCategoryOffers failed, checking stale cache...');
-      const staleData = localStorage.getItem(cacheKey);
-      if (staleData) {
-        try {
-          const entry = JSON.parse(staleData);
-          console.log('[API] Returning stale cached category offers');
-          return entry.data;
-        } catch {}
-      }
-    }
-    throw error;
-  }
+  return callProxy(
+    `/offers/category/${categoryPath}?device=Desktop&sort=${sort}&page[number]=${pageNumber}&page[size]=${pageSize}`,
+    'GET',
+    undefined,
+    guestToken
+  );
 };
 
 // Fetch offer detail by unique_identifier (uses GUEST TOKEN - offers scope)

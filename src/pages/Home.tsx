@@ -76,62 +76,6 @@ interface EarningsData {
   currency?: string;
 }
 
-// Default fallback credit card offers (used when API returns 500)
-const DEFAULT_CREDIT_CARD_OFFERS: Offer[] = [
-  {
-    type: 'offer',
-    id: 'fallback-1',
-    attributes: {
-      unique_identifier: 'hdfc-regalia-credit-card',
-      name: 'HDFC Regalia Credit Card',
-      title: 'HDFC Regalia Credit Card',
-      image_url: 'https://asset22.ckassets.com/resources/image/staticpage_images/HDFC-Regalia.png',
-      cashback_ribbon_text: 'Premium Card',
-      cashback: { payment_type: 'currency', currency: 'INR', amount: '1500' },
-      cashback_type: 'Cashback',
-    },
-  },
-  {
-    type: 'offer',
-    id: 'fallback-2',
-    attributes: {
-      unique_identifier: 'axis-flipkart-credit-card',
-      name: 'Axis Flipkart Credit Card',
-      title: 'Axis Flipkart Credit Card',
-      image_url: 'https://asset22.ckassets.com/resources/image/staticpage_images/Axis-Flipkart.png',
-      cashback_ribbon_text: 'Shopping Card',
-      cashback: { payment_type: 'currency', currency: 'INR', amount: '1000' },
-      cashback_type: 'Cashback',
-    },
-  },
-  {
-    type: 'offer',
-    id: 'fallback-3',
-    attributes: {
-      unique_identifier: 'sbi-simply-click-credit-card',
-      name: 'SBI SimplyCLICK Credit Card',
-      title: 'SBI SimplyCLICK Credit Card',
-      image_url: 'https://asset22.ckassets.com/resources/image/staticpage_images/SBI-SimplyCLICK.png',
-      cashback_ribbon_text: 'Online Shopping',
-      cashback: { payment_type: 'currency', currency: 'INR', amount: '750' },
-      cashback_type: 'Cashback',
-    },
-  },
-  {
-    type: 'offer',
-    id: 'fallback-4',
-    attributes: {
-      unique_identifier: 'icici-amazon-pay-credit-card',
-      name: 'ICICI Amazon Pay Credit Card',
-      title: 'ICICI Amazon Pay Credit Card',
-      image_url: 'https://asset22.ckassets.com/resources/image/staticpage_images/ICICI-Amazon.png',
-      cashback_ribbon_text: 'Amazon Rewards',
-      cashback: { payment_type: 'currency', currency: 'INR', amount: '1200' },
-      cashback_type: 'Rewards',
-    },
-  },
-];
-
 // Default API response structure (used when staging API returns empty data)
 const DEFAULT_API_RESPONSE = {
   data: [
@@ -212,10 +156,8 @@ const Home: React.FC = () => {
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const [rawApiResponse, setRawApiResponse] = useState<any>(null);
   const [usedFallback, setUsedFallback] = useState(false);
-  const [usedOffersFallback, setUsedOffersFallback] = useState(false);
   const [categoryOffers, setCategoryOffers] = useState<Offer[]>([]);
   const [offersLoading, setOffersLoading] = useState(false);
-  const [offersError, setOffersError] = useState<string | null>(null);
   const [visibleOffers, setVisibleOffers] = useState<number>(8);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -334,14 +276,12 @@ const Home: React.FC = () => {
   const loadCategoryOffers = useCallback(async () => {
     try {
       setOffersLoading(true);
-      setOffersError(null);
-      setUsedOffersFallback(false);
       console.log('[Home] Fetching category offers...');
       const response = await fetchCategoryOffers('home-categories-exclusive/banking-finance-offers', 1, 100);
       console.log('[Home] Category offers response:', response);
       
       // Parse offers from response data array
-      if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
+      if (response?.data && Array.isArray(response.data)) {
         setCategoryOffers(response.data);
         setVisibleOffers(OFFERS_PER_LOAD); // Reset visible count
         
@@ -355,20 +295,9 @@ const Home: React.FC = () => {
         } catch (e) {
           console.error('[Home] Failed to store credit card offer IDs:', e);
         }
-      } else {
-        // Empty response, use fallback
-        console.log('[Home] Empty offers response, using fallback');
-        setCategoryOffers(DEFAULT_CREDIT_CARD_OFFERS);
-        setUsedOffersFallback(true);
-        setVisibleOffers(OFFERS_PER_LOAD);
       }
     } catch (err) {
       console.error('[Home] Failed to load category offers:', err);
-      setOffersError(err instanceof Error ? err.message : 'Failed to load offers');
-      // Use fallback offers on error
-      setCategoryOffers(DEFAULT_CREDIT_CARD_OFFERS);
-      setUsedOffersFallback(true);
-      setVisibleOffers(OFFERS_PER_LOAD);
     } finally {
       setOffersLoading(false);
     }
@@ -619,38 +548,14 @@ const Home: React.FC = () => {
         {categoryOffers.length > 0 && (
           <section className="mb-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
-                  Credit Card Offers
-                  <span className="text-xs md:text-sm font-normal text-muted-foreground ml-2">
-                    ({categoryOffers.length} offers)
-                  </span>
-                </h2>
-                {usedOffersFallback && (
-                  <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded-full">
-                    Sample Data
-                  </span>
-                )}
-              </div>
+              <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
+                Credit Card Offers
+                <span className="text-xs md:text-sm font-normal text-muted-foreground ml-2">
+                  ({categoryOffers.length} offers)
+                </span>
+              </h2>
               <CheckEligibilityButton />
             </div>
-
-            {/* Service Notice when using fallback */}
-            {usedOffersFallback && offersError && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 flex items-center justify-between">
-                <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Service temporarily unavailable. Showing sample offers.
-                </p>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => loadCategoryOffers()}
-                  className="text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                >
-                  <RefreshCw className="w-4 h-4 mr-1" /> Retry
-                </Button>
-              </div>
-            )}
             
             {/* Offers Grid with Lazy Loading */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">

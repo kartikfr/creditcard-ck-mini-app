@@ -189,9 +189,9 @@ const CountdownTimer: React.FC<{ targetDate: string }> = ({ targetDate }) => {
 };
 
 // Category options for different groups
+// Note: C2 (Flipkart) uses Raise Ticket API flow, not PUT to queue, so not included here
 const CATEGORY_OPTIONS: Record<string, string[]> = {
   'C1': ['Mobile Recharge', 'No Cashback', 'Other Category'],
-  'C2': ['Electronics', 'Fashion', 'Grocery', 'Other Category'],
   'B2': ['Electronics', 'Fashion', 'Home', 'Other Category'],
 };
 
@@ -430,8 +430,9 @@ const MissingCashback: React.FC = () => {
   };
 
   // Check if group requires additional details after submission
+  // Note: C2 (Flipkart) uses a different "Raise Ticket" API flow, not PUT to queue
   const groupRequiresAdditionalDetails = (group: string): boolean => {
-    return ['B1', 'B2', 'C1', 'C2'].includes(group);
+    return ['B1', 'B2', 'C1'].includes(group);
   };
 
   const handleValidateOrderId = async () => {

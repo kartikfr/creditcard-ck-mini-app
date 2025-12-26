@@ -498,10 +498,20 @@ const OrderDetail: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold text-foreground mb-1">Query Already Raised</p>
-                    <p className="text-sm text-muted-foreground">
-                      Status: <span className="font-medium">{getExistingTicket()?.status || 'In Progress'}</span>
-                    </p>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="font-semibold text-foreground">Query Already Raised</p>
+                      {getExistingTicket()?.status && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          getExistingTicket()?.status?.toLowerCase() === 'open' || getExistingTicket()?.status?.toLowerCase() === 'pending'
+                            ? 'bg-amber-500 text-white'
+                            : getExistingTicket()?.status?.toLowerCase() === 'resolved' || getExistingTicket()?.status?.toLowerCase() === 'closed'
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-blue-500 text-white'
+                        }`}>
+                          {getExistingTicket()?.status}
+                        </span>
+                      )}
+                    </div>
                     {getExistingTicket()?.question && (
                       <p className="text-sm text-muted-foreground mt-1">
                         Query: {getExistingTicket()?.question}
@@ -659,10 +669,20 @@ const OrderDetail: React.FC = () => {
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-foreground mb-1">Query Already Raised</p>
-                  <p className="text-sm text-muted-foreground">
-                    Status: <span className="font-medium">{getExistingTicket()?.status || 'In Progress'}</span>
-                  </p>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="font-semibold text-foreground">Query Already Raised</p>
+                    {getExistingTicket()?.status && (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        getExistingTicket()?.status?.toLowerCase() === 'open' || getExistingTicket()?.status?.toLowerCase() === 'pending'
+                          ? 'bg-amber-500 text-white'
+                          : getExistingTicket()?.status?.toLowerCase() === 'resolved' || getExistingTicket()?.status?.toLowerCase() === 'closed'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-blue-500 text-white'
+                      }`}>
+                        {getExistingTicket()?.status}
+                      </span>
+                    )}
+                  </div>
                   {getExistingTicket()?.question && (
                     <p className="text-sm text-muted-foreground mt-1">
                       Query: {getExistingTicket()?.question}

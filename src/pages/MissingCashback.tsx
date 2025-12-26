@@ -1013,6 +1013,9 @@ const MissingCashback: React.FC = () => {
                         
                         {/* Order details */}
                         <div className="space-y-1 text-sm text-muted-foreground">
+                          {claim.attributes.ticket_id && (
+                            <p>Ticket ID: {claim.attributes.ticket_id}</p>
+                          )}
                           <p>Order ID: {claim.attributes.order_id}</p>
                           {(claim.attributes.order_amount || claim.attributes.amount) && (
                             <p>Order Amount: ₹{claim.attributes.order_amount || claim.attributes.amount}</p>

@@ -412,7 +412,9 @@ const MissingCashback: React.FC = () => {
   const handleSelectRetailer = (retailer: Retailer) => {
     setSelectedRetailer(retailer);
     // Store group and tracking speed for later use
-    setSelectedRetailerGroup(retailer.attributes.group || 'A');
+    // IMPORTANT: Do NOT default to 'A' - use empty string for unknown groups
+    // This ensures we don't misclassify stores and force wrong additional details flows
+    setSelectedRetailerGroup(retailer.attributes.group || '');
     setSelectedRetailerTrackingSpeed(retailer.attributes.tracking_speed || '72h');
     setStep('dates');
     loadExitClicks(getRetailerId(retailer));
@@ -515,7 +517,9 @@ const MissingCashback: React.FC = () => {
       // Check response status and flow:
       // 1. If cashback was tracked immediately (cashback_id exists), show tracked modal
       // 2. If status is "Resolved" (already processed), go to success - no additional details needed
-      // 3. If still under_tracking="yes" AND group requires additional details, show that step
+      // 3. IMPORTANT: Only show additional details if BOTH:
+      //    - The group requires additional details (B1, B2, C1)
+      //    - AND the server indicates it's needed (no immediate resolution)
       // 4. Otherwise, normal success flow
       
       if (response?.meta?.cashback_id) {
@@ -529,20 +533,14 @@ const MissingCashback: React.FC = () => {
           title: 'Claim Submitted!',
           description: 'Your missing cashback claim has been processed.',
         });
-      } else if (response?.meta?.under_tracking === 'yes' || groupRequiresAdditionalDetails(selectedRetailerGroup)) {
-        // Still tracking or group requires additional details
-        // Only show additional details step if the group actually requires it
-        if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
-          setStep('additionalDetails');
-        } else {
-          setStep('success');
-          toast({
-            title: 'Claim Submitted!',
-            description: 'Your missing cashback claim has been added to the queue.',
-          });
-        }
+      } else if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
+        // Group B1/B2/C1 requires additional details
+        // Server didn't resolve immediately, so we need to collect additional info
+        setStep('additionalDetails');
       } else {
-        // Normal success flow for Group A and D
+        // Normal success flow for Group A, D, or unknown groups
+        // For unknown groups, we let the server handle it - if it needs additional details,
+        // user will see "Needs Info" badge in the claims list and can add details there
         setStep('success');
         toast({
           title: 'Claim Submitted!',

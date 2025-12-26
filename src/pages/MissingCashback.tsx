@@ -1725,15 +1725,44 @@ const MissingCashback: React.FC = () => {
         {/* Cashback Tracked Modal */}
         <Dialog open={showTrackedModal} onOpenChange={setShowTrackedModal}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-center">
+            {/* Close button is handled by DialogContent */}
+            <div className="text-center py-2">
+              {/* Store Logo */}
+              {selectedRetailer && (
+                <div className="w-24 h-12 mx-auto mb-4 flex items-center justify-center border rounded-lg bg-background p-2">
+                  {getRetailerImage(selectedRetailer) ? (
+                    <img 
+                      src={getRetailerImage(selectedRetailer)} 
+                      alt={getRetailerName(selectedRetailer)}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xl font-bold text-muted-foreground">
+                      {getRetailerName(selectedRetailer).charAt(0)}
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Title */}
+              <h2 className="text-xl font-semibold text-foreground mb-3">
                 Cashback Tracked
-              </DialogTitle>
-            </DialogHeader>
-            <div className="text-center py-4">
+              </h2>
+              
+              {/* Message */}
               <p className="text-muted-foreground mb-6">
                 Hi, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.
               </p>
+              
+              {/* Order ID Box */}
+              {orderId && (
+                <div className="bg-muted/50 border rounded-lg px-4 py-3 mb-6">
+                  <span className="text-sm text-muted-foreground">Order ID: </span>
+                  <span className="text-sm font-medium text-foreground">{orderId}</span>
+                </div>
+              )}
+              
+              {/* View Details Button */}
               <Button 
                 onClick={handleViewTrackedDetails}
                 className="w-full h-12"

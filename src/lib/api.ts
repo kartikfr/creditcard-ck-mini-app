@@ -450,16 +450,17 @@ export const submitMissingCashbackQueue = async (
   }, accessToken);
 };
 
-// Add additional details to missing cashback queue (for B1/C1 groups)
+// Add additional details to missing cashback queue (for B1/B2/C1 groups)
+// NOTE: Upstream exposes this as POST (not PUT) to /users/missingcashback/queue/{id}.
 export const updateMissingCashbackQueue = async (
   accessToken: string,
   queueId: string,
   additionalDetails: {
-    user_type?: string;  // For B1 group: "New" or "Existing"
-    category?: string;   // For C1 group: "Mobile Recharge" / "No Cashback" / "Other Category"
+    user_type?: string; // For B1 group: "New" or "Existing"
+    category?: string; // For B2/C1 group: category selection
   }
 ) => {
-  return callProxy(`/users/missingcashback/queue/${queueId}`, 'PUT', {
+  return callProxy(`/users/missingcashback/queue/${queueId}`, 'POST', {
     data: {
       type: 'missingcashback',
       attributes: additionalDetails,

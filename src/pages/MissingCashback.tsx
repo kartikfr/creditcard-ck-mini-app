@@ -610,7 +610,7 @@ const MissingCashback: React.FC = () => {
           return;
         }
         details.user_type = selectedUserType;
-      } else if (['B2', 'C1', 'C2'].includes(selectedRetailerGroup)) {
+      } else if (['B2', 'C1'].includes(selectedRetailerGroup)) {
         if (!selectedCategory) {
           toast({
             title: 'Please select',
@@ -676,7 +676,7 @@ const MissingCashback: React.FC = () => {
           return;
         }
         details.user_type = selectedUserType;
-      } else if (['B2', 'C1', 'C2'].includes(claimGroup)) {
+      } else if (['B2', 'C1'].includes(claimGroup)) {
         if (!selectedCategory) {
           toast({
             title: 'Please select',

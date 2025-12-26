@@ -1127,13 +1127,6 @@ const Earnings: React.FC = () => {
         {/* Navigation Links */}
         <div className="card-elevated divide-y">
           <button
-            onClick={() => navigate('/payment-history')}
-            className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
-          >
-            <span className="font-medium text-foreground">Payment History</span>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <button
             onClick={() => navigate('/orders')}
             className="w-full p-4 flex items-center justify-between hover:bg-accent/50 transition-colors"
           >

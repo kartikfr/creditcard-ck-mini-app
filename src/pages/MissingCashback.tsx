@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, ChevronRight, ChevronLeft, Search, Calendar, Hash, Clock, CheckCircle, XCircle, Loader2, RefreshCw, IndianRupee, Upload, FileText, ArrowRight } from 'lucide-react';
+import { AlertCircle, ChevronRight, ChevronLeft, Search, Calendar, Hash, Clock, CheckCircle, XCircle, Loader2, RefreshCw, IndianRupee, Upload, FileText, ArrowRight, X } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Retailer {
   id: string | number;
@@ -48,34 +54,32 @@ interface Claim {
   id: string;
   type: string;
   attributes: {
-    store_name?: string;
-    merchant_name?: string;
-    report_store_name?: string;
-    order_id: string;
-    order_amount?: string;
-    amount?: string;
-    status: string;
-    created_at?: string;
-    resolved_at?: string;
-    status_text?: string;
-    image_url?: string;
-    store_id?: string;
+    callback_id?: number;
+    ticket_id?: string | null;
+    cashback_id?: number;
+    store_id?: number;
     exit_id?: string;
     click_date?: string;
+    order_id: string;
+    order_amount?: string;
     details?: string;
-    callback_id?: string;
-    ticket_id?: string;
-    cashback_id?: string;
-    cashbackvalue?: number;
+    comments?: string | null;
+    status: string;
     user_type?: string;
-    category?: string;
+    notification_count?: number;
+    report_storename?: string;
+    imageurl?: string;
+    // Legacy fields
+    store_name?: string;
+    merchant_name?: string;
+    image_url?: string;
+    ticket_comments?: string | null;
+    cashbackvalue?: string;
+    ticket_status?: string | null;
     groupid?: string;
+    cashback_type?: string;
+    under_tracking?: string; // "yes" or "no"
     status_update?: string;
-    comments?: string;
-    ticket_comments?: string;
-    ticket_status?: string;
-    missing_txn_cashback_type?: string;
-    missing_txn_cashback?: string;
     expected_resolution_date?: string;
   };
 }
@@ -96,6 +100,60 @@ interface QueueSubmitResponse {
 }
 
 type Step = 'claims' | 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'success';
+
+// Countdown Timer Component
+const CountdownTimer: React.FC<{ targetDate: string }> = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const target = new Date(targetDate).getTime();
+      const now = Date.now();
+      const difference = target - now;
+
+      if (difference <= 0) {
+        return null;
+      }
+
+      return {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    };
+
+    setTimeLeft(calculateTimeLeft());
+    const timer = setInterval(() => {
+      const time = calculateTimeLeft();
+      setTimeLeft(time);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!timeLeft) {
+    return <span className="text-muted-foreground">Expired</span>;
+  }
+
+  // Format as MM:SS if less than an hour, otherwise show days/hours
+  if (timeLeft.days === 0 && timeLeft.hours === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
+        <Clock className="w-3.5 h-3.5" />
+        {String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
+      <Clock className="w-3.5 h-3.5" />
+      {timeLeft.days > 0 && `${timeLeft.days}d `}
+      {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
+    </span>
+  );
+};
 
 const MissingCashback: React.FC = () => {
   const navigate = useNavigate();
@@ -128,6 +186,10 @@ const MissingCashback: React.FC = () => {
   
   // Submission result
   const [submissionResult, setSubmissionResult] = useState<QueueSubmitResponse | null>(null);
+  
+  // Cashback Tracked Modal state
+  const [showTrackedModal, setShowTrackedModal] = useState(false);
+  const [trackedCashbackId, setTrackedCashbackId] = useState<number | null>(null);
   
   // Loading/error states
   const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
@@ -228,13 +290,21 @@ const MissingCashback: React.FC = () => {
     return false;
   };
 
+  // Get expected prefix from sample order ID
+  const getOrderIdPrefix = (): string => {
+    if (!orderIdMeta?.sample_orderid) return '';
+    // Extract first 2-3 characters as prefix hint
+    return orderIdMeta.sample_orderid.substring(0, 2);
+  };
+
   const handleOrderIdChange = (value: string) => {
     setOrderId(value);
     
     if (value && orderIdMeta?.orderid_format && Object.keys(orderIdMeta.orderid_format).length > 0) {
       const isValid = validateOrderIdFormat(value);
       if (!isValid) {
-        setOrderIdFormatError(`Order ID should look like ${orderIdMeta.sample_orderid || 'the expected format'}`);
+        const prefix = getOrderIdPrefix();
+        setOrderIdFormatError(`Uh oh! Enter correct Order ID. ${prefix ? `It should start with ${prefix}` : `It should look like ${orderIdMeta.sample_orderid}`}`);
       } else {
         setOrderIdFormatError(null);
       }
@@ -376,17 +446,20 @@ const MissingCashback: React.FC = () => {
       );
       
       setSubmissionResult(response);
-      setStep('success');
       
-      // Show appropriate message based on response
-      const successMessage = response?.meta?.cashback_id 
-        ? `Cashback of ₹${response.meta.cashbackvalue || '0'} has been added to your account!`
-        : 'Your missing cashback claim has been added to the queue.';
-        
-      toast({
-        title: 'Claim Submitted!',
-        description: successMessage,
-      });
+      // Check if cashback was already tracked (under_tracking: "no" means already tracked)
+      if (response?.meta?.under_tracking === 'no' && response?.meta?.cashback_id) {
+        // Show "Cashback Tracked" modal
+        setTrackedCashbackId(response.meta.cashback_id);
+        setShowTrackedModal(true);
+      } else {
+        // Normal success flow
+        setStep('success');
+        toast({
+          title: 'Claim Submitted!',
+          description: 'Your missing cashback claim has been added to the queue.',
+        });
+      }
     } catch (error: any) {
       console.error('Failed to submit claim:', error);
       toast({
@@ -427,6 +500,8 @@ const MissingCashback: React.FC = () => {
     setOrderIdMeta(null);
     setOrderIdFormatError(null);
     setSubmissionResult(null);
+    setShowTrackedModal(false);
+    setTrackedCashbackId(null);
   };
 
   const handleViewClaims = () => {
@@ -438,6 +513,15 @@ const MissingCashback: React.FC = () => {
     setOrderIdMeta(null);
     setOrderIdFormatError(null);
     setSubmissionResult(null);
+    setShowTrackedModal(false);
+    setTrackedCashbackId(null);
+  };
+
+  const handleViewTrackedDetails = () => {
+    setShowTrackedModal(false);
+    if (trackedCashbackId) {
+      navigate(`/order/${trackedCashbackId}`);
+    }
   };
 
   const getRetailerName = (retailer: Retailer) => 
@@ -495,6 +579,43 @@ const MissingCashback: React.FC = () => {
     }
   };
 
+  // Calculate expected resolution date (30 days from click_date) if not provided
+  const getExpectedResolutionDate = (claim: Claim): string | null => {
+    if (claim.attributes.expected_resolution_date) {
+      return claim.attributes.expected_resolution_date;
+    }
+    // If click_date exists, add 30 days as default tracking period
+    if (claim.attributes.click_date) {
+      const clickDate = new Date(claim.attributes.click_date);
+      clickDate.setDate(clickDate.getDate() + 30);
+      return clickDate.toISOString();
+    }
+    return null;
+  };
+
+  // Check if claim is still under tracking (within tracking period)
+  const isUnderTracking = (claim: Claim): boolean => {
+    // If API explicitly says under_tracking
+    if (claim.attributes.under_tracking === 'yes') return true;
+    if (claim.attributes.under_tracking === 'no') return false;
+    
+    // Otherwise calculate based on expected resolution date
+    const expectedDate = getExpectedResolutionDate(claim);
+    if (!expectedDate) return false;
+    
+    return new Date(expectedDate).getTime() > Date.now();
+  };
+
+  // Get claim image URL (handle both field names)
+  const getClaimImageUrl = (claim: Claim): string | undefined => {
+    return claim.attributes.imageurl || claim.attributes.image_url;
+  };
+
+  // Get claim store name (handle both field names)
+  const getClaimStoreName = (claim: Claim): string => {
+    return claim.attributes.report_storename || claim.attributes.store_name || claim.attributes.merchant_name || 'Store';
+  };
+
   // Group exit clicks by month
   const groupedExitClicks = exitClicks.reduce((acc, click) => {
     const exitDate = click.attributes.exitclick_date || click.attributes.exit_date || '';
@@ -518,14 +639,6 @@ const MissingCashback: React.FC = () => {
       return 'bg-red-500 text-white';
     }
     return 'bg-muted text-muted-foreground';
-  };
-
-  const getClaimStatusText = (status: string) => {
-    const lowerStatus = status?.toLowerCase();
-    if (lowerStatus === 'pending') return 'NEED DETAILS';
-    if (lowerStatus === 'resolved') return 'CLOSED';
-    if (lowerStatus === 'rejected') return 'REJECTED';
-    return status?.toUpperCase() || 'UNKNOWN';
   };
 
   if (!isAuthenticated) {
@@ -573,7 +686,7 @@ const MissingCashback: React.FC = () => {
       </div>
 
       {/* Status Filter Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 border-b border-border">
         {[
           { key: 'In Review', count: claimCounts.pending },
           { key: 'Closed', count: claimCounts.resolved },
@@ -584,16 +697,16 @@ const MissingCashback: React.FC = () => {
             <button
               key={key}
               onClick={() => setClaimStatusFilter(key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px] ${
                 isActive 
-                  ? 'bg-foreground text-background border-2 border-foreground' 
-                  : 'bg-background text-foreground border-2 border-border hover:border-foreground/50'
+                  ? 'text-foreground border-foreground' 
+                  : 'text-muted-foreground border-transparent hover:text-foreground'
               }`}
             >
               {key}
               {count > 0 && (
                 <span className={`px-1.5 py-0.5 rounded text-xs ${
-                  isActive ? 'bg-background/20 text-background' : 'bg-foreground/10 text-foreground'
+                  isActive ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'
                 }`}>
                   {count}
                 </span>
@@ -607,7 +720,7 @@ const MissingCashback: React.FC = () => {
       {isLoadingClaims ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card-elevated p-4">
+            <div key={i} className="border-b border-border pb-4">
               <div className="flex items-start gap-3">
                 <Skeleton className="w-16 h-16 rounded" />
                 <div className="flex-1">
@@ -620,7 +733,7 @@ const MissingCashback: React.FC = () => {
           ))}
         </div>
       ) : claimsError ? (
-        <div className="card-elevated p-6 text-center">
+        <div className="p-6 text-center">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <p className="text-destructive mb-4">{claimsError}</p>
           <Button onClick={loadClaims} variant="outline">
@@ -629,76 +742,122 @@ const MissingCashback: React.FC = () => {
           </Button>
         </div>
       ) : claims.length === 0 ? (
-        <div className="card-elevated p-8 text-center">
-          <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground mb-4">
-            No {claimStatusFilter.toLowerCase()} claims found
-          </p>
-          <Button onClick={handleNewClaim} variant="outline">
-            Submit a Claim
-          </Button>
+        <div className="p-8 text-center">
+          {/* Empty state based on filter */}
+          {claimStatusFilter === 'Closed' ? (
+            <>
+              <div className="w-24 h-24 mx-auto mb-4 bg-muted/50 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-12 h-12 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground mb-2">
+                Successfully tracked Cashbacks will show up here
+              </p>
+            </>
+          ) : claimStatusFilter === 'In Review' ? (
+            <>
+              <div className="w-24 h-24 mx-auto mb-4 bg-muted/50 rounded-lg flex items-center justify-center">
+                <Clock className="w-12 h-12 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground mb-2">
+                Cashbacks being tracked show up here
+              </p>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">
+                No {claimStatusFilter.toLowerCase()} claims found
+              </p>
+            </>
+          )}
         </div>
       ) : (
-        <div className="space-y-4">
-          {claims.map((claim) => (
-            <div key={claim.id} className="card-elevated p-4">
-              <div className="flex items-start gap-4">
+        <div className="divide-y divide-border">
+          {claims.map((claim) => {
+            const underTracking = isUnderTracking(claim);
+            const expectedDate = getExpectedResolutionDate(claim);
+            const storeName = getClaimStoreName(claim);
+            const storeImage = getClaimImageUrl(claim);
+            const isClosed = claimStatusFilter === 'Closed';
+            
+            return (
+              <div key={claim.id} className="py-4 flex items-start gap-4">
                 {/* Store Logo */}
-                <div className="w-16 h-16 md:w-20 md:h-20 bg-secondary rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 border">
-                  {claim.attributes.image_url ? (
+                <div className="w-16 h-10 bg-background rounded border flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {storeImage ? (
                     <img 
-                      src={claim.attributes.image_url} 
-                      alt={claim.attributes.store_name || claim.attributes.merchant_name}
-                      className="w-full h-full object-contain p-2"
+                      src={storeImage} 
+                      alt={storeName}
+                      className="max-w-full max-h-full object-contain p-1"
                     />
                   ) : (
-                    <FileText className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-lg font-semibold text-muted-foreground">
+                      {storeName.charAt(0)}
+                    </span>
                   )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  {/* Status message */}
-                  <p className="text-sm text-foreground mb-2">
-                    Your missing ticket is currently under review.
-                  </p>
-                  
-                  {/* Expected date */}
-                  {claim.attributes.expected_resolution_date && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm text-muted-foreground">Expect update by</span>
-                      <span className="px-2 py-1 bg-warning/10 text-warning text-sm font-medium rounded border border-warning/20">
-                        {formatExpectedDate(claim.attributes.expected_resolution_date)}
-                      </span>
-                    </div>
+                  {/* Status message based on tracking status */}
+                  {isClosed ? (
+                    <>
+                      {/* Closed/Resolved claim - show cashback added message */}
+                      <p className="text-sm text-foreground mb-1">
+                        Hurray! Cashback of ₹{claim.attributes.cashbackvalue || '0'} is added to your CashKaro Account
+                      </p>
+                    </>
+                  ) : underTracking && expectedDate ? (
+                    <>
+                      {/* Under tracking - show timer */}
+                      <p className="text-sm text-foreground mb-1">
+                        Your missing Cashback ticket is under review.
+                      </p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm text-muted-foreground">Expect update in</span>
+                        <CountdownTimer targetDate={expectedDate} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Not under tracking anymore */}
+                      <p className="text-sm text-foreground mb-1">
+                        Your missing Cashback ticket is under review.
+                      </p>
+                      {expectedDate && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm text-muted-foreground">Expected by</span>
+                          <span className="text-sm text-muted-foreground">
+                            {formatExpectedDate(expectedDate)}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                   
                   {/* Order details */}
-                  <div className="space-y-1 text-sm text-muted-foreground">
+                  <div className="space-y-0.5 text-sm text-muted-foreground">
                     <p>Order ID: {claim.attributes.order_id}</p>
-                    {claim.attributes.ticket_id && (
-                      <p>Ticket ID: {claim.attributes.ticket_id}</p>
+                    {claim.attributes.order_amount && (
+                      <p>Order Amount: ₹{claim.attributes.order_amount}</p>
                     )}
-                    <p className="text-destructive">
-                      Current Status: {claim.attributes.status === 'Pending' ? 'Under review' : claim.attributes.status}
-                    </p>
                   </div>
                   
-                  {/* View Detail button for Closed claims */}
-                  {claimStatusFilter === 'Closed' && claim.attributes.cashback_id && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="mt-3"
+                  {/* View Details link for Closed claims */}
+                  {isClosed && claim.attributes.cashback_id && (
+                    <button 
                       onClick={() => navigate(`/order/${claim.attributes.cashback_id}`)}
+                      className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
                     >
-                      View Detail
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
+                      View Details <ArrowRight className="w-3 h-3" />
+                    </button>
                   )}
                 </div>
+                
+                {/* Chevron for navigation */}
+                <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-2" />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -826,10 +985,15 @@ const MissingCashback: React.FC = () => {
               {step === 'claims' && 'Missing Cashback'}
               {step === 'retailers' && 'Did you shop?'}
               {step === 'dates' && 'Select your shopping date'}
-              {step === 'orderId' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} order ID`}
-              {step === 'orderAmount' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : ''} Order Amount`}
+              {step === 'orderId' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : 'Merchant'} Order ID`}
+              {step === 'orderAmount' && `Now, tell us your ${selectedRetailer ? getRetailerName(selectedRetailer) : 'Merchant'} Order Amount`}
               {step === 'success' && (submissionResult?.meta?.cashback_id ? 'Cashback Added!' : 'Claim Submitted')}
             </h1>
+            {step === 'orderId' && orderIdMeta?.sample_orderid && (
+              <p className="text-sm text-muted-foreground">
+                Order ID starts with {getOrderIdPrefix()}...
+              </p>
+            )}
           </div>
         </div>
 
@@ -843,22 +1007,19 @@ const MissingCashback: React.FC = () => {
         {step === 'dates' && selectedRetailer && (
           <div className="animate-fade-in">
             {/* Selected Retailer Badge */}
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="w-6 h-6 bg-white rounded overflow-hidden">
-                  {getRetailerImage(selectedRetailer) ? (
-                    <img 
-                      src={getRetailerImage(selectedRetailer)} 
-                      alt={getRetailerName(selectedRetailer)}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs">{getRetailerName(selectedRetailer).charAt(0)}</span>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-amber-700">
-                  {getRetailerName(selectedRetailer)}
-                </span>
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
+                {getRetailerImage(selectedRetailer) ? (
+                  <img 
+                    src={getRetailerImage(selectedRetailer)} 
+                    alt={getRetailerName(selectedRetailer)}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-muted-foreground">
+                    {getRetailerName(selectedRetailer).charAt(0)}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -942,53 +1103,45 @@ const MissingCashback: React.FC = () => {
         {/* Step 3: Enter Order ID */}
         {step === 'orderId' && selectedRetailer && selectedClick && (
           <div className="animate-fade-in">
-            {/* Selected Retailer Badge */}
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="w-6 h-6 bg-white rounded overflow-hidden">
-                  {getRetailerImage(selectedRetailer) ? (
-                    <img 
-                      src={getRetailerImage(selectedRetailer)} 
-                      alt={getRetailerName(selectedRetailer)}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs">{getRetailerName(selectedRetailer).charAt(0)}</span>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-amber-700">
-                  {getRetailerName(selectedRetailer)}
-                </span>
+            {/* Selected Retailer Logo - Centered */}
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg">
+                {getRetailerImage(selectedRetailer) ? (
+                  <img 
+                    src={getRetailerImage(selectedRetailer)} 
+                    alt={getRetailerName(selectedRetailer)}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-muted-foreground">
+                    {getRetailerName(selectedRetailer).charAt(0)}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 max-w-md mx-auto">
               <div>
                 <label className="text-sm text-muted-foreground mb-2 block">
                   Enter Order ID
                 </label>
-                <Input
-                  type="text"
-                  placeholder={orderIdMeta?.sample_orderid ? `e.g., ${orderIdMeta.sample_orderid}` : "Enter your order ID"}
-                  value={orderId}
-                  onChange={(e) => handleOrderIdChange(e.target.value)}
-                  className={`h-14 text-lg ${orderIdFormatError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                />
-                {/* Show sample order ID hint */}
-                {orderIdMeta?.sample_orderid && (
-                  <p className="text-xs text-primary mt-2">
-                    Order ID should look like {orderIdMeta.sample_orderid}
-                  </p>
-                )}
-                {/* Show hint message if available */}
-                {orderIdMeta?.orderid_hint_message && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {orderIdMeta.orderid_hint_message}
-                  </p>
-                )}
-                {/* Show format validation error */}
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={orderIdMeta?.sample_orderid ? `e.g., ${orderIdMeta.sample_orderid}` : "Enter your order ID"}
+                    value={orderId}
+                    onChange={(e) => handleOrderIdChange(e.target.value)}
+                    className={`h-14 text-lg pr-10 ${orderIdFormatError ? 'border-orange-500 focus-visible:ring-orange-500' : ''}`}
+                  />
+                  {/* Orange indicator bar on right when error */}
+                  {orderIdFormatError && (
+                    <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-orange-500 rounded-r-md" />
+                  )}
+                </div>
+                {/* Show format validation error in orange */}
                 {orderIdFormatError && (
-                  <p className="text-xs text-destructive mt-1">
+                  <p className="text-sm text-orange-600 mt-2 flex items-start gap-1">
+                    <span className="text-orange-500">⚠</span>
                     {orderIdFormatError}
                   </p>
                 )}
@@ -996,9 +1149,8 @@ const MissingCashback: React.FC = () => {
 
               <Button
                 onClick={handleValidateOrderId}
-                disabled={isValidating || !orderId || !!orderIdFormatError}
+                disabled={isValidating || !orderId}
                 className="w-full h-12"
-                variant={orderId && !orderIdFormatError ? 'default' : 'secondary'}
               >
                 {isValidating ? (
                   <>
@@ -1016,29 +1168,26 @@ const MissingCashback: React.FC = () => {
         {/* Step 4: Enter Order Amount */}
         {step === 'orderAmount' && selectedRetailer && selectedClick && (
           <div className="animate-fade-in">
-            {/* Selected Retailer Badge */}
-            <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="w-6 h-6 bg-white rounded overflow-hidden">
-                  {getRetailerImage(selectedRetailer) ? (
-                    <img 
-                      src={getRetailerImage(selectedRetailer)} 
-                      alt={getRetailerName(selectedRetailer)}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs">{getRetailerName(selectedRetailer).charAt(0)}</span>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-amber-700">
-                  {getRetailerName(selectedRetailer)}
-                </span>
+            {/* Selected Retailer Logo - Centered */}
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg">
+                {getRetailerImage(selectedRetailer) ? (
+                  <img 
+                    src={getRetailerImage(selectedRetailer)} 
+                    alt={getRetailerName(selectedRetailer)}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-muted-foreground">
+                    {getRetailerName(selectedRetailer).charAt(0)}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 max-w-md mx-auto">
               <div>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-muted-foreground mb-4 text-center">
                   Enter amount you paid after discounts
                 </p>
                 <label className="text-sm text-muted-foreground mb-2 block">
@@ -1074,7 +1223,7 @@ const MissingCashback: React.FC = () => {
         {/* Success State */}
         {step === 'success' && (
           <div className="animate-fade-in">
-            <div className="card-elevated p-8 text-center">
+            <div className="card-elevated p-8 text-center max-w-md mx-auto">
               <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-success" />
               </div>
@@ -1110,6 +1259,28 @@ const MissingCashback: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Cashback Tracked Modal */}
+        <Dialog open={showTrackedModal} onOpenChange={setShowTrackedModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-center">
+                Cashback Tracked
+              </DialogTitle>
+            </DialogHeader>
+            <div className="text-center py-4">
+              <p className="text-muted-foreground mb-6">
+                Hi, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.
+              </p>
+              <Button 
+                onClick={handleViewTrackedDetails}
+                className="w-full h-12"
+              >
+                View Details
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

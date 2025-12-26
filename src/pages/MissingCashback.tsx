@@ -511,14 +511,35 @@ const MissingCashback: React.FC = () => {
         setQueueId(String(response.data.id));
       }
       
-      // Check if cashback was already tracked (under_tracking: "no" means already tracked)
-      if (response?.meta?.under_tracking === 'no' && response?.meta?.cashback_id) {
-        // Show "Cashback Tracked" modal
+      // Check response status and flow:
+      // 1. If cashback was tracked immediately (cashback_id exists), show tracked modal
+      // 2. If status is "Resolved" (already processed), go to success - no additional details needed
+      // 3. If still under_tracking="yes" AND group requires additional details, show that step
+      // 4. Otherwise, normal success flow
+      
+      if (response?.meta?.cashback_id) {
+        // Cashback tracked immediately - show tracked modal
         setTrackedCashbackId(response.meta.cashback_id);
         setShowTrackedModal(true);
-      } else if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
-        // Show additional details step for B1/B2/C1/C2 groups
-        setStep('additionalDetails');
+      } else if (response?.meta?.status === 'Resolved') {
+        // Already resolved by the system - no additional details needed
+        setStep('success');
+        toast({
+          title: 'Claim Submitted!',
+          description: 'Your missing cashback claim has been processed.',
+        });
+      } else if (response?.meta?.under_tracking === 'yes' || groupRequiresAdditionalDetails(selectedRetailerGroup)) {
+        // Still tracking or group requires additional details
+        // Only show additional details step if the group actually requires it
+        if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
+          setStep('additionalDetails');
+        } else {
+          setStep('success');
+          toast({
+            title: 'Claim Submitted!',
+            description: 'Your missing cashback claim has been added to the queue.',
+          });
+        }
       } else {
         // Normal success flow for Group A and D
         setStep('success');

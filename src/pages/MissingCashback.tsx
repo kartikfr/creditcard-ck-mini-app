@@ -170,9 +170,19 @@ const CountdownTimer: React.FC<{
 
 // Category options for different groups
 // Note: C2 (Flipkart) uses Raise Ticket API flow, not PUT to queue, so not included here
-const CATEGORY_OPTIONS: Record<string, string[]> = {
-  'C1': ['Mobile Recharge', 'No Cashback', 'Other Category'],
-  'B2': ['Electronics', 'Fashion', 'Home', 'Other Category']
+// API expects lowercase values like 'mobile_recharge', 'no_cashback', 'other'
+const CATEGORY_OPTIONS: Record<string, { label: string; value: string }[]> = {
+  'C1': [
+    { label: 'Mobile Recharge', value: 'mobile_recharge' },
+    { label: 'No Cashback', value: 'no_cashback' },
+    { label: 'Other', value: 'other' }
+  ],
+  'B2': [
+    { label: 'Electronics', value: 'electronics' },
+    { label: 'Fashion', value: 'fashion' },
+    { label: 'Home', value: 'home' },
+    { label: 'Other', value: 'other' }
+  ]
 };
 const MissingCashback: React.FC = () => {
   const navigate = useNavigate();
@@ -442,7 +452,6 @@ const MissingCashback: React.FC = () => {
   type QueueAdditionalDetails = {
     user_type?: string;
     category?: string;
-    Category?: string;
   };
   const getAdditionalDetailsForGroup = (group: string): {
     details: QueueAdditionalDetails;
@@ -462,18 +471,16 @@ const MissingCashback: React.FC = () => {
       };
     }
 
-    // C1 group: backend validation expects "category" (lowercase), even though docs show "Category"
+    // C1 group: backend validation expects "category" (lowercase)
     if (group === 'C1') {
       if (!selectedCategory) return {
         details: {},
         error: 'Please select a category.'
       };
       console.log('[AddDetails] C1 group - sending category:', selectedCategory);
-      // Send both to be safe; the API error explicitly requires lowercase.
       return {
         details: {
-          category: selectedCategory,
-          Category: selectedCategory
+          category: selectedCategory
         }
       };
     }
@@ -1263,12 +1270,12 @@ const MissingCashback: React.FC = () => {
               </div>
               
               <div className="space-y-3">
-                {(CATEGORY_OPTIONS[selectedRetailerGroup] || CATEGORY_OPTIONS['C1']).map(category => <button key={category} onClick={() => setSelectedCategory(category)} className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${selectedCategory === category ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                    <Package className={`w-5 h-5 ${selectedCategory === category ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <span className={`font-medium ${selectedCategory === category ? 'text-primary' : 'text-foreground'}`}>
-                      {category}
+                {(CATEGORY_OPTIONS[selectedRetailerGroup] || CATEGORY_OPTIONS['C1']).map(category => <button key={category.value} onClick={() => setSelectedCategory(category.value)} className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${selectedCategory === category.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                    <Package className={`w-5 h-5 ${selectedCategory === category.value ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <span className={`font-medium ${selectedCategory === category.value ? 'text-primary' : 'text-foreground'}`}>
+                      {category.label}
                     </span>
-                    {selectedCategory === category && <CheckCircle className="w-5 h-5 text-primary ml-auto" />}
+                    {selectedCategory === category.value && <CheckCircle className="w-5 h-5 text-primary ml-auto" />}
                   </button>)}
               </div>
             </>}
@@ -1603,12 +1610,12 @@ const MissingCashback: React.FC = () => {
                           What category was your purchase from?
                         </p>
                         <div className="space-y-3 mb-6">
-                          {(CATEGORY_OPTIONS[selectedClaimForDetails.attributes.groupid || 'C1'] || CATEGORY_OPTIONS['C1']).map(category => <button key={category} onClick={() => setSelectedCategory(category)} className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${selectedCategory === category ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
-                              <Package className={`w-5 h-5 ${selectedCategory === category ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className={`font-medium ${selectedCategory === category ? 'text-primary' : 'text-foreground'}`}>
-                                {category}
+                          {(CATEGORY_OPTIONS[selectedClaimForDetails.attributes.groupid || 'C1'] || CATEGORY_OPTIONS['C1']).map(category => <button key={category.value} onClick={() => setSelectedCategory(category.value)} className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${selectedCategory === category.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}>
+                              <Package className={`w-5 h-5 ${selectedCategory === category.value ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className={`font-medium ${selectedCategory === category.value ? 'text-primary' : 'text-foreground'}`}>
+                                {category.label}
                               </span>
-                              {selectedCategory === category && <CheckCircle className="w-5 h-5 text-primary ml-auto" />}
+                              {selectedCategory === category.value && <CheckCircle className="w-5 h-5 text-primary ml-auto" />}
                             </button>)}
                         </div>
                         

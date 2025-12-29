@@ -112,16 +112,9 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
           {cleanName}
         </p>
         
-        {/* Rewards Amount */}
-        {cashbackAmount && (
-          <p className="text-sm md:text-base font-semibold text-foreground text-center mb-2">
-            FLAT {cashbackAmount} Rewards
-          </p>
-        )}
-        
-        {/* CTA Button - Highlighted */}
-        <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs md:text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 group-hover:shadow-md">
-          Apply Now
+        {/* CTA Button with Rewards Amount */}
+        <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] md:text-sm font-semibold py-2.5 px-2 rounded-lg transition-all duration-200 group-hover:shadow-md truncate">
+          {cashbackAmount ? `FLAT ${cashbackAmount} Rewards` : 'View Details'}
         </button>
       </div>
     </div>

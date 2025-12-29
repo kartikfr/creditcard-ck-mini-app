@@ -459,7 +459,6 @@ export const updateMissingCashbackQueue = async (
   additionalDetails: {
     user_type?: string;
     category?: string;
-    Category?: string;
   }
 ) => {
   console.log('[API] updateMissingCashbackQueue - PUT request:', { queueId, additionalDetails });
@@ -467,9 +466,7 @@ export const updateMissingCashbackQueue = async (
   const attributes: Record<string, string> = {};
 
   if (additionalDetails.user_type) attributes.user_type = additionalDetails.user_type;
-  // Prefer lowercase "category" (matches API error source.parameter), but allow fallback.
   if (additionalDetails.category) attributes.category = additionalDetails.category;
-  if (!attributes.category && additionalDetails.Category) attributes.category = additionalDetails.Category;
 
   console.log('[API] Final attributes being sent:', attributes);
 

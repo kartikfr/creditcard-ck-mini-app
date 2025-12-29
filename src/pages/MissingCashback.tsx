@@ -457,6 +457,28 @@ const MissingCashback: React.FC = () => {
     return ['B1', 'B2', 'C1'].includes(group);
   };
 
+  type QueueAdditionalDetails = { user_type?: string; category?: string; Category?: string };
+
+  const getAdditionalDetailsForGroup = (group: string): { details: QueueAdditionalDetails; error?: string } => {
+    if (group === 'B1') {
+      if (!selectedUserType) return { details: {}, error: 'Please select New or Existing user type.' };
+      return { details: { user_type: selectedUserType } };
+    }
+
+    if (group === 'B2') {
+      if (!selectedCategory) return { details: {}, error: 'Please select a category.' };
+      return { details: { category: selectedCategory } };
+    }
+
+    if (group === 'C1') {
+      if (!selectedCategory) return { details: {}, error: 'Please select a category.' };
+      // Send both keys to satisfy upstream validations regardless of case.
+      return { details: { Category: selectedCategory, category: selectedCategory } };
+    }
+
+    return { details: {} };
+  };
+
   const handleValidateOrderId = async () => {
     if (!orderId || !selectedRetailer || !selectedClick) {
       toast({
@@ -609,50 +631,28 @@ const MissingCashback: React.FC = () => {
   // Submit additional details (for B1/B2/C1/C2 groups)
   const handleSubmitAdditionalDetails = async () => {
     if (!queueId || !accessToken) {
-      toast({
-        title: 'Error',
-        description: 'Missing queue information. Please try again.',
-        variant: 'destructive',
-      });
+      setValidationErrorMessage('Missing queue information. Please try again.');
+      setShowValidationErrorModal(true);
+      return;
+    }
+
+    const { details, error } = getAdditionalDetailsForGroup(selectedRetailerGroup);
+    if (error) {
+      setValidationErrorMessage(error);
+      setShowValidationErrorModal(true);
       return;
     }
 
     setIsUpdatingDetails(true);
-    
-    try {
-      const details: { user_type?: string; category?: string } = {};
-      
-      if (selectedRetailerGroup === 'B1') {
-        if (!selectedUserType) {
-          toast({
-            title: 'Please select',
-            description: 'Are you a new or existing user?',
-            variant: 'destructive',
-          });
-          setIsUpdatingDetails(false);
-          return;
-        }
-        details.user_type = selectedUserType;
-      } else if (['B2', 'C1'].includes(selectedRetailerGroup)) {
-        if (!selectedCategory) {
-          toast({
-            title: 'Please select',
-            description: 'Please select a category',
-            variant: 'destructive',
-          });
-          setIsUpdatingDetails(false);
-          return;
-        }
-        details.category = selectedCategory;
-      }
 
+    try {
       const response = await updateMissingCashbackQueue(accessToken, queueId, details);
-      
+
       // Update submission result with new response
       if (response) {
         setSubmissionResult(response);
       }
-      
+
       // Check if resolved immediately
       if (response?.meta?.cashback_id) {
         setTrackedCashbackId(response.meta.cashback_id);
@@ -666,7 +666,6 @@ const MissingCashback: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to update claim details:', error);
-      // Show validation errors in modal popup style
       setValidationErrorMessage(error.message || 'Failed to update claim details. Please try again.');
       setShowValidationErrorModal(true);
     } finally {
@@ -737,33 +736,28 @@ const MissingCashback: React.FC = () => {
     setIsUpdatingDetails(true);
     
     try {
-      // API requires "Category" with capital C for C1 group
-      const details: { Category?: string } = {};
-      
-      if (['B2', 'C1'].includes(claimGroup)) {
-        if (!selectedCategory) {
-          setValidationErrorMessage('Please select a category');
-          setShowValidationErrorModal(true);
-          setIsUpdatingDetails(false);
-          return;
-        }
-        details.Category = selectedCategory;
+      const { details, error } = getAdditionalDetailsForGroup(claimGroup);
+      if (error) {
+        setValidationErrorMessage(error);
+        setShowValidationErrorModal(true);
+        setIsUpdatingDetails(false);
+        return;
       }
 
       console.log('[AddDetails] Sending PUT request:', { queueId: claimQueueId, details });
       const response = await updateMissingCashbackQueue(accessToken, claimQueueId, details);
       console.log('[AddDetails] Response:', response);
-      
+
       toast({
         title: 'Details Added!',
         description: 'Your claim has been updated.',
       });
-      
+
       setShowAddDetailsModal(false);
       setSelectedClaimForDetails(null);
       setSelectedUserType('');
       setSelectedCategory('');
-      
+
       // Reload claims
       loadClaims();
     } catch (error: any) {

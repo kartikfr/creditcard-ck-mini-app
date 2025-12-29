@@ -457,7 +457,10 @@ export const updateMissingCashbackQueue = async (
   queueId: string,
   additionalDetails: {
     user_type?: string; // For B1 group: "New" or "Existing"
-    Category?: string; // For C1 group: category selection (API requires capital C)
+    // Upstream error source uses "category" even when docs mention "Category".
+    // We support both keys to keep C1 compatible.
+    category?: string;
+    Category?: string;
   }
 ) => {
   console.log('[API] updateMissingCashbackQueue - PUT request:', { queueId, additionalDetails });

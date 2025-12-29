@@ -249,6 +249,10 @@ const MissingCashback: React.FC = () => {
   // Queue Already Added Modal state (for "already been added" validation error)
   const [showQueueAlreadyAddedModal, setShowQueueAlreadyAddedModal] = useState(false);
 
+  // B1 Confirmation Bottom Sheet state
+  const [showB1ConfirmationSheet, setShowB1ConfirmationSheet] = useState(false);
+  const [pendingUserType, setPendingUserType] = useState<string>('');
+
   const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
   const [isLoadingExitClicks, setIsLoadingExitClicks] = useState(false);
   const [isLoadingClaims, setIsLoadingClaims] = useState(false);
@@ -660,30 +664,74 @@ const MissingCashback: React.FC = () => {
     }
   };
 
-  // Handle adding details to existing claim from claims list
+  // Handle B1 user type selection - show confirmation first
+  const handleB1UserTypeSelection = (userType: string) => {
+    console.log('[AddDetails] B1 user type selected:', userType);
+    setPendingUserType(userType);
+    setShowB1ConfirmationSheet(true);
+  };
+
+  // Handle B1 confirmation - actually submit the PUT request
+  const handleB1ConfirmSubmit = async () => {
+    if (!selectedClaimForDetails || !accessToken || !pendingUserType) return;
+    
+    const claimQueueId = String(selectedClaimForDetails.id);
+    console.log('[AddDetails] B1 confirmation - submitting:', { queueId: claimQueueId, user_type: pendingUserType });
+    
+    setIsUpdatingDetails(true);
+    setShowB1ConfirmationSheet(false);
+    
+    try {
+      const response = await updateMissingCashbackQueue(accessToken, claimQueueId, {
+        user_type: pendingUserType
+      });
+      
+      console.log('[AddDetails] B1 update response:', response);
+      
+      toast({
+        title: 'Details Added!',
+        description: 'Your claim has been updated.',
+      });
+      
+      setShowAddDetailsModal(false);
+      setSelectedClaimForDetails(null);
+      setSelectedUserType('');
+      setPendingUserType('');
+      
+      // Reload claims
+      loadClaims();
+    } catch (error: any) {
+      console.error('[AddDetails] Failed to update B1 claim:', error);
+      toast({
+        title: 'Update Failed',
+        description: error.message || 'Failed to update claim details.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingDetails(false);
+    }
+  };
+
+  // Handle adding details to existing claim from claims list (for C1/B2 categories)
   const handleAddDetailsToExistingClaim = async () => {
     if (!selectedClaimForDetails || !accessToken) return;
     
     const claimQueueId = String(selectedClaimForDetails.id);
     const claimGroup = selectedClaimForDetails.attributes.groupid || '';
     
+    console.log('[AddDetails] Submitting for group:', claimGroup);
+    
+    // B1 is handled separately via handleB1UserTypeSelection -> handleB1ConfirmSubmit
+    if (claimGroup === 'B1') {
+      return;
+    }
+    
     setIsUpdatingDetails(true);
     
     try {
-      const details: { user_type?: string; category?: string } = {};
+      const details: { category?: string } = {};
       
-      if (claimGroup === 'B1') {
-        if (!selectedUserType) {
-          toast({
-            title: 'Please select',
-            description: 'Are you a new or existing user?',
-            variant: 'destructive',
-          });
-          setIsUpdatingDetails(false);
-          return;
-        }
-        details.user_type = selectedUserType;
-      } else if (['B2', 'C1'].includes(claimGroup)) {
+      if (['B2', 'C1'].includes(claimGroup)) {
         if (!selectedCategory) {
           toast({
             title: 'Please select',
@@ -696,7 +744,9 @@ const MissingCashback: React.FC = () => {
         details.category = selectedCategory;
       }
 
-      await updateMissingCashbackQueue(accessToken, claimQueueId, details);
+      console.log('[AddDetails] Sending PUT request:', { queueId: claimQueueId, details });
+      const response = await updateMissingCashbackQueue(accessToken, claimQueueId, details);
+      console.log('[AddDetails] Response:', response);
       
       toast({
         title: 'Details Added!',
@@ -711,7 +761,7 @@ const MissingCashback: React.FC = () => {
       // Reload claims
       loadClaims();
     } catch (error: any) {
-      console.error('Failed to update claim details:', error);
+      console.error('[AddDetails] Failed to update claim details:', error);
       toast({
         title: 'Update Failed',
         description: error.message || 'Failed to update claim details.',
@@ -1783,94 +1833,182 @@ const MissingCashback: React.FC = () => {
         </Dialog>
 
         {/* Add Details Modal (for claims needing additional info) */}
-        <Dialog open={showAddDetailsModal} onOpenChange={setShowAddDetailsModal}>
+        <Dialog open={showAddDetailsModal} onOpenChange={(open) => {
+          setShowAddDetailsModal(open);
+          if (!open) {
+            setShowB1ConfirmationSheet(false);
+            setPendingUserType('');
+          }
+        }}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-center">
-                Additional Information Required
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-4">
+            <div className="py-2">
               {selectedClaimForDetails && (
                 <>
-                  {selectedClaimForDetails.attributes.groupid === 'B1' ? (
-                    <>
-                      <p className="text-sm text-muted-foreground text-center mb-6">
-                        Are you a new or existing user on {getClaimStoreName(selectedClaimForDetails)}?
-                      </p>
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                        <button
-                          onClick={() => setSelectedUserType('New')}
-                          className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
-                            selectedUserType === 'New' 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          <User className={`w-6 h-6 ${selectedUserType === 'New' ? 'text-primary' : 'text-muted-foreground'}`} />
-                          <span className={`text-sm font-medium ${selectedUserType === 'New' ? 'text-primary' : 'text-foreground'}`}>
-                            New User
+                  {/* B1 Group - New/Existing User Flow (Redesigned to match screenshot) */}
+                  {selectedClaimForDetails.attributes.groupid === 'B1' && !showB1ConfirmationSheet ? (
+                    <div className="text-center">
+                      {/* Store Logo - Prominent at top */}
+                      <div className="w-28 h-16 mx-auto mb-6 flex items-center justify-center border rounded-xl bg-background p-3">
+                        {getClaimImageUrl(selectedClaimForDetails) ? (
+                          <img 
+                            src={getClaimImageUrl(selectedClaimForDetails)} 
+                            alt={getClaimStoreName(selectedClaimForDetails)}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">
+                            {getClaimStoreName(selectedClaimForDetails).charAt(0)}
                           </span>
-                        </button>
-                        
-                        <button
-                          onClick={() => setSelectedUserType('Existing')}
-                          className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
-                            selectedUserType === 'Existing' 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          <User className={`w-6 h-6 ${selectedUserType === 'Existing' ? 'text-primary' : 'text-muted-foreground'}`} />
-                          <span className={`text-sm font-medium ${selectedUserType === 'Existing' ? 'text-primary' : 'text-foreground'}`}>
-                            Existing User
-                          </span>
-                        </button>
+                        )}
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-muted-foreground text-center mb-6">
-                        What category was your purchase from?
+                      
+                      {/* Heading */}
+                      <h2 className="text-lg font-semibold text-foreground mb-2">
+                        Great! Are you a new user on {getClaimStoreName(selectedClaimForDetails)}?
+                      </h2>
+                      
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {getClaimStoreName(selectedClaimForDetails)} gives different Cashbacks to new and existing users.
                       </p>
-                      <div className="space-y-3 mb-6">
-                        {(CATEGORY_OPTIONS[selectedClaimForDetails.attributes.groupid || 'C1'] || CATEGORY_OPTIONS['C1']).map((category) => (
-                          <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${
-                              selectedCategory === category 
-                                ? 'border-primary bg-primary/5' 
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            <Package className={`w-5 h-5 ${selectedCategory === category ? 'text-primary' : 'text-muted-foreground'}`} />
-                            <span className={`font-medium ${selectedCategory === category ? 'text-primary' : 'text-foreground'}`}>
-                              {category}
-                            </span>
-                            {selectedCategory === category && (
-                              <CheckCircle className="w-5 h-5 text-primary ml-auto" />
-                            )}
-                          </button>
-                        ))}
+                      
+                      {/* Learn More Link */}
+                      <button className="text-sm text-primary font-medium mb-8 inline-flex items-center gap-1 hover:underline">
+                        Learn More <ArrowRight className="w-3 h-3" />
+                      </button>
+                      
+                      {/* Primary Button - New User */}
+                      <Button 
+                        onClick={() => handleB1UserTypeSelection('New')}
+                        className="w-full h-12 mb-4"
+                        disabled={isUpdatingDetails}
+                      >
+                        {isUpdatingDetails ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Yes, I am a New User'
+                        )}
+                      </Button>
+                      
+                      {/* Secondary Link - Existing User */}
+                      <button 
+                        onClick={() => handleB1UserTypeSelection('Existing')}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        disabled={isUpdatingDetails}
+                      >
+                        No, I am an Existing User
+                      </button>
+                    </div>
+                  ) : selectedClaimForDetails.attributes.groupid === 'B1' && showB1ConfirmationSheet ? (
+                    /* B1 Confirmation Bottom Sheet */
+                    <div className="text-center">
+                      {/* Store Logo */}
+                      <div className="w-28 h-16 mx-auto mb-6 flex items-center justify-center border rounded-xl bg-background p-3">
+                        {getClaimImageUrl(selectedClaimForDetails) ? (
+                          <img 
+                            src={getClaimImageUrl(selectedClaimForDetails)} 
+                            alt={getClaimStoreName(selectedClaimForDetails)}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">
+                            {getClaimStoreName(selectedClaimForDetails).charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Confirmation Title */}
+                      <h2 className="text-lg font-semibold text-foreground mb-3">
+                        {pendingUserType === 'New' ? 'New' : 'Existing'} user cashback
+                      </h2>
+                      
+                      {/* Confirmation Description */}
+                      <p className="text-sm text-muted-foreground mb-8">
+                        Once {getClaimStoreName(selectedClaimForDetails)} confirms you as a {pendingUserType?.toLowerCase() || 'new or existing'} user, your cashback may increase or decrease.
+                      </p>
+                      
+                      {/* Okay Button */}
+                      <Button 
+                        onClick={handleB1ConfirmSubmit}
+                        className="w-full h-12"
+                        disabled={isUpdatingDetails}
+                      >
+                        {isUpdatingDetails ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          'Okay'
+                        )}
+                      </Button>
+                      
+                      {/* Back option */}
+                      <button 
+                        onClick={() => {
+                          setShowB1ConfirmationSheet(false);
+                          setPendingUserType('');
+                        }}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-4"
+                        disabled={isUpdatingDetails}
+                      >
+                        Go Back
+                      </button>
+                    </div>
+                  ) : (
+                    /* C1/B2 Group - Category Selection Flow */
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-semibold text-center">
+                          Additional Information Required
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="pt-4">
+                        <p className="text-sm text-muted-foreground text-center mb-6">
+                          What category was your purchase from?
+                        </p>
+                        <div className="space-y-3 mb-6">
+                          {(CATEGORY_OPTIONS[selectedClaimForDetails.attributes.groupid || 'C1'] || CATEGORY_OPTIONS['C1']).map((category) => (
+                            <button
+                              key={category}
+                              onClick={() => setSelectedCategory(category)}
+                              className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${
+                                selectedCategory === category 
+                                  ? 'border-primary bg-primary/5' 
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <Package className={`w-5 h-5 ${selectedCategory === category ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <span className={`font-medium ${selectedCategory === category ? 'text-primary' : 'text-foreground'}`}>
+                                {category}
+                              </span>
+                              {selectedCategory === category && (
+                                <CheckCircle className="w-5 h-5 text-primary ml-auto" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        <Button
+                          onClick={handleAddDetailsToExistingClaim}
+                          disabled={isUpdatingDetails || !selectedCategory}
+                          className="w-full h-12"
+                        >
+                          {isUpdatingDetails ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            'Submit'
+                          )}
+                        </Button>
                       </div>
                     </>
                   )}
-                  
-                  <Button
-                    onClick={handleAddDetailsToExistingClaim}
-                    disabled={isUpdatingDetails || (selectedClaimForDetails.attributes.groupid === 'B1' ? !selectedUserType : !selectedCategory)}
-                    className="w-full h-12"
-                  >
-                    {isUpdatingDetails ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit'
-                    )}
-                  </Button>
                 </>
               )}
             </div>

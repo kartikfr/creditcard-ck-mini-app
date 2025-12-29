@@ -451,7 +451,7 @@ export const submitMissingCashbackQueue = async (
 };
 
 // Add additional details to missing cashback queue (for B1/B2/C1 groups)
-// NOTE: Upstream exposes this as POST (not PUT) to /users/missingcashback/queue/{id}.
+// NOTE: API documentation specifies PUT method for updating queue entries
 export const updateMissingCashbackQueue = async (
   accessToken: string,
   queueId: string,
@@ -460,7 +460,8 @@ export const updateMissingCashbackQueue = async (
     category?: string; // For B2/C1 group: category selection
   }
 ) => {
-  return callProxy(`/users/missingcashback/queue/${queueId}`, 'POST', {
+  console.log('[API] updateMissingCashbackQueue - PUT request:', { queueId, additionalDetails });
+  return callProxy(`/users/missingcashback/queue/${queueId}`, 'PUT', {
     data: {
       type: 'missingcashback',
       attributes: additionalDetails,

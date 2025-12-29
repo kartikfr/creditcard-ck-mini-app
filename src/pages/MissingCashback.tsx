@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ChevronRight, ChevronLeft, Search, Calendar, Hash, Clock, CheckCircle, XCircle, Loader2, RefreshCw, IndianRupee, Upload, FileText, ArrowRight, X, User, Package } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useIsMobile } from '@/hooks/use-mobile';
 interface Retailer {
   id: string | number;
   type: string;
@@ -192,6 +194,10 @@ const MissingCashback: React.FC = () => {
     isAuthenticated,
     user
   } = useAuth();
+  const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
 
   // Step management - now starts at 'claims' view
   const [step, setStep] = useState<Step>('claims');
@@ -1311,8 +1317,8 @@ const MissingCashback: React.FC = () => {
         </div>
       </div>;
   };
-  return <AppLayout>
-      <div className="max-w-4xl mx-auto">
+  return <Layout>
+      <div className="w-full max-w-4xl lg:max-w-none">
         {/* Header with Back button */}
         {step !== 'claims' && <button onClick={handleBack} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
             <ChevronLeft className="w-5 h-5" />
@@ -1792,6 +1798,6 @@ const MissingCashback: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>;
+    </Layout>;
 };
 export default MissingCashback;

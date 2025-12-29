@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, Info, RefreshCw } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -41,6 +42,9 @@ const PaymentHistory = () => {
   const navigate = useNavigate();
   const { accessToken, isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
   const [loading, setLoading] = useState(true);
   const [monthsLoading, setMonthsLoading] = useState(true);
   const [monthOptions, setMonthOptions] = useState<MonthYearOption[]>([]);
@@ -258,10 +262,10 @@ const PaymentHistory = () => {
   );
 
   return (
-    <AppLayout>
+    <Layout>
       <div 
         ref={containerRef}
-        className="min-h-screen bg-background overflow-y-auto"
+        className="min-h-screen bg-background overflow-y-auto w-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -415,7 +419,7 @@ const PaymentHistory = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

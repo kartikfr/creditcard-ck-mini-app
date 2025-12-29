@@ -6,13 +6,11 @@ import {
   CreditCard,
   Clock,
   AlertCircle,
-  MessageSquare,
   HelpCircle,
   Star,
   Shield,
-  Users,
-  Gift,
   ChevronRight,
+  PenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,17 +20,13 @@ interface SidebarItem {
   path: string;
 }
 
-const accountItems: SidebarItem[] = [
+// Main menu items matching the profile dropdown options
+const menuItems: SidebarItem[] = [
   { icon: Settings2, label: 'Account Settings', path: '/account-settings' },
   { icon: Wallet, label: 'My Earnings', path: '/earnings' },
   { icon: CreditCard, label: 'Payments', path: '/payments' },
   { icon: Clock, label: 'Payments History', path: '/payment-history' },
   { icon: AlertCircle, label: 'Missing Cashback', path: '/missing-cashback' },
-  { icon: Gift, label: 'Refer & Earn', path: '/refer' },
-  { icon: Users, label: 'My Referrals', path: '/my-referrals' },
-];
-
-const supportItems: SidebarItem[] = [
   { icon: HelpCircle, label: 'Help', path: '/help' },
   { icon: Star, label: 'Review Us', path: '/review-us' },
   { icon: Shield, label: 'Privacy Policy', path: '/privacy' },
@@ -70,13 +64,8 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ className }) => {
   return (
     <aside className={cn('w-64 shrink-0 hidden lg:block', className)}>
       <div className="sticky top-24 bg-card border border-border rounded-xl p-4 space-y-1">
-        {/* Account Items */}
-        {accountItems.map(renderItem)}
-        
-        <div className="h-px bg-border my-3" />
-        
-        {/* Support Items */}
-        {supportItems.map(renderItem)}
+        {/* Menu Items */}
+        {menuItems.map(renderItem)}
         
         <div className="h-px bg-border my-3" />
         
@@ -85,7 +74,10 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ className }) => {
           onClick={() => navigate('/review-us')}
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors"
         >
-          <span>Write us a review</span>
+          <div className="flex items-center gap-3">
+            <PenLine className="w-5 h-5 text-muted-foreground" />
+            <span>Write us a review</span>
+          </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>

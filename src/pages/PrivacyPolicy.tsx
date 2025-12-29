@@ -2,34 +2,42 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const PrivacyPolicy: React.FC = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="rounded-full"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-display font-bold">Privacy Policy</h1>
+    <Layout>
+      <div className="min-h-screen bg-background w-full">
+        {/* Header */}
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border lg:border-0">
+          <div className="max-w-4xl lg:max-w-none px-4 py-4 flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+              className="rounded-full lg:hidden"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <h1 className="text-lg font-display font-bold">Privacy Policy</h1>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-          <p className="text-muted-foreground text-sm mb-6">
+        {/* Content */}
+        <main className="max-w-4xl lg:max-w-none px-4 py-8">
+          <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
+            <p className="text-muted-foreground text-sm mb-6">
             Last updated: December 2024
           </p>
 
@@ -150,6 +158,7 @@ const PrivacyPolicy: React.FC = () => {
         </div>
       </main>
     </div>
+    </Layout>
   );
 };
 

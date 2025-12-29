@@ -452,38 +452,38 @@ export const submitMissingCashbackQueue = async (
 
 // Add additional details to missing cashback queue (for B1/C1 groups)
 // B1 requires: user_type (New/Existing)
-// C1 requires: Category (Mobile Recharge/No Cashback/Other Category)
+// C1 validation expects: category (lowercase) — docs sometimes mention "Category"
 export const updateMissingCashbackQueue = async (
   accessToken: string,
   queueId: string,
   additionalDetails: {
-    user_type?: string; // For B1 group: "New" or "Existing"
-    Category?: string;  // For C1 group: "Mobile Recharge", "No Cashback", or "Other Category"
+    user_type?: string;
+    category?: string;
+    Category?: string;
   }
 ) => {
   console.log('[API] updateMissingCashbackQueue - PUT request:', { queueId, additionalDetails });
-  
-  // Build attributes based on what's provided
+
   const attributes: Record<string, string> = {};
-  
-  // B1 group requires user_type
-  if (additionalDetails.user_type) {
-    attributes.user_type = additionalDetails.user_type;
-  }
-  
-  // C1 group requires Category (capital C as per API spec)
-  if (additionalDetails.Category) {
-    attributes.Category = additionalDetails.Category;
-  }
-  
+
+  if (additionalDetails.user_type) attributes.user_type = additionalDetails.user_type;
+  // Prefer lowercase "category" (matches API error source.parameter), but allow fallback.
+  if (additionalDetails.category) attributes.category = additionalDetails.category;
+  if (!attributes.category && additionalDetails.Category) attributes.category = additionalDetails.Category;
+
   console.log('[API] Final attributes being sent:', attributes);
-  
-  return callProxy(`/users/missingcashback/queue/${queueId}`, 'PUT', {
-    data: {
-      type: 'queue',
-      attributes,
+
+  return callProxy(
+    `/users/missingcashback/queue/${queueId}`,
+    'PUT',
+    {
+      data: {
+        type: 'queue',
+        attributes,
+      },
     },
-  }, accessToken);
+    accessToken
+  );
 };
 
 // Raise a ticket from order detail page

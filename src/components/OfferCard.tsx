@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
 import EligibilityBadge from './EligibilityBadge';
 
 interface OfferCashback {
@@ -113,17 +112,17 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
           {cleanName}
         </p>
         
-        {/* Rewards Amount - Primary Focus */}
+        {/* Rewards Amount */}
         {cashbackAmount && (
-          <div className="flex items-center justify-between bg-secondary/80 rounded-lg px-3 py-2 group-hover:bg-primary/10 transition-colors duration-200">
-            <div className="flex flex-col">
-              <span className="text-base md:text-lg font-bold text-foreground">
-                FLAT {cashbackAmount} Rewards
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-          </div>
+          <p className="text-sm md:text-base font-semibold text-foreground text-center mb-2">
+            FLAT {cashbackAmount} Rewards
+          </p>
         )}
+        
+        {/* CTA Button - Highlighted */}
+        <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs md:text-sm font-medium py-2 px-3 rounded-lg transition-all duration-200 group-hover:shadow-md">
+          Apply Now
+        </button>
       </div>
     </div>
   );

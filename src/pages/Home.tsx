@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, RefreshCw, Loader2, Shield, Star, Lock, Users } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEligibility } from '@/context/EligibilityContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
@@ -437,40 +437,47 @@ const Home: React.FC = () => {
     <AppLayout>
       <div className="px-4 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
 
-        {/* Compact Value Header */}
-        <header className="mb-8 animate-fade-in">
-          <div className="flex flex-col gap-2">
+        {/* Compact Hero with How Cashback Works */}
+        <header className="mb-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-display font-semibold text-foreground mb-1">
+              <h1 className="text-lg md:text-xl font-display font-semibold text-foreground mb-1">
                 India's Trusted Credit Card Cashback Platform
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Powered by CashKaro — Earn up to ₹2,000 cashback on 50+ premium cards
+              <p className="text-xs md:text-sm text-muted-foreground">
+                Powered by CashKaro — Earn up to ₹2,000 rewards on 50+ premium cards
               </p>
-            </div>
-            {/* Mobile Check Eligibility - visible only on mobile */}
-            <div className="sm:hidden">
-              <CheckEligibilityButton />
             </div>
           </div>
           
-          {/* Trust Strip - Icons Only */}
-          <div className="flex items-center gap-4 md:gap-6 mt-5 pt-4 border-t border-border">
-            <div className="trust-badge">
-              <Shield className="trust-badge-icon" />
-              <span className="text-[10px] md:text-xs">Bank-Level Security</span>
+          {/* How Cashback Works - Integrated Steps */}
+          <div className="bg-secondary/40 rounded-xl p-3 md:p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-medium text-foreground">How Cashback Works</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/know-more')}
+                className="text-primary text-xs h-6 px-2"
+              >
+                Know More
+                <ChevronRight className="w-3 h-3 ml-0.5" />
+              </Button>
             </div>
-            <div className="trust-badge">
-              <Star className="trust-badge-icon" />
-              <span className="text-[10px] md:text-xs">4.8 Rating</span>
-            </div>
-            <div className="trust-badge">
-              <Lock className="trust-badge-icon" />
-              <span className="text-[10px] md:text-xs">100% Safe</span>
-            </div>
-            <div className="trust-badge hidden sm:flex">
-              <Users className="trust-badge-icon" />
-              <span className="text-[10px] md:text-xs">1L+ Users</span>
+            <div className="grid grid-cols-4 gap-2 md:gap-4">
+              {[
+                { step: '01', title: 'Choose a Card' },
+                { step: '02', title: 'Apply via Us' },
+                { step: '03', title: 'Get Approved' },
+                { step: '04', title: 'Get Cashback' },
+              ].map((item) => (
+                <div key={item.step} className="text-center">
+                  <div className="text-base md:text-lg font-display font-bold text-primary/50 mb-0.5">
+                    {item.step}
+                  </div>
+                  <p className="text-[10px] md:text-xs font-medium text-foreground leading-tight">{item.title}</p>
+                </div>
+              ))}
             </div>
           </div>
         </header>
@@ -602,41 +609,6 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        {/* How Cashback Works Section */}
-        <section className="py-8 mb-6 border-t border-border animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-display font-semibold text-foreground">
-              How Cashback Works
-            </h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => navigate('/know-more')}
-              className="text-primary text-sm h-8"
-            >
-              Know More
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-          
-          {/* Steps Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {[
-              { step: '01', title: 'Choose a Card', desc: 'Browse through 50+ premium credit cards from top banks' },
-              { step: '02', title: 'Apply via Us', desc: 'Click apply and get redirected to official bank website' },
-              { step: '03', title: 'Get Approved', desc: 'Complete bank verification and receive your card' },
-              { step: '04', title: 'Get Cashback', desc: 'Cashback credited to your account, withdraw via UPI' },
-            ].map((item) => (
-              <div key={item.step} className="bg-secondary/30 rounded-xl p-4 md:p-5 text-center">
-                <div className="text-2xl md:text-3xl font-display font-bold text-primary/30 mb-2">
-                  {item.step}
-                </div>
-                <h3 className="text-sm font-medium text-foreground mb-1">{item.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* About Us Section */}
         <section className="py-8 border-t border-border">

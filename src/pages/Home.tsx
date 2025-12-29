@@ -439,7 +439,7 @@ const Home: React.FC = () => {
 
         {/* Compact Value Header */}
         <header className="mb-8 animate-fade-in">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col gap-2">
             <div className="flex-1">
               <h1 className="text-xl md:text-2xl font-display font-semibold text-foreground mb-1">
                 India's Trusted Credit Card Cashback Platform
@@ -448,28 +448,29 @@ const Home: React.FC = () => {
                 Powered by CashKaro — Earn up to ₹2,000 cashback on 50+ premium cards
               </p>
             </div>
-            <div className="flex-shrink-0">
+            {/* Mobile Check Eligibility - visible only on mobile */}
+            <div className="sm:hidden">
               <CheckEligibilityButton />
             </div>
           </div>
           
           {/* Trust Strip - Icons Only */}
-          <div className="flex items-center gap-6 mt-5 pt-4 border-t border-border">
+          <div className="flex items-center gap-4 md:gap-6 mt-5 pt-4 border-t border-border">
             <div className="trust-badge">
               <Shield className="trust-badge-icon" />
-              <span className="text-xs">Bank-Level Security</span>
+              <span className="text-[10px] md:text-xs">Bank-Level Security</span>
             </div>
             <div className="trust-badge">
               <Star className="trust-badge-icon" />
-              <span className="text-xs">4.8 Rating</span>
+              <span className="text-[10px] md:text-xs">4.8 Rating</span>
             </div>
             <div className="trust-badge">
               <Lock className="trust-badge-icon" />
-              <span className="text-xs">100% Safe</span>
+              <span className="text-[10px] md:text-xs">100% Safe</span>
             </div>
             <div className="trust-badge hidden sm:flex">
               <Users className="trust-badge-icon" />
-              <span className="text-xs">1L+ Users</span>
+              <span className="text-[10px] md:text-xs">1L+ Users</span>
             </div>
           </div>
         </header>
@@ -544,13 +545,16 @@ const Home: React.FC = () => {
         {/* Credit Card Offers Section - Primary Focus */}
         {categoryOffers.length > 0 && (
           <section className="mb-10 animate-fade-in">
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
               <h2 className="text-lg font-display font-semibold text-foreground">
                 Credit Card Offers
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   ({categoryOffers.length})
                 </span>
               </h2>
+              <div className="hidden md:block">
+                <CheckEligibilityButton />
+              </div>
             </div>
             
             {/* Offers Grid */}
@@ -598,11 +602,11 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        {/* How It Works - Simplified */}
+        {/* How Cashback Works Section */}
         <section className="py-8 mb-6 border-t border-border animate-fade-in">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-display font-semibold text-foreground">
-              How It Works
+              How Cashback Works
             </h2>
             <Button 
               variant="ghost" 
@@ -610,25 +614,25 @@ const Home: React.FC = () => {
               onClick={() => navigate('/know-more')}
               className="text-primary text-sm h-8"
             >
-              Learn More
+              Know More
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
           
-          {/* Simple 4-step horizontal layout */}
+          {/* Steps Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {[
-              { step: '01', title: 'Choose a Card', desc: 'Browse 50+ premium cards' },
-              { step: '02', title: 'Apply via Us', desc: 'Redirected to bank site' },
-              { step: '03', title: 'Get Approved', desc: 'Bank reviews application' },
-              { step: '04', title: 'Get Cashback', desc: 'Withdraw via UPI' },
+              { step: '01', title: 'Choose a Card', desc: 'Browse through 50+ premium credit cards from top banks' },
+              { step: '02', title: 'Apply via Us', desc: 'Click apply and get redirected to official bank website' },
+              { step: '03', title: 'Get Approved', desc: 'Complete bank verification and receive your card' },
+              { step: '04', title: 'Get Cashback', desc: 'Cashback credited to your account, withdraw via UPI' },
             ].map((item) => (
-              <div key={item.step} className="text-center p-4">
-                <div className="text-2xl md:text-3xl font-display font-bold text-primary/20 mb-2">
+              <div key={item.step} className="bg-secondary/30 rounded-xl p-4 md:p-5 text-center">
+                <div className="text-2xl md:text-3xl font-display font-bold text-primary/30 mb-2">
                   {item.step}
                 </div>
                 <h3 className="text-sm font-medium text-foreground mb-1">{item.title}</h3>
-                <p className="text-xs text-muted-foreground">{item.desc}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>

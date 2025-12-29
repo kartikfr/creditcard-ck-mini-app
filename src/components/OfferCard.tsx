@@ -83,19 +83,19 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
       className="group relative bg-card rounded-xl border border-border overflow-hidden cursor-pointer transition-all duration-200 hover:border-primary/30"
       style={{ boxShadow: 'var(--shadow-card)' }}
     >
-      {/* Eligibility Badge - Top Right */}
+      {/* Eligibility Badge - Top Right - positioned to not overlap logo */}
       {isEligible && (
-        <div className="absolute top-2 right-2 z-10">
+        <div className="absolute top-1.5 right-1.5 md:top-2 md:right-2 z-10">
           <EligibilityBadge />
         </div>
       )}
       
-      {/* Card Image */}
+      {/* Card Image - with padding to avoid badge overlap */}
       <div className="flex items-center justify-center p-4 md:p-6 bg-card min-h-[72px] md:min-h-[100px]">
         <img
           src={imageUrl}
           alt={displayName}
-          className="max-h-10 md:max-h-14 max-w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+          className="max-h-10 md:max-h-14 max-w-[70%] md:max-w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
           loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -113,13 +113,12 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
           {cleanName}
         </p>
         
-        {/* Cashback Amount - Primary Focus */}
+        {/* Rewards Amount - Primary Focus */}
         {cashbackAmount && (
           <div className="flex items-center justify-between bg-secondary/80 rounded-lg px-3 py-2 group-hover:bg-primary/10 transition-colors duration-200">
             <div className="flex flex-col">
-              <span className="text-[10px] text-muted-foreground">Cashback</span>
               <span className="text-base md:text-lg font-bold text-foreground">
-                {cashbackAmount}
+                FLAT {cashbackAmount} Rewards
               </span>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />

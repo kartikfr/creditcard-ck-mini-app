@@ -459,8 +459,8 @@ const MissingCashback: React.FC = () => {
     return ['B1', 'C1'].includes(group);
   };
 
-  // Type for additional details - B1 needs user_type, C1 needs Category
-  type QueueAdditionalDetails = { user_type?: string; Category?: string };
+  // Type for additional details - B1 needs user_type, C1 needs category
+  type QueueAdditionalDetails = { user_type?: string; category?: string; Category?: string };
 
   const getAdditionalDetailsForGroup = (group: string): { details: QueueAdditionalDetails; error?: string } => {
     // B1 group: requires user_type (New or Existing)
@@ -470,11 +470,12 @@ const MissingCashback: React.FC = () => {
       return { details: { user_type: selectedUserType } };
     }
 
-    // C1 group: requires Category (capital C as per API spec)
+    // C1 group: backend validation expects "category" (lowercase), even though docs show "Category"
     if (group === 'C1') {
       if (!selectedCategory) return { details: {}, error: 'Please select a category.' };
-      console.log('[AddDetails] C1 group - sending Category:', selectedCategory);
-      return { details: { Category: selectedCategory } };
+      console.log('[AddDetails] C1 group - sending category:', selectedCategory);
+      // Send both to be safe; the API error explicitly requires lowercase.
+      return { details: { category: selectedCategory, Category: selectedCategory } };
     }
 
     return { details: {} };

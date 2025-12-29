@@ -236,14 +236,16 @@ const Orders: React.FC = () => {
       return `Referral Name: ${attrs.referral_name}`;
     }
     if (attrs.bonus_type) {
-      return attrs.order_id ? `${attrs.bonus_type} • Order ID: ${attrs.order_id}` : `${attrs.bonus_type}`;
+      return attrs.order_id && attrs.order_id.trim() !== '' 
+        ? `${attrs.bonus_type} • Order ID: ${attrs.order_id}` 
+        : `${attrs.bonus_type}`;
     }
     // Always show order ID if available (including for rewards)
-    if (attrs.order_id) {
+    if (attrs.order_id && attrs.order_id.trim() !== '') {
       return `Order ID: ${attrs.order_id}`;
     }
-    // Fallback to showing the order's own ID if no specific order_id
-    return order.id ? `Order ID: ${order.id}` : '';
+    // Fallback to showing the order's own ID (the record ID from API)
+    return `Order ID: ${order.id}`;
   };
 
   // Filter content component (reused in sidebar and sheet)

@@ -1,40 +1,53 @@
 import React, { useState } from 'react';
-import { BadgeCheck, Settings2, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Settings2, Check } from 'lucide-react';
 import { useEligibility } from '@/context/EligibilityContext';
 import { Button } from '@/components/ui/button';
 import EligibilityModal from './EligibilityModal';
 
 interface CheckEligibilityButtonProps {
   className?: string;
+  variant?: 'default' | 'compact';
 }
 
-const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ className = '' }) => {
+const CheckEligibilityButton: React.FC<CheckEligibilityButtonProps> = ({ 
+  className = '',
+  variant = 'default'
+}) => {
   const { isChecked } = useEligibility();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  return (
-    <>
-      {isChecked ? (
+  if (isChecked) {
+    return (
+      <>
         <button
           onClick={() => setIsModalOpen(true)}
-          className={`group flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card hover:bg-secondary/50 hover:border-primary/30 transition-all ${className}`}
+          className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary/30 transition-all duration-200 ${className}`}
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="text-sm font-medium text-foreground">Edit Eligibility</span>
-          <Settings2 className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center">
+            <Check className="w-2.5 h-2.5 text-primary" strokeWidth={2.5} />
+          </div>
+          <span className="text-sm font-medium text-foreground">Eligibility Set</span>
+          <Settings2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
         </button>
-      ) : (
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => setIsModalOpen(true)}
-          className={`h-9 gap-2 bg-gradient-primary hover:opacity-90 ${className}`}
-        >
-          <Sparkles className="w-4 h-4" />
-          <span className="hidden sm:inline">Check Your Eligibility</span>
-          <span className="sm:hidden">Check Eligibility</span>
-        </Button>
-      )}
+
+        <EligibilityModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Button
+        variant="default"
+        size="sm"
+        onClick={() => setIsModalOpen(true)}
+        className={`h-9 gap-2 ${className}`}
+      >
+        <span>Check Eligibility</span>
+      </Button>
 
       <EligibilityModal 
         isOpen={isModalOpen} 

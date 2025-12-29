@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet, Star, TrendingUp, Users, BadgeCheck } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2, Shield, Star, Lock, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEligibility } from '@/context/EligibilityContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
@@ -435,70 +435,44 @@ const Home: React.FC = () => {
 
   return (
     <AppLayout>
-      <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+      <div className="px-4 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
 
-        {/* Hero Section - Value Proposition & Trust */}
-        <section className="mb-8 animate-fade-in">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent p-6 md:p-8 lg:p-10">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-            </div>
-            
-            <div className="relative z-10">
-              {/* Trust Badge */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                  <BadgeCheck className="w-4 h-4 text-white" />
-                  <span className="text-white text-xs font-medium">Backed by Ratan Tata</span>
-                </div>
-              </div>
-
-              {/* Main Headline */}
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-display font-bold text-white text-center mb-3 leading-tight">
-                Get Paid to Apply for Credit Cards
+        {/* Compact Value Header */}
+        <header className="mb-8 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-xl md:text-2xl font-display font-semibold text-foreground mb-1">
+                India's Trusted Credit Card Cashback Platform
               </h1>
-              
-              {/* Subheadline */}
-              <p className="text-white/90 text-center text-sm md:text-base lg:text-lg max-w-2xl mx-auto mb-6">
-                Earn up to <span className="font-bold text-white">₹2,000 real cashback</span> — withdrawn directly to your bank account via UPI
+              <p className="text-sm text-muted-foreground">
+                Powered by CashKaro — Earn up to ₹2,000 cashback on 50+ premium cards
               </p>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 md:gap-6 max-w-lg mx-auto">
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">₹2K+</div>
-                  <div className="text-white/70 text-[10px] md:text-xs">Max Cashback</div>
-                </div>
-                <div className="text-center border-x border-white/20">
-                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">50+</div>
-                  <div className="text-white/70 text-[10px] md:text-xs">Premium Cards</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">1L+</div>
-                  <div className="text-white/70 text-[10px] md:text-xs">Happy Users</div>
-                </div>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-5 border-t border-white/20">
-                <div className="flex items-center gap-1.5 text-white/80 text-xs">
-                  <Star className="w-3.5 h-3.5 fill-current" />
-                  <span>4.8 Rating</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-white/80 text-xs">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Bank-Level Security</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-white/80 text-xs">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>₹50Cr+ Paid Out</span>
-                </div>
-              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <CheckEligibilityButton />
             </div>
           </div>
-        </section>
+          
+          {/* Trust Strip - Icons Only */}
+          <div className="flex items-center gap-6 mt-5 pt-4 border-t border-border">
+            <div className="trust-badge">
+              <Shield className="trust-badge-icon" />
+              <span className="text-xs">Bank-Level Security</span>
+            </div>
+            <div className="trust-badge">
+              <Star className="trust-badge-icon" />
+              <span className="text-xs">4.8 Rating</span>
+            </div>
+            <div className="trust-badge">
+              <Lock className="trust-badge-icon" />
+              <span className="text-xs">100% Safe</span>
+            </div>
+            <div className="trust-badge hidden sm:flex">
+              <Users className="trust-badge-icon" />
+              <span className="text-xs">1L+ Users</span>
+            </div>
+          </div>
+        </header>
 
         {/* COMMENTED OUT: Hero Banner Carousel - Uncomment to enable */}
         {/* 
@@ -567,59 +541,20 @@ const Home: React.FC = () => {
         )}
         */}
 
-
-        {/* How Cashback Works - 4 Step Section (Same style for mobile & desktop) */}
-        <section className="py-6 md:py-10 animate-fade-in">
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
-              How Cashback Works
-            </h2>
-            <Button 
-              variant="link" 
-              onClick={() => navigate('/know-more')}
-              className="text-primary text-sm p-0 h-auto"
-            >
-              Know More
-            </Button>
-          </div>
-          
-          {/* Horizontal Timeline - Responsive for both mobile & desktop */}
-          <div className="flex items-start justify-between gap-2 md:gap-4 relative">
-            {/* Connection Line */}
-            <div className="absolute top-4 md:top-6 left-[12%] right-[12%] h-0.5 bg-border" />
-            
-            {[
-              { step: 1, title: 'Choose a Card', desc: '50+ cards to pick.', icon: CreditCard, color: 'primary' },
-              { step: 2, title: 'Apply Securely', desc: 'Redirected to bank site.', icon: Shield, color: 'accent' },
-              { step: 3, title: 'Get Approved', desc: 'Bank reviews your application.', icon: CreditCard, color: 'primary' },
-              { step: 4, title: 'Cashback Credited', desc: 'Withdraw via UPI, Bank or as Gift Cards.', icon: Wallet, color: 'accent' },
-            ].map((item, idx) => (
-              <div key={idx} className="flex-1 text-center relative z-10">
-                <div className={`w-8 h-8 md:w-12 md:h-12 mx-auto rounded-full bg-${item.color}/10 flex items-center justify-center mb-2 md:mb-3 border-2 md:border-4 border-background`}>
-                  <item.icon className={`w-3.5 h-3.5 md:w-5 md:h-5 text-${item.color}`} />
-                </div>
-                <h3 className="text-[10px] md:text-sm font-semibold text-foreground mb-0.5 md:mb-1 line-clamp-2">{item.title}</h3>
-                <p className="text-[9px] md:text-xs text-muted-foreground line-clamp-2 px-1">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Category Offers Section */}
+        {/* Credit Card Offers Section - Primary Focus */}
         {categoryOffers.length > 0 && (
-          <section className="mb-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg md:text-xl font-display font-semibold text-foreground">
+          <section className="mb-10 animate-fade-in">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-display font-semibold text-foreground">
                 Credit Card Offers
-                <span className="text-xs md:text-sm font-normal text-muted-foreground ml-2">
-                  ({categoryOffers.length} offers)
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  ({categoryOffers.length})
                 </span>
               </h2>
-              <CheckEligibilityButton />
             </div>
             
-            {/* Offers Grid with Lazy Loading */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            {/* Offers Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
               {categoryOffers.slice(0, visibleOffers).map((offer) => (
                 <OfferCard 
                   key={offer.id} 
@@ -629,49 +564,84 @@ const Home: React.FC = () => {
               ))}
             </div>
 
-            {/* Load More Sentinel & Indicator */}
+            {/* Load More Sentinel */}
             {visibleOffers < categoryOffers.length && (
               <div ref={loadMoreRef} className="flex items-center justify-center py-8">
                 {loadingMore ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="text-sm">Loading more offers...</span>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading more...</span>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Showing {visibleOffers} of {categoryOffers.length} offers
+                    Showing {visibleOffers} of {categoryOffers.length}
                   </p>
                 )}
               </div>
             )}
-
           </section>
         )}
 
         {/* Offers Loading State */}
         {offersLoading && (
-          <div className="mb-6">
-            <div className="h-6 w-48 bg-secondary rounded animate-pulse mb-4" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="card-elevated p-3 md:p-4">
-                  <div className="aspect-video bg-secondary rounded-lg animate-pulse mb-3" />
-                  <div className="h-4 w-3/4 bg-secondary rounded animate-pulse mb-2" />
-                  <div className="h-6 w-20 bg-secondary rounded-full animate-pulse" />
+          <div className="mb-10">
+            <div className="h-5 w-40 bg-muted rounded animate-pulse mb-5" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="card-premium p-4">
+                  <div className="h-14 bg-muted rounded-lg animate-pulse mb-3" />
+                  <div className="h-4 w-3/4 bg-muted rounded animate-pulse mx-auto mb-3" />
+                  <div className="h-12 bg-muted rounded-lg animate-pulse" />
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* How It Works - Simplified */}
+        <section className="py-8 mb-6 border-t border-border animate-fade-in">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-display font-semibold text-foreground">
+              How It Works
+            </h2>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => navigate('/know-more')}
+              className="text-primary text-sm h-8"
+            >
+              Learn More
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          
+          {/* Simple 4-step horizontal layout */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { step: '01', title: 'Choose a Card', desc: 'Browse 50+ premium cards' },
+              { step: '02', title: 'Apply via Us', desc: 'Redirected to bank site' },
+              { step: '03', title: 'Get Approved', desc: 'Bank reviews application' },
+              { step: '04', title: 'Get Cashback', desc: 'Withdraw via UPI' },
+            ].map((item) => (
+              <div key={item.step} className="text-center p-4">
+                <div className="text-2xl md:text-3xl font-display font-bold text-primary/20 mb-2">
+                  {item.step}
+                </div>
+                <h3 className="text-sm font-medium text-foreground mb-1">{item.title}</h3>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* About Us Section */}
-        <section className="py-8 md:py-12">
-          <h2 className="text-xl md:text-2xl font-display font-semibold text-foreground text-center mb-6 md:mb-8">
+        <section className="py-8 border-t border-border">
+          <h2 className="text-lg font-display font-semibold text-foreground text-center mb-6">
             About Us
           </h2>
           <div className="grid grid-cols-3 gap-3 md:gap-4">
             <div 
-              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
+              className="rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md opacity-0 animate-fade-in"
               style={{ animationDelay: '0ms', animationFillMode: 'forwards' }}
             >
               <img 
@@ -681,8 +651,8 @@ const Home: React.FC = () => {
               />
             </div>
             <div 
-              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
-              style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
+              className="rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md opacity-0 animate-fade-in"
+              style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
             >
               <img 
                 src={aboutCashbackPaid} 
@@ -691,8 +661,8 @@ const Home: React.FC = () => {
               />
             </div>
             <div 
-              className="rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] opacity-0 animate-fade-in"
-              style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+              className="rounded-xl overflow-hidden transition-all duration-200 hover:shadow-md opacity-0 animate-fade-in"
+              style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
             >
               <img 
                 src={aboutRatanTata} 

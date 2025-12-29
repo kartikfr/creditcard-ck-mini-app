@@ -329,34 +329,38 @@ const OfferDetail: React.FC = () => {
               {/* Banner Carousel */}
               <div className="relative rounded-xl md:rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
                 {currentBanner ? (
-                  <img 
-                    src={currentBanner} 
-                    alt={attrs.name}
-                    className="w-full h-40 md:h-72 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      // Prevent infinite loop - only fallback once
-                      if (!target.dataset.fallback) {
-                        target.dataset.fallback = 'true';
-                        target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
-                      }
-                    }}
-                  />
+                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center">
+                    <img 
+                      src={currentBanner} 
+                      alt={attrs.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        // Prevent infinite loop - only fallback once
+                        if (!target.dataset.fallback) {
+                          target.dataset.fallback = 'true';
+                          target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                        }
+                      }}
+                    />
+                  </div>
                 ) : attrs.image_url ? (
-                  <img 
-                    src={attrs.image_url} 
-                    alt={attrs.name}
-                    className="w-full h-40 md:h-72 object-contain bg-muted/50 p-6 md:p-8"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      if (!target.dataset.fallback) {
-                        target.dataset.fallback = 'true';
-                        target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
-                      }
-                    }}
-                  />
+                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center bg-muted/50 p-4 md:p-6">
+                    <img 
+                      src={attrs.image_url} 
+                      alt={attrs.name}
+                      className="max-w-full max-h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (!target.dataset.fallback) {
+                          target.dataset.fallback = 'true';
+                          target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                        }
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <div className="w-full h-40 md:h-72 flex items-center justify-center bg-muted/50">
+                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center bg-muted/50">
                     <span className="text-muted-foreground text-base md:text-lg">{attrs.name}</span>
                   </div>
                 )}
@@ -371,7 +375,7 @@ const OfferDetail: React.FC = () => {
                       <button
                         key={index}
                         onClick={() => setCurrentBannerIndex(index)}
-                        className={`w-6 md:w-8 h-1 rounded-full transition-colors ${
+                        className={`w-6 md:w-8 h-1.5 rounded-full transition-colors ${
                           index === currentBannerIndex ? 'bg-white' : 'bg-white/40'
                         }`}
                       />

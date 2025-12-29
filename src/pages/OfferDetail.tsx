@@ -327,29 +327,26 @@ const OfferDetail: React.FC = () => {
             {/* Left Column - Main Content */}
             <div className="md:col-span-2 space-y-3 md:space-y-4">
               {/* Banner Carousel */}
-              <div className="relative rounded-xl md:rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+              <div className="relative rounded-xl md:rounded-2xl overflow-hidden">
                 {currentBanner ? (
-                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center">
-                    <img 
-                      src={currentBanner} 
-                      alt={attrs.name}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        // Prevent infinite loop - only fallback once
-                        if (!target.dataset.fallback) {
-                          target.dataset.fallback = 'true';
-                          target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
-                        }
-                      }}
-                    />
-                  </div>
+                  <img 
+                    src={currentBanner} 
+                    alt={attrs.name}
+                    className="w-full h-auto block"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = 'true';
+                        target.src = `https://placehold.co/800x400/1a1a2e/ffffff?text=${encodeURIComponent((attrs.name || 'Offer').slice(0, 10))}`;
+                      }
+                    }}
+                  />
                 ) : attrs.image_url ? (
-                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center bg-muted/50 p-4 md:p-6">
+                  <div className="w-full bg-muted/50 p-6 md:p-8 flex items-center justify-center">
                     <img 
                       src={attrs.image_url} 
                       alt={attrs.name}
-                      className="max-w-full max-h-full object-contain"
+                      className="max-w-full h-auto object-contain max-h-48 md:max-h-64"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         if (!target.dataset.fallback) {
@@ -360,7 +357,7 @@ const OfferDetail: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="w-full aspect-[16/7] md:aspect-[16/6] flex items-center justify-center bg-muted/50">
+                  <div className="w-full h-32 md:h-48 flex items-center justify-center bg-muted/50">
                     <span className="text-muted-foreground text-base md:text-lg">{attrs.name}</span>
                   </div>
                 )}

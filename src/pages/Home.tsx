@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RefreshCw, Loader2, CreditCard, Shield, Wallet, Star, TrendingUp, Users, BadgeCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEligibility } from '@/context/EligibilityContext';
 import { fetchDynamicPage, fetchEarnings, fetchCategoryOffers } from '@/lib/api';
@@ -437,28 +437,63 @@ const Home: React.FC = () => {
     <AppLayout>
       <div className="p-4 lg:p-8 max-w-7xl mx-auto">
 
-        {/* Hero Section - Credit Card Cashback */}
-        <section className="mb-6 animate-fade-in">
-          <div className="bg-gradient-to-br from-primary/10 via-accent/5 to-primary/5 rounded-2xl p-6 md:p-10 lg:p-12 text-center border border-primary/10">
-            <div className="max-w-3xl mx-auto">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-display font-bold text-foreground mb-3 md:mb-4 leading-tight">
-                India's #1 Credit Card Cashback Platform
+        {/* Hero Section - Value Proposition & Trust */}
+        <section className="mb-8 animate-fade-in">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent p-6 md:p-8 lg:p-10">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+            </div>
+            
+            <div className="relative z-10">
+              {/* Trust Badge */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                  <BadgeCheck className="w-4 h-4 text-white" />
+                  <span className="text-white text-xs font-medium">Backed by Ratan Tata</span>
+                </div>
+              </div>
+
+              {/* Main Headline */}
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-display font-bold text-white text-center mb-3 leading-tight">
+                Get Paid to Apply for Credit Cards
               </h1>
-              <p className="text-muted-foreground text-sm md:text-base lg:text-lg mb-4 md:mb-6">
-                Powered by CashKaro — Earn up to <span className="text-primary font-semibold">₹2,000 cashback</span> on 50+ premium credit cards. Apply through us & get rewarded.
+              
+              {/* Subheadline */}
+              <p className="text-white/90 text-center text-sm md:text-base lg:text-lg max-w-2xl mx-auto mb-6">
+                Earn up to <span className="font-bold text-white">₹2,000 real cashback</span> — withdrawn directly to your bank account via UPI
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 text-xs md:text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-primary" />
-                  <span>50+ Cards</span>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-3 md:gap-6 max-w-lg mx-auto">
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">₹2K+</div>
+                  <div className="text-white/70 text-[10px] md:text-xs">Max Cashback</div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-accent" />
-                  <span>100% Secure</span>
+                <div className="text-center border-x border-white/20">
+                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">50+</div>
+                  <div className="text-white/70 text-[10px] md:text-xs">Premium Cards</div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  <span>Quick Payouts</span>
+                <div className="text-center">
+                  <div className="text-xl md:text-2xl lg:text-3xl font-bold text-white">1L+</div>
+                  <div className="text-white/70 text-[10px] md:text-xs">Happy Users</div>
+                </div>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap items-center justify-center gap-4 mt-6 pt-5 border-t border-white/20">
+                <div className="flex items-center gap-1.5 text-white/80 text-xs">
+                  <Star className="w-3.5 h-3.5 fill-current" />
+                  <span>4.8 Rating</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-white/80 text-xs">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Bank-Level Security</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-white/80 text-xs">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>₹50Cr+ Paid Out</span>
                 </div>
               </div>
             </div>

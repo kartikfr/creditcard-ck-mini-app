@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MessageSquareWarning, HelpCircle, FileQuestion, Headphones, MessageCircle, ChevronLeft } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface HelpOption {
   id: string;
@@ -23,7 +25,10 @@ interface HelpOption {
 
 const Help: React.FC = () => {
   const navigate = useNavigate();
-
+  const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
   const helpOptions: HelpOption[] = [
     {
       id: 'missing-cashback',
@@ -67,8 +72,8 @@ const Help: React.FC = () => {
   };
 
   return (
-    <AppLayout>
-      <div className="min-h-screen bg-background">
+    <Layout>
+      <div className="min-h-screen bg-background w-full">
         {/* Breadcrumb */}
         <div className="px-4 py-3 border-b border-border">
           <Breadcrumb>
@@ -167,7 +172,7 @@ const Help: React.FC = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

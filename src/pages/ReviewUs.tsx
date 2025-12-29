@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Star, X, User } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/context/AuthContext';
@@ -9,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import LoginPrompt from '@/components/LoginPrompt';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Sample reviews data (static for now)
 const sampleReviews = [
@@ -139,6 +141,10 @@ const ReviewUs: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
   
   const [showWriteReview, setShowWriteReview] = useState(false);
   const [reviewText, setReviewText] = useState('');
@@ -208,8 +214,8 @@ const ReviewUs: React.FC = () => {
   }
 
   return (
-    <AppLayout>
-      <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto">
+    <Layout>
+      <div className="w-full max-w-4xl lg:max-w-none">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button 
@@ -304,7 +310,7 @@ const ReviewUs: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

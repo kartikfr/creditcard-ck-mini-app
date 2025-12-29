@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, CreditCard, Building2, ChevronRight, IndianRupee, ShieldCheck, Gift, Smartphone, ArrowLeft, Mail, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import LoginPrompt from '@/components/LoginPrompt';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   fetchEarnings, 
   sendPaymentRequestOTP, 
@@ -25,6 +27,10 @@ type Step = 'overview' | 'selection' | 'method' | 'details' | 'otp' | 'success';
 const Payments: React.FC = () => {
   const { toast } = useToast();
   const { user, accessToken, isAuthenticated } = useAuth();
+  const isMobile = useIsMobile();
+  
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
   
   const [step, setStep] = useState<Step>('overview');
   const [selectedWallet, setSelectedWallet] = useState<WalletType>(null);
@@ -261,8 +267,8 @@ const Payments: React.FC = () => {
   }
 
   return (
-    <AppLayout>
-      <div className="p-4 lg:p-8 max-w-5xl mx-auto">
+    <Layout>
+      <div className="w-full max-w-5xl lg:max-w-none">
         {/* Breadcrumb */}
         <nav className="text-sm text-muted-foreground mb-6">
           <ol className="flex items-center gap-2">
@@ -773,7 +779,7 @@ const Payments: React.FC = () => {
           </div>
         )}
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

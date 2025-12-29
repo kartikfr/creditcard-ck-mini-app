@@ -49,14 +49,31 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ className }) => {
         key={item.path}
         onClick={() => navigate(item.path)}
         className={cn(
-          'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left',
+          'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-left relative overflow-hidden group',
+          'transition-all duration-200 ease-out',
           active
             ? 'bg-primary/10 text-primary'
             : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         )}
       >
-        <item.icon className={cn('w-5 h-5', active ? 'text-primary' : 'text-muted-foreground')} />
-        <span className="flex-1">{item.label}</span>
+        {/* Active indicator bar with smooth transition */}
+        <span 
+          className={cn(
+            'absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-primary',
+            'transition-all duration-250 ease-out',
+            active 
+              ? 'h-6 opacity-100' 
+              : 'h-0 opacity-0 group-hover:h-3 group-hover:opacity-50'
+          )}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }}
+        />
+        <item.icon 
+          className={cn(
+            'w-5 h-5 transition-colors duration-200', 
+            active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+          )} 
+        />
+        <span className="flex-1 transition-colors duration-200">{item.label}</span>
       </button>
     );
   };
@@ -72,13 +89,16 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ className }) => {
         {/* Write us a review CTA */}
         <button
           onClick={() => navigate('/review-us')}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors"
+          className={cn(
+            'w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground rounded-lg',
+            'transition-all duration-200 ease-out hover:bg-muted group'
+          )}
         >
           <div className="flex items-center gap-3">
-            <PenLine className="w-5 h-5 text-muted-foreground" />
+            <PenLine className="w-5 h-5 text-muted-foreground transition-colors duration-200 group-hover:text-foreground" />
             <span>Write us a review</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
         </button>
       </div>
     </aside>

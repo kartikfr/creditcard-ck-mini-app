@@ -109,6 +109,24 @@ export default {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
         },
+        // Page transition keyframes for smooth navigation
+        "page-enter": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "page-exit": {
+          from: { opacity: "1", transform: "translateY(0)" },
+          to: { opacity: "0", transform: "translateY(-8px)" },
+        },
+        // Mobile slide transitions for stack-based navigation
+        "slide-in-right": {
+          from: { opacity: "0", transform: "translateX(20px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "slide-out-left": {
+          from: { opacity: "1", transform: "translateX(0)" },
+          to: { opacity: "0", transform: "translateX(-20px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -117,6 +135,15 @@ export default {
         "slide-up": "slide-up 0.5s ease-out forwards",
         "scale-in": "scale-in 0.3s ease-out forwards",
         "spin-slow": "spin-slow 3s linear infinite",
+        "page-enter": "page-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "page-exit": "page-exit 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "slide-in-right": "slide-in-right 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "slide-out-left": "slide-out-left 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+      },
+      transitionDuration: {
+        '250': '250ms',
+        '180': '180ms',
+        '220': '220ms',
       },
     },
   },

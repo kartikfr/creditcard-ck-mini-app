@@ -1,6 +1,7 @@
 import React from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import SettingsSidebar from '@/components/layout/SettingsSidebar';
+import PageTransition from '@/components/ui/PageTransition';
 
 interface SettingsPageLayoutProps {
   children: React.ReactNode;
@@ -8,8 +9,9 @@ interface SettingsPageLayoutProps {
 
 /**
  * Layout wrapper for settings/profile pages that includes:
- * - Desktop: Sidebar navigation on the left
+ * - Desktop: Sidebar navigation on the left with smooth content transitions
  * - Mobile: Regular layout (no sidebar)
+ * - Smooth fade + slide animations when navigating between pages
  */
 const SettingsPageLayout: React.FC<SettingsPageLayoutProps> = ({ children }) => {
   return (
@@ -18,10 +20,10 @@ const SettingsPageLayout: React.FC<SettingsPageLayoutProps> = ({ children }) => 
         {/* Desktop Sidebar - hidden on mobile */}
         <SettingsSidebar />
         
-        {/* Main Content */}
-        <div className="flex-1 min-w-0">
+        {/* Main Content with smooth page transitions */}
+        <PageTransition className="flex-1 min-w-0">
           {children}
-        </div>
+        </PageTransition>
       </div>
     </AppLayout>
   );

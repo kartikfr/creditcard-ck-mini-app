@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface EligibilityBadgeProps {
   className?: string;
@@ -7,9 +7,9 @@ interface EligibilityBadgeProps {
 
 const EligibilityBadge: React.FC<EligibilityBadgeProps> = ({ className = '' }) => {
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 ${className}`}>
-      <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-      <span className="text-[10px] md:text-xs font-medium text-emerald-700 dark:text-emerald-400">
+    <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 ${className}`}>
+      <Check className="w-3 h-3 text-primary" strokeWidth={2.5} />
+      <span className="text-[10px] font-medium text-primary">
         Eligible
       </span>
     </div>

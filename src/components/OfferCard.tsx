@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import EligibilityBadge from './EligibilityBadge';
 
 interface OfferCashback {
@@ -42,32 +43,33 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
   const navigate = useNavigate();
   const attrs = offer.attributes;
   
-  // Format cashback display text
-  const getCashbackText = () => {
+  // Format cashback display
+  const getCashbackAmount = () => {
     if (!attrs.cashback) return null;
     
-    const { payment_type, currency, amount, strike_out_value } = attrs.cashback;
+    const { payment_type, amount } = attrs.cashback;
     
     if (payment_type === 'currency' && amount) {
-      const prefix = strike_out_value && parseFloat(amount) > strike_out_value ? 'Flat' : 'Upto';
-      return `${prefix} ₹${amount} ${attrs.cashback_type || 'Rewards'}`;
+      return `₹${amount}`;
     }
     
     if (payment_type === 'percent' && amount) {
-      return `${amount}% ${attrs.cashback_type || 'Cashback'}`;
+      return `${amount}%`;
     }
     
-    return attrs.cashback_type ? `${attrs.cashback_type}` : null;
+    return null;
   };
 
-  const cashbackText = getCashbackText();
-  const displayName = attrs.name || attrs.title || attrs.store_name || 'Special Offer';
-  const ribbonText = attrs.cashback_ribbon_text || attrs.offer_type || '';
+  const cashbackAmount = getCashbackAmount();
+  const displayName = attrs.name || attrs.title || attrs.store_name || 'Credit Card';
+  
+  // Clean card name - remove redundant "card" suffix
+  const cleanName = displayName.replace(/\s*card\s*$/i, '').trim();
   
   // Get image URL with fallback
-  const imageUrl = attrs.image_url || `https://placehold.co/150x60/f9fafb/666666?text=${encodeURIComponent(displayName.slice(0, 10))}`;
+  const imageUrl = attrs.image_url || `https://placehold.co/200x80/fafafa/999999?text=${encodeURIComponent(cleanName.slice(0, 12))}`;
 
-  // Navigate to internal offer detail page using unique_identifier
+  // Navigate to internal offer detail page
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (attrs.unique_identifier) {
@@ -78,45 +80,52 @@ const OfferCard: React.FC<OfferCardProps> = ({ offer, isEligible = false }) => {
   return (
     <div
       onClick={handleClick}
-      className="relative block bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/20 dark:to-card rounded-lg md:rounded-xl border border-rose-100 dark:border-rose-900/30 overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] group cursor-pointer"
+      className="group relative bg-card rounded-xl border border-border overflow-hidden cursor-pointer transition-all duration-200 hover:border-primary/30"
+      style={{ boxShadow: 'var(--shadow-card)' }}
     >
-      {/* Ribbon Badge with Eligibility */}
-      <div className="flex items-center justify-between bg-rose-100 dark:bg-rose-900/40 py-1 md:py-1.5 px-1.5 md:px-2 min-h-[24px] md:min-h-[28px]">
-        <span className="text-rose-600 dark:text-rose-300 text-[9px] md:text-xs font-medium line-clamp-1 flex-1">
-          {ribbonText || '\u00A0'}
-        </span>
-        {isEligible && <EligibilityBadge className="ml-1 flex-shrink-0" />}
-      </div>
+      {/* Eligibility Badge - Top Right */}
+      {isEligible && (
+        <div className="absolute top-2 right-2 z-10">
+          <EligibilityBadge />
+        </div>
+      )}
       
-      {/* Logo/Image */}
-      <div className="flex items-center justify-center p-3 md:p-6 min-h-[60px] md:min-h-[100px] bg-white dark:bg-card">
+      {/* Card Image */}
+      <div className="flex items-center justify-center p-4 md:p-6 bg-card min-h-[72px] md:min-h-[100px]">
         <img
           src={imageUrl}
           alt={displayName}
-          className="max-h-10 md:max-h-16 max-w-full object-contain group-hover:scale-105 transition-transform"
+          className="max-h-10 md:max-h-14 max-w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
           loading="lazy"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (!target.src.includes('placehold.co')) {
-              target.src = `https://placehold.co/150x60/f9fafb/666666?text=${encodeURIComponent(displayName.slice(0, 10))}`;
+              target.src = `https://placehold.co/200x80/fafafa/999999?text=${encodeURIComponent(cleanName.slice(0, 12))}`;
             }
           }}
         />
       </div>
       
-      {/* Card Name */}
-      <p className="text-center text-[10px] md:text-sm font-medium text-muted-foreground px-1.5 md:px-2 pb-1.5 md:pb-2 line-clamp-1 uppercase tracking-wide">
-        {displayName.replace(/card/gi, '').trim()} CARD
-      </p>
-      
-      {/* Cashback Button */}
-      {cashbackText && (
-        <div className="px-2 md:px-3 pb-2.5 md:pb-4">
-          <div className="bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] md:text-sm font-semibold text-center py-1.5 md:py-2 px-2 md:px-3 rounded-md md:rounded-lg transition-colors">
-            {cashbackText}
+      {/* Card Details */}
+      <div className="px-3 md:px-4 pb-3 md:pb-4 pt-0">
+        {/* Card Name */}
+        <p className="text-xs md:text-sm font-medium text-foreground mb-2 line-clamp-1 text-center">
+          {cleanName}
+        </p>
+        
+        {/* Cashback Amount - Primary Focus */}
+        {cashbackAmount && (
+          <div className="flex items-center justify-between bg-secondary/80 rounded-lg px-3 py-2 group-hover:bg-primary/10 transition-colors duration-200">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-muted-foreground">Cashback</span>
+              <span className="text-base md:text-lg font-bold text-foreground">
+                {cashbackAmount}
+              </span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -1066,7 +1066,10 @@ const Earnings: React.FC = () => {
         {/* Main Earnings Card - Redesigned to match screenshot */}
         <div className="card-elevated p-4 md:p-6 mb-4 md:mb-6">
           {/* Header */}
-          <h1 className="text-sm md:text-base font-semibold text-foreground mb-1">All Time Earnings</h1>
+          <h1 className="text-base md:text-lg font-bold text-foreground mb-1">All Time Earnings</h1>
+          <p className="text-xs md:text-sm text-muted-foreground mb-2">
+            Your Total Earnings amount includes your Cashback + Rewards + Referral amount.
+          </p>
 
           {/* Total Amount - Large & Primary */}
           <div className="mb-2">
@@ -1079,49 +1082,171 @@ const Earnings: React.FC = () => {
             *Earnings will show here within 72 hours of your shopping via CashKaro app
           </p>
 
-          {/* 3 Columns - Cashback, Rewards, Referrals */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+          {/* Mobile: Simple 3 Columns */}
+          <div className="grid grid-cols-3 gap-2 mb-6 lg:hidden">
             {/* Cashback */}
             <button
               onClick={() => handleOpenBreakdown('cashback')}
-              className="p-3 md:p-4 border rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
+              className="p-3 border rounded-xl hover:border-primary hover:bg-primary/5 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs md:text-sm text-muted-foreground">Cashback</span>
+                <span className="text-xs text-muted-foreground">Cashback</span>
                 <Info className="w-4 h-4 text-muted-foreground" />
               </div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatMoney(cashbackTotal)}</p>
+              <p className="text-lg font-bold text-foreground">{formatMoney(cashbackTotal)}</p>
             </button>
 
             {/* Rewards */}
             <button
               onClick={() => handleOpenBreakdown('rewards')}
-              className="p-3 md:p-4 border rounded-xl hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left"
+              className="p-3 border rounded-xl hover:border-amber-500 hover:bg-amber-500/5 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs md:text-sm text-muted-foreground">Rewards</span>
+                <span className="text-xs text-muted-foreground">Rewards</span>
                 <Info className="w-4 h-4 text-muted-foreground" />
               </div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatMoney(rewardsTotal)}</p>
+              <p className="text-lg font-bold text-foreground">{formatMoney(rewardsTotal)}</p>
             </button>
 
             {/* Referrals */}
             <button
               onClick={() => handleOpenBreakdown('referrals')}
-              className="p-3 md:p-4 border rounded-xl hover:border-success hover:bg-success/5 transition-all text-left"
+              className="p-3 border rounded-xl hover:border-success hover:bg-success/5 transition-all text-left"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs md:text-sm text-muted-foreground">Referrals</span>
+                <span className="text-xs text-muted-foreground">Referrals</span>
                 <Info className="w-4 h-4 text-muted-foreground" />
               </div>
-              <p className="text-lg md:text-2xl font-bold text-foreground">{formatMoney(referralsTotal)}</p>
+              <p className="text-lg font-bold text-foreground">{formatMoney(referralsTotal)}</p>
             </button>
           </div>
 
-          {/* Request Payment Button */}
-          <Button onClick={handleOpenPayment} className="w-full h-12">
-            Request Payment
-          </Button>
+          {/* Desktop: Detailed 3 Columns with breakdown */}
+          <div className="hidden lg:grid grid-cols-3 gap-4 mb-6">
+            {/* Cashback Card */}
+            <div className="border rounded-xl overflow-hidden">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-foreground">Cashback</span>
+                  <button onClick={() => handleOpenBreakdown('cashback')} className="hover:opacity-70">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatMoney(cashbackTotal)}</p>
+              </div>
+              <div className="divide-y">
+                <div className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{formatMoney(confirmedCashback)}</p>
+                    <p className="text-xs text-muted-foreground">Available for payment</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
+                    Confirmed
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(pendingCashback)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                    Pending
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(paidCashback)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                    Paid
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rewards Card */}
+            <div className="border rounded-xl overflow-hidden">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-foreground">Rewards</span>
+                  <button onClick={() => handleOpenBreakdown('rewards')} className="hover:opacity-70">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatMoney(rewardsTotal)}</p>
+              </div>
+              <div className="divide-y">
+                <div className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{formatMoney(confirmedRewards)}</p>
+                    <p className="text-xs text-muted-foreground">Available for payment</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
+                    Confirmed
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(pendingRewards)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                    Pending
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(paidRewards)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                    Paid
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Referrals Card */}
+            <div className="border rounded-xl overflow-hidden">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-foreground">Referrals</span>
+                  <button onClick={() => handleOpenBreakdown('referrals')} className="hover:opacity-70">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{formatMoney(referralsTotal)}</p>
+              </div>
+              <div className="divide-y">
+                <div className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{formatMoney(confirmedReferrals)}</p>
+                    <p className="text-xs text-muted-foreground">Available for payment</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-success"></span>
+                    Confirmed
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(pendingReferrals)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                    Pending
+                  </span>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">{formatMoney(paidReferrals)}</p>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                    Paid
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Request Payment Button - Centered on desktop */}
+          <div className="lg:flex lg:justify-center">
+            <Button onClick={handleOpenPayment} className="w-full lg:w-auto lg:px-16 h-12">
+              Request Payment
+            </Button>
+          </div>
         </div>
 
         {/* Navigation Links */}

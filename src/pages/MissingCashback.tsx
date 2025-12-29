@@ -177,9 +177,9 @@ const CATEGORY_OPTIONS_C1: { label: string; value: string; description: string }
 ];
 
 // User type options for B1 group
-// API expects: "New " (with trailing space) or "Existing"
+// API expects: "New" (no trailing space) or "Existing"
 const USER_TYPE_OPTIONS: { label: string; value: string }[] = [
-  { label: 'Yes, I am a New User', value: 'New ' },  // Note: trailing space required by API
+  { label: 'Yes, I am a New User', value: 'New' },
   { label: 'No, I am an Existing User', value: 'Existing' }
 ];
 const MissingCashback: React.FC = () => {
@@ -249,6 +249,12 @@ const MissingCashback: React.FC = () => {
   // Validation Error Modal state (for showing validation errors in popup style)
   const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
   const [validationErrorMessage, setValidationErrorMessage] = useState<string>('');
+
+  // Info/Success Modal state (replaces toast for important messages)
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [infoModalTitle, setInfoModalTitle] = useState<string>('');
+  const [infoModalMessage, setInfoModalMessage] = useState<string>('');
+  const [infoModalVariant, setInfoModalVariant] = useState<'success' | 'error' | 'info'>('info');
   const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
   const [isLoadingExitClicks, setIsLoadingExitClicks] = useState(false);
   const [isLoadingClaims, setIsLoadingClaims] = useState(false);
@@ -488,19 +494,17 @@ const MissingCashback: React.FC = () => {
   };
   const handleValidateOrderId = async () => {
     if (!orderId || !selectedRetailer || !selectedClick) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in the Order ID',
-        variant: 'destructive'
-      });
+      setInfoModalTitle('Missing Information');
+      setInfoModalMessage('Please fill in the Order ID');
+      setInfoModalVariant('error');
+      setShowInfoModal(true);
       return;
     }
     if (!accessToken) {
-      toast({
-        title: 'Not Authenticated',
-        description: 'Please log in to submit a claim',
-        variant: 'destructive'
-      });
+      setInfoModalTitle('Not Authenticated');
+      setInfoModalMessage('Please log in to submit a claim');
+      setInfoModalVariant('error');
+      setShowInfoModal(true);
       return;
     }
     setIsValidating(true);
@@ -515,10 +519,10 @@ const MissingCashback: React.FC = () => {
       } else {
         // Move to order amount step
         setStep('orderAmount');
-        toast({
-          title: 'Order ID Validated',
-          description: 'Please enter your order amount to complete the claim.'
-        });
+        setInfoModalTitle('Order ID Validated');
+        setInfoModalMessage('Please enter your order amount to complete the claim.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
       }
     } catch (error: any) {
       console.error('Failed to validate order:', error);
@@ -566,10 +570,10 @@ const MissingCashback: React.FC = () => {
       } else if (response?.meta?.status === 'Resolved') {
         // Already resolved by the system - no additional details needed
         setStep('success');
-        toast({
-          title: 'Claim Submitted!',
-          description: 'Your missing cashback claim has been processed.'
-        });
+        setInfoModalTitle('Claim Submitted!');
+        setInfoModalMessage('Your missing cashback claim has been processed.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
       } else if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
         // Group B1/B2/C1 requires additional details
         // Server didn't resolve immediately, so we need to collect additional info
@@ -579,37 +583,34 @@ const MissingCashback: React.FC = () => {
         // For unknown groups, we let the server handle it - if it needs additional details,
         // user will see "Needs Info" badge in the claims list and can add details there
         setStep('success');
-        toast({
-          title: 'Claim Submitted!',
-          description: 'Your missing cashback claim has been added to the queue.'
-        });
+        setInfoModalTitle('Claim Submitted!');
+        setInfoModalMessage('Your missing cashback claim has been added to the queue.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
       }
     } catch (error: any) {
       console.error('Failed to submit claim:', error);
-      toast({
-        title: 'Submission Failed',
-        description: error.message || 'Failed to submit your claim. Please try again.',
-        variant: 'destructive'
-      });
+      setInfoModalTitle('Submission Failed');
+      setInfoModalMessage(error.message || 'Failed to submit your claim. Please try again.');
+      setInfoModalVariant('error');
+      setShowInfoModal(true);
     } finally {
       setIsSubmitting(false);
     }
   };
   const handleSubmitClaim = async () => {
     if (!orderAmount || !selectedRetailer || !selectedClick) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in the Order Amount',
-        variant: 'destructive'
-      });
+      setInfoModalTitle('Missing Information');
+      setInfoModalMessage('Please fill in the Order Amount');
+      setInfoModalVariant('error');
+      setShowInfoModal(true);
       return;
     }
     if (!accessToken) {
-      toast({
-        title: 'Not Authenticated',
-        description: 'Please log in to submit a claim',
-        variant: 'destructive'
-      });
+      setInfoModalTitle('Not Authenticated');
+      setInfoModalMessage('Please log in to submit a claim');
+      setInfoModalVariant('error');
+      setShowInfoModal(true);
       return;
     }
     handleSubmitClaimDirect(orderAmount);
@@ -646,10 +647,10 @@ const MissingCashback: React.FC = () => {
         setShowTrackedModal(true);
       } else {
         setStep('success');
-        toast({
-          title: 'Details Added!',
-          description: 'Your claim has been updated with additional details.'
-        });
+        setInfoModalTitle('Details Added!');
+        setInfoModalMessage('Your claim has been updated with additional details.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
       }
     } catch (error: any) {
       console.error('Failed to update claim details:', error);
@@ -682,10 +683,10 @@ const MissingCashback: React.FC = () => {
         user_type: pendingUserType
       });
       console.log('[AddDetails] B1 update response:', response);
-      toast({
-        title: 'Details Added!',
-        description: 'Your claim has been updated.'
-      });
+      setInfoModalTitle('Details Added!');
+      setInfoModalMessage('Your claim has been updated.');
+      setInfoModalVariant('success');
+      setShowInfoModal(true);
       setShowAddDetailsModal(false);
       setSelectedClaimForDetails(null);
       setSelectedUserType('');
@@ -732,10 +733,10 @@ const MissingCashback: React.FC = () => {
       });
       const response = await updateMissingCashbackQueue(accessToken, claimQueueId, details);
       console.log('[AddDetails] Response:', response);
-      toast({
-        title: 'Details Added!',
-        description: 'Your claim has been updated.'
-      });
+      setInfoModalTitle('Details Added!');
+      setInfoModalMessage('Your claim has been updated.');
+      setInfoModalVariant('success');
+      setShowInfoModal(true);
       setShowAddDetailsModal(false);
       setSelectedClaimForDetails(null);
       setSelectedUserType('');
@@ -1574,7 +1575,7 @@ const MissingCashback: React.FC = () => {
                       </button>
                       
                       {/* Primary Button - New User */}
-                      <Button onClick={() => handleB1UserTypeSelection('New ')} className="w-full h-12 mb-4" disabled={isUpdatingDetails}>
+                      <Button onClick={() => handleB1UserTypeSelection('New')} className="w-full h-12 mb-4" disabled={isUpdatingDetails}>
                         {isUpdatingDetails ? <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Processing...
@@ -1596,12 +1597,12 @@ const MissingCashback: React.FC = () => {
                       
                       {/* Confirmation Title */}
                       <h2 className="text-lg font-semibold text-foreground mb-3">
-                        {pendingUserType === 'New ' ? 'New' : 'Existing'} user cashback
+                        {pendingUserType === 'New' ? 'New' : 'Existing'} user cashback
                       </h2>
                       
                       {/* Confirmation Description */}
                       <p className="text-sm text-muted-foreground mb-8">
-                        Once {getClaimStoreName(selectedClaimForDetails)} confirms you as a {pendingUserType === 'New ' ? 'new' : 'existing'} user, your cashback may increase or decrease.
+                        Once {getClaimStoreName(selectedClaimForDetails)} confirms you as a {pendingUserType === 'New' ? 'new' : 'existing'} user, your cashback may increase or decrease.
                       </p>
                       
                       {/* Okay Button */}
@@ -1744,6 +1745,47 @@ const MissingCashback: React.FC = () => {
               
               {/* Close Button */}
               <Button onClick={() => setShowValidationErrorModal(false)} className="w-full h-12">
+                Okay
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Info/Success Modal - Clear popup for important messages */}
+        <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="sr-only">
+                {infoModalVariant === 'success' ? 'Success' : infoModalVariant === 'error' ? 'Error' : 'Information'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="text-center py-2">
+              {/* Icon based on variant */}
+              <div className={`w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full ${
+                infoModalVariant === 'success' ? 'bg-success/10' : 
+                infoModalVariant === 'error' ? 'bg-destructive/10' : 'bg-primary/10'
+              }`}>
+                {infoModalVariant === 'success' ? (
+                  <CheckCircle className="w-8 h-8 text-success" />
+                ) : infoModalVariant === 'error' ? (
+                  <XCircle className="w-8 h-8 text-destructive" />
+                ) : (
+                  <AlertCircle className="w-8 h-8 text-primary" />
+                )}
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-xl font-semibold text-foreground mb-3">
+                {infoModalTitle}
+              </h2>
+              
+              {/* Message */}
+              <p className="text-muted-foreground mb-6">
+                {infoModalMessage}
+              </p>
+              
+              {/* Close Button */}
+              <Button onClick={() => setShowInfoModal(false)} className="w-full h-12">
                 Okay
               </Button>
             </div>

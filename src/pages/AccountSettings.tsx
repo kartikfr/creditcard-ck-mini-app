@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Pencil, Trash2, Loader2 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -11,6 +12,7 @@ import { fetchProfile } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 import { User } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProfileData {
   id: string | number;
@@ -28,10 +30,14 @@ const AccountSettings: React.FC = () => {
   const navigate = useNavigate();
   const { accessToken, isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [referralNotification, setReferralNotification] = useState(false);
+
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
 
   useEffect(() => {
     if (accessToken && isAuthenticated) {
@@ -98,15 +104,15 @@ const AccountSettings: React.FC = () => {
   }
 
   return (
-    <AppLayout>
-      <div className="p-4 md:p-6 lg:p-8 max-w-2xl mx-auto">
-        {/* Header */}
+    <Layout>
+      <div className="w-full max-w-2xl lg:max-w-none">
+        {/* Header - hide back button on desktop when sidebar is visible */}
         <div className="flex items-center gap-3 mb-8">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)} 
-            className="shrink-0 h-8 w-8"
+            className="shrink-0 h-8 w-8 lg:hidden"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
@@ -191,7 +197,7 @@ const AccountSettings: React.FC = () => {
         {/* Spacer for fixed button on mobile */}
         <div className="h-20 md:hidden" />
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

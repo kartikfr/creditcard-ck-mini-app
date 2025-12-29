@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Info, Wallet, CreditCard, Building2, Clock, CheckCircle, ShieldCheck, Gift, Smartphone, Mail, Banknote, ChevronDown, X } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
+import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -67,6 +68,9 @@ const Earnings: React.FC = () => {
   const { user, accessToken, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Use SettingsPageLayout for desktop, AppLayout for mobile
+  const Layout = isMobile ? AppLayout : SettingsPageLayout;
 
   // Earnings API state
   const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
@@ -1049,8 +1053,8 @@ const Earnings: React.FC = () => {
   const breakdownData = getBreakdownData(breakdownType);
 
   return (
-    <AppLayout>
-      <div className="p-3 md:p-4 lg:p-8 max-w-4xl mx-auto">
+    <Layout>
+      <div className="w-full max-w-4xl lg:max-w-none">
         {/* Back Button & Breadcrumb */}
         <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0 h-8 w-8 md:h-10 md:w-10">
@@ -1381,7 +1385,7 @@ const Earnings: React.FC = () => {
           {renderPaymentSheetContent()}
         </SheetContent>
       </Sheet>
-    </AppLayout>
+    </Layout>
   );
 };
 

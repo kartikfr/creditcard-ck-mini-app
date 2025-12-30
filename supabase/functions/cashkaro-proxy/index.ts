@@ -31,18 +31,41 @@ const generateBoundary = (): string => {
   return `----FormBoundary${Date.now()}${Math.random().toString(36).substring(2)}`;
 };
 
-// Helper to decode base64 string to Uint8Array
+// Helper to decode base64 string to Uint8Array with validation
 const base64ToUint8Array = (base64: string): Uint8Array => {
   // Remove any data URL prefix if present (e.g., "data:image/png;base64,")
   const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
   
-  // Use Deno's built-in base64 decoding for better reliability
-  const binaryString = atob(cleanBase64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  // Validate base64 string
+  if (!cleanBase64 || cleanBase64.length === 0) {
+    console.error('[CashKaro Proxy] Empty base64 data received');
+    return new Uint8Array(0);
   }
-  return bytes;
+  
+  // Check for valid base64 characters
+  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+  if (!base64Regex.test(cleanBase64)) {
+    console.error('[CashKaro Proxy] Invalid base64 characters detected');
+  }
+  
+  try {
+    const binaryString = atob(cleanBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Log first few bytes for magic number verification
+    if (bytes.length > 4) {
+      const magicBytes = Array.from(bytes.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+      console.log(`[CashKaro Proxy] File magic bytes: ${magicBytes}`);
+    }
+    
+    return bytes;
+  } catch (error) {
+    console.error('[CashKaro Proxy] Failed to decode base64:', error);
+    return new Uint8Array(0);
+  }
 };
 
 // Helper to create multipart form data body
@@ -131,15 +154,23 @@ serve(async (req) => {
     if (isMultipart && formFields) {
       const boundary = generateBoundary();
       headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+      
+      console.log(`[CashKaro Proxy] Processing ${files?.length || 0} files for multipart upload`);
+      console.log(`[CashKaro Proxy] Form fields:`, Object.keys(formFields));
+      
       const multipartData = createMultipartBody(formFields, files || [], boundary);
-      // Use ReadableStream to send the binary data
-      requestBody = new ReadableStream({
-        start(controller) {
-          controller.enqueue(multipartData);
-          controller.close();
-        }
-      });
+      
+      // CRITICAL FIX: Use ArrayBuffer from Uint8Array instead of ReadableStream
+      // And add Content-Length header for proper body parsing
+      const arrayBuffer = multipartData.buffer.slice(
+        multipartData.byteOffset,
+        multipartData.byteOffset + multipartData.byteLength
+      ) as ArrayBuffer;
+      requestBody = arrayBuffer;
+      headers['Content-Length'] = String(multipartData.length);
+      
       console.log(`[CashKaro Proxy] Created multipart body with ${files?.length || 0} files, size: ${multipartData.length} bytes`);
+      console.log(`[CashKaro Proxy] Content-Length header set to: ${multipartData.length}`);
     } else if (body) {
       headers['Content-Type'] = 'application/vnd.api+json';
       requestBody = JSON.stringify(body);

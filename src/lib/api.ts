@@ -539,6 +539,22 @@ export const raiseTicket = async (
 
   // If we have files, use multipart form data
   if (files && files.length > 0) {
+    // Validate files before sending
+    for (const file of files) {
+      if (!file.data || file.data.length === 0) {
+        console.error('[API] Invalid file data - empty base64 for:', file.filename);
+        throw new Error(`Invalid file: ${file.filename} - empty data`);
+      }
+      
+      // Check for data URL prefix that shouldn't be there
+      if (file.data.includes('data:')) {
+        console.warn('[API] File data contains data URL prefix, this should have been stripped:', file.filename);
+      }
+      
+      // Log file details for debugging
+      console.log(`[API] File validation passed: ${file.filename}, type: ${file.contentType}, base64 length: ${file.data.length}`);
+    }
+    
     console.log('[API] Using multipart form data for ticket with files');
     const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
       body: {

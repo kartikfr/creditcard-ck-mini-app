@@ -564,11 +564,15 @@ const MissingCashback: React.FC = () => {
       // Check response status and flow:
       // 1. If cashback was tracked immediately (cashback_id exists), show tracked modal
       // 2. If status is "Resolved" (already processed), go to success - no additional details needed
-      // 3. IMPORTANT: Only show additional details if BOTH:
-      //    - The group requires additional details (B1, B2, C1)
-      //    - AND the server indicates it's needed (no immediate resolution)
-      // 4. Otherwise, normal success flow
+      // 3. If under_tracking is "yes", the system is auto-tracking - skip additional details
+      // 4. IMPORTANT: Only show additional details if:
+      //    - The group requires additional details (B1, C1)
+      //    - AND under_tracking is "no" (system is not auto-tracking)
+      //    - AND the server didn't resolve immediately
+      // 5. Otherwise, normal success flow
 
+      const isUnderTracking = response?.meta?.under_tracking === 'yes';
+      
       if (response?.meta?.cashback_id) {
         // Cashback tracked immediately - show tracked modal
         setTrackedCashbackId(response.meta.cashback_id);
@@ -580,8 +584,16 @@ const MissingCashback: React.FC = () => {
         setInfoModalMessage('Your missing cashback claim has been processed.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
+      } else if (isUnderTracking) {
+        // System is auto-tracking - skip additional details step
+        // B1 and other groups with under_tracking="yes" don't need user input
+        setStep('success');
+        setInfoModalTitle('Claim Submitted!');
+        setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
       } else if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
-        // Group B1/B2/C1 requires additional details
+        // Group B1/C1 requires additional details AND under_tracking is "no"
         // Server didn't resolve immediately, so we need to collect additional info
         setStep('additionalDetails');
       } else {

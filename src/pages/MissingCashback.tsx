@@ -670,7 +670,7 @@ const MissingCashback: React.FC = () => {
   };
 
   // Handle invoice upload and ticket submission (for C1 "Other Category" and C2)
-  const handleInvoiceSubmit = async (transactionDetails: string) => {
+  const handleInvoiceSubmit = async () => {
     if (!accessToken) {
       setValidationErrorMessage('Please login to continue.');
       setShowValidationErrorModal(true);
@@ -679,12 +679,6 @@ const MissingCashback: React.FC = () => {
 
     if (uploadedFiles.length === 0) {
       setValidationErrorMessage('Please upload at least one invoice screenshot.');
-      setShowValidationErrorModal(true);
-      return;
-    }
-
-    if (!transactionDetails || transactionDetails.trim().length === 0) {
-      setValidationErrorMessage('Please enter the transaction details from your invoice.');
       setShowValidationErrorModal(true);
       return;
     }
@@ -745,7 +739,7 @@ const MissingCashback: React.FC = () => {
         query_sub_type?: string;
       } = {
         transaction_id: txnOrderId,
-        transaction_details: transactionDetails.trim(),
+        transaction_details: txnOrderId, // Auto-fill with order ID as per API requirement
         missing_txn_queue_id: effectiveQueueId ? Number.parseInt(effectiveQueueId, 10) : undefined,
         query_type: selectedRetailerGroup === 'C1' ? 'Other Category' : 'Missing Cashback',
         query_sub_type: 'Missing Cashback',
@@ -1585,15 +1579,8 @@ const MissingCashback: React.FC = () => {
 
   // Render Ticket Success Step
   const renderTicketSuccessStep = () => {
-    const storeName = selectedRetailer ? getRetailerName(selectedRetailer) : 'the store';
-    const storeImage = selectedRetailer ? getRetailerImage(selectedRetailer) : '';
-
     return (
       <TicketSuccess
-        storeName={storeName}
-        storeImage={storeImage}
-        orderId={orderId}
-        ticketId={ticketResult?.ticketId}
         onContinue={handleViewClaims}
       />
     );

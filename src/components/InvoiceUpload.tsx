@@ -1,8 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { X, Upload, Image, FileText, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { validateFile, formatFileSize, isImageFile, MAX_FILES } from '@/lib/fileUtils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,7 +9,7 @@ interface InvoiceUploadProps {
   onFilesChange: (files: File[]) => void;
   storeName: string;
   storeImage?: string;
-  onContinue: (transactionDetails: string) => void;
+  onContinue: () => void;
   onBack?: () => void;
   isUploading?: boolean;
   title?: string;
@@ -35,7 +33,6 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [transactionDetails, setTransactionDetails] = useState('');
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -45,13 +42,11 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
     const errors: string[] = [];
 
     Array.from(selectedFiles).forEach(file => {
-      // Check max files limit
       if (files.length + newFiles.length >= MAX_FILES) {
         errors.push(`Maximum ${MAX_FILES} files allowed`);
         return;
       }
 
-      // Validate file
       const validation = validateFile(file);
       if (!validation.valid) {
         errors.push(`${file.name}: ${validation.error}`);
@@ -73,7 +68,6 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
       onFilesChange([...files, ...newFiles]);
     }
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -126,19 +120,7 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
     }
   };
 
-  const handleContinue = () => {
-    if (!transactionDetails.trim()) {
-      toast({
-        title: 'Transaction Details Required',
-        description: 'Please enter the transaction details from your invoice',
-        variant: 'destructive'
-      });
-      return;
-    }
-    onContinue(transactionDetails.trim());
-  };
-
-  const isValid = files.length > 0 && transactionDetails.trim().length > 0;
+  const isValid = files.length > 0;
 
   return (
     <div className="animate-fade-in">
@@ -167,24 +149,6 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
         <p className="text-sm text-muted-foreground text-center mb-6">
           {description}
         </p>
-
-        {/* Transaction Details Input */}
-        <div className="mb-6">
-          <Label htmlFor="transaction-details" className="text-sm font-medium text-foreground mb-2 block">
-            Transaction Details <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="transaction-details"
-            type="text"
-            placeholder="Enter transaction ID or reference number from invoice"
-            value={transactionDetails}
-            onChange={(e) => setTransactionDetails(e.target.value)}
-            className="h-12"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            This can be found on your invoice or payment confirmation
-          </p>
-        </div>
 
         {/* File Upload Area */}
         <div
@@ -273,7 +237,7 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({
 
         {/* Continue Button */}
         <Button
-          onClick={handleContinue}
+          onClick={onContinue}
           disabled={!isValid || isUploading}
           className="w-full h-12 mb-4"
         >

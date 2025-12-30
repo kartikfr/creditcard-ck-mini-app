@@ -7,12 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { fetchMissingCashbackRetailers, fetchExitClickDates, validateMissingCashback, submitMissingCashbackQueue, fetchMissingCashbackQueue, updateMissingCashbackQueue } from '@/lib/api';
+import { fetchMissingCashbackRetailers, fetchExitClickDates, validateMissingCashback, submitMissingCashbackQueue, fetchMissingCashbackQueue, updateMissingCashbackQueue, raiseTicket } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useIsMobile } from '@/hooks/use-mobile';
+import InvoiceUpload from '@/components/InvoiceUpload';
+import TicketSuccess from '@/components/TicketSuccess';
+import { fileToBase64 } from '@/lib/fileUtils';
+
 interface Retailer {
   id: string | number;
   type: string;
@@ -28,6 +32,7 @@ interface Retailer {
     image_url?: string;
   };
 }
+
 interface ExitClick {
   id: string;
   type: string;
@@ -38,6 +43,7 @@ interface ExitClick {
     month?: string;
   };
 }
+
 interface Claim {
   id: string;
   type: string;
@@ -58,7 +64,6 @@ interface Claim {
     notification_count?: number;
     report_storename?: string;
     imageurl?: string;
-    // Legacy fields
     store_name?: string;
     merchant_name?: string;
     image_url?: string;
@@ -67,14 +72,14 @@ interface Claim {
     ticket_status?: string | null;
     groupid?: string;
     cashback_type?: string;
-    under_tracking?: string; // "yes" or "no"
+    under_tracking?: string;
     status_update?: string;
     expected_resolution_date?: string;
-    // B2 specific
     missing_txn_cashback_type?: string;
     missing_txn_cashback?: string;
   };
 }
+
 interface QueueSubmitResponse {
   data: {
     type: string;
@@ -89,7 +94,19 @@ interface QueueSubmitResponse {
     under_tracking?: string;
   };
 }
-type Step = 'claims' | 'retailers' | 'dates' | 'orderId' | 'orderAmount' | 'additionalDetails' | 'success';
+
+// Extended step types to support new flows
+type Step = 
+  | 'claims' 
+  | 'retailers' 
+  | 'dates' 
+  | 'orderId' 
+  | 'orderAmount' 
+  | 'additionalDetails'   // B1: New/Existing user
+  | 'categorySelection'   // C1: Category selection
+  | 'invoiceUpload'       // C1 (Other Category) & C2: Invoice upload
+  | 'ticketSuccess'       // After ticket submission
+  | 'success';
 
 // Parse tracking_speed string (e.g., "72h", "36h", "1h 12m") to milliseconds
 const parseTrackingSpeed = (speedStr: string | undefined): number => {
@@ -98,38 +115,32 @@ const parseTrackingSpeed = (speedStr: string | undefined): number => {
   let totalMs = 0;
   const lowerSpeed = speedStr.toLowerCase();
 
-  // Match hours like "72h" or "1h"
   const hoursMatch = lowerSpeed.match(/(\d+)\s*h/);
   if (hoursMatch) {
     totalMs += parseInt(hoursMatch[1]) * 60 * 60 * 1000;
   }
 
-  // Match minutes like "12m"
-  const minutesMatch = lowerSpeed.match(/(\d+)\s*m(?!s)/); // Exclude "ms"
+  const minutesMatch = lowerSpeed.match(/(\d+)\s*m(?!s)/);
   if (minutesMatch) {
     totalMs += parseInt(minutesMatch[1]) * 60 * 1000;
   }
 
-  // Match days like "7d"
   const daysMatch = lowerSpeed.match(/(\d+)\s*d/);
   if (daysMatch) {
     totalMs += parseInt(daysMatch[1]) * 24 * 60 * 60 * 1000;
   }
-  return totalMs > 0 ? totalMs : 30 * 24 * 60 * 60 * 1000; // Fallback to 30 days
+  return totalMs > 0 ? totalMs : 30 * 24 * 60 * 60 * 1000;
 };
 
 // Countdown Timer Component
-const CountdownTimer: React.FC<{
-  targetDate: string;
-}> = ({
-  targetDate
-}) => {
+const CountdownTimer: React.FC<{ targetDate: string }> = ({ targetDate }) => {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
     minutes: number;
     seconds: number;
   } | null>(null);
+
   useEffect(() => {
     const calculateTimeLeft = () => {
       const target = new Date(targetDate).getTime();
@@ -152,54 +163,50 @@ const CountdownTimer: React.FC<{
     }, 1000);
     return () => clearInterval(timer);
   }, [targetDate]);
+
   if (!timeLeft) {
     return <span className="text-muted-foreground">Processing</span>;
   }
 
-  // Format as MM:SS if less than an hour, otherwise show days/hours
   if (timeLeft.days === 0 && timeLeft.hours === 0) {
-    return <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
         <Clock className="w-3.5 h-3.5" />
         {String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-      </span>;
+      </span>
+    );
   }
-  return <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-1 bg-destructive/10 text-destructive text-sm font-medium rounded border border-destructive/20">
       <Clock className="w-3.5 h-3.5" />
       {timeLeft.days > 0 && `${timeLeft.days}d `}
       {String(timeLeft.hours).padStart(2, '0')}:{String(timeLeft.minutes).padStart(2, '0')}:{String(timeLeft.seconds).padStart(2, '0')}
-    </span>;
+    </span>
+  );
 };
 
-// Category options for C1 group
-// API expects exact strings: "Mobile Recharge", "No Cashback", "Other Category"
+// Category options for C1 group (Amazon)
 const CATEGORY_OPTIONS_C1: { label: string; value: string; description: string }[] = [
-  { label: 'Mobile Recharge', value: 'Mobile Recharge', description: 'Select this if you bought phones, tablets, ipads etc' },
-  { label: 'Add money/Gift Cards/Travel/Insurance', value: 'No Cashback', description: 'Select this if you bought phones, tablets, ipads etc' },
-  { label: 'All other categories', value: 'Other Category', description: 'Select this if you bought phones, tablets, ipads etc' }
+  { label: 'Mobile Recharge', value: 'Mobile Recharge', description: 'Select this if you recharged your mobile or DTH' },
+  { label: 'Add money/Gift Cards/Travel/Insurance', value: 'No Cashback', description: 'These categories are not eligible for cashback' },
+  { label: 'All other categories', value: 'Other Category', description: 'Select this for all other product categories' }
 ];
 
 // User type options for B1 group
-// API expects: "New" (no trailing space) or "Existing"
 const USER_TYPE_OPTIONS: { label: string; value: string }[] = [
   { label: 'Yes, I am a New User', value: 'New' },
   { label: 'No, I am an Existing User', value: 'Existing' }
 ];
+
 const MissingCashback: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const {
-    accessToken,
-    isAuthenticated,
-    user
-  } = useAuth();
+  const { toast } = useToast();
+  const { accessToken, isAuthenticated, user } = useAuth();
   const isMobile = useIsMobile();
   
-  // Use SettingsPageLayout for desktop, AppLayout for mobile
   const Layout = isMobile ? AppLayout : SettingsPageLayout;
 
-  // Step management - now starts at 'claims' view
+  // Step management
   const [step, setStep] = useState<Step>('claims');
 
   // Data states
@@ -207,7 +214,7 @@ const MissingCashback: React.FC = () => {
   const [exitClicks, setExitClicks] = useState<ExitClick[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
 
-  // Meta info from exit clicks API for order ID validation
+  // Meta info from exit clicks API
   const [orderIdMeta, setOrderIdMeta] = useState<{
     sample_orderid?: string;
     orderid_hint_message?: string;
@@ -223,44 +230,41 @@ const MissingCashback: React.FC = () => {
   const [orderIdFormatError, setOrderIdFormatError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Retailer group info (stored when retailer is selected)
+  // Retailer group info
   const [selectedRetailerGroup, setSelectedRetailerGroup] = useState<string>('');
   const [selectedRetailerTrackingSpeed, setSelectedRetailerTrackingSpeed] = useState<string>('');
 
   // Queue ID for additional details update
   const [queueId, setQueueId] = useState<string | null>(null);
 
-  // Additional details for B1/B2/C1/C2 groups
-  const [selectedUserType, setSelectedUserType] = useState<string>(''); // For B1: "New" or "Existing"
-  const [selectedCategory, setSelectedCategory] = useState<string>(''); // For B2/C1/C2
+  // Additional details for B1/C1/C2 groups
+  const [selectedUserType, setSelectedUserType] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  // Invoice upload states
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isUploadingTicket, setIsUploadingTicket] = useState(false);
+  const [ticketResult, setTicketResult] = useState<{ ticketId?: string } | null>(null);
 
   // Submission result
   const [submissionResult, setSubmissionResult] = useState<QueueSubmitResponse | null>(null);
 
-  // Cashback Tracked Modal state
+  // Modal states
   const [showTrackedModal, setShowTrackedModal] = useState(false);
   const [trackedCashbackId, setTrackedCashbackId] = useState<number | null>(null);
-
-  // Additional Details Modal for claims requiring more info
   const [showAddDetailsModal, setShowAddDetailsModal] = useState(false);
   const [selectedClaimForDetails, setSelectedClaimForDetails] = useState<Claim | null>(null);
-
-  // Queue Already Added Modal state (for "already been added" validation error)
   const [showQueueAlreadyAddedModal, setShowQueueAlreadyAddedModal] = useState(false);
-
-  // B1 Confirmation Bottom Sheet state
   const [showB1ConfirmationSheet, setShowB1ConfirmationSheet] = useState(false);
   const [pendingUserType, setPendingUserType] = useState<string>('');
-
-  // Validation Error Modal state (for showing validation errors in popup style)
   const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
   const [validationErrorMessage, setValidationErrorMessage] = useState<string>('');
-
-  // Info/Success Modal state (replaces toast for important messages)
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalTitle, setInfoModalTitle] = useState<string>('');
   const [infoModalMessage, setInfoModalMessage] = useState<string>('');
   const [infoModalVariant, setInfoModalVariant] = useState<'success' | 'error' | 'info'>('info');
+
+  // Loading states
   const [isLoadingRetailers, setIsLoadingRetailers] = useState(false);
   const [isLoadingExitClicks, setIsLoadingExitClicks] = useState(false);
   const [isLoadingClaims, setIsLoadingClaims] = useState(false);
@@ -271,7 +275,7 @@ const MissingCashback: React.FC = () => {
   const [exitClicksError, setExitClicksError] = useState<string | null>(null);
   const [claimsError, setClaimsError] = useState<string | null>(null);
 
-  // Claims filter tabs & counts
+  // Claims filter
   const [claimStatusFilter, setClaimStatusFilter] = useState<string>('In Review');
   const [claimCounts, setClaimCounts] = useState<{
     pending: number;
@@ -283,7 +287,7 @@ const MissingCashback: React.FC = () => {
     others: 0
   });
 
-  // Load claims on mount (default view)
+  // Load claims on mount
   useEffect(() => {
     if (accessToken && step === 'claims') {
       loadClaims();
@@ -296,6 +300,7 @@ const MissingCashback: React.FC = () => {
       loadRetailers();
     }
   }, [accessToken, step]);
+
   const loadRetailers = async () => {
     if (!accessToken) return;
     setIsLoadingRetailers(true);
@@ -310,6 +315,7 @@ const MissingCashback: React.FC = () => {
       setIsLoadingRetailers(false);
     }
   };
+
   const loadExitClicks = async (storeId: string) => {
     if (!accessToken) return;
     setIsLoadingExitClicks(true);
@@ -318,8 +324,6 @@ const MissingCashback: React.FC = () => {
     try {
       const response = await fetchExitClickDates(accessToken, storeId);
       setExitClicks(response.data || []);
-
-      // Store meta info for order ID validation
       if (response.meta) {
         setOrderIdMeta({
           sample_orderid: response.meta.sample_orderid,
@@ -336,16 +340,12 @@ const MissingCashback: React.FC = () => {
     }
   };
 
-  // Validate order ID format against regex patterns
   const validateOrderIdFormat = (value: string): boolean => {
     if (!orderIdMeta?.orderid_format || Object.keys(orderIdMeta.orderid_format).length === 0) {
-      return true; // No format specified, consider valid
+      return true;
     }
-
-    // Check against each regex pattern
     for (const [, regexStr] of Object.entries(orderIdMeta.orderid_format)) {
       try {
-        // Parse regex string like "/^40[0-9]{1,1}-[0-9]{7,7}-[0-9]{7,7}$/i"
         const match = regexStr.match(/^\/(.+)\/([gimsuy]*)$/);
         if (match) {
           const pattern = new RegExp(match[1], match[2]);
@@ -360,12 +360,11 @@ const MissingCashback: React.FC = () => {
     return false;
   };
 
-  // Get expected prefix from sample order ID
   const getOrderIdPrefix = (): string => {
     if (!orderIdMeta?.sample_orderid) return '';
-    // Extract first 2-3 characters as prefix hint
     return orderIdMeta.sample_orderid.substring(0, 2);
   };
+
   const handleOrderIdChange = (value: string) => {
     setOrderId(value);
     if (value && orderIdMeta?.orderid_format && Object.keys(orderIdMeta.orderid_format).length > 0) {
@@ -379,6 +378,7 @@ const MissingCashback: React.FC = () => {
       setOrderIdFormatError(null);
     }
   };
+
   const getStatusFilterValue = (filter: string): string => {
     switch (filter) {
       case 'In Review':
@@ -391,6 +391,7 @@ const MissingCashback: React.FC = () => {
         return 'Pending';
     }
   };
+
   const loadClaims = async () => {
     if (!accessToken) return;
     setIsLoadingClaims(true);
@@ -400,8 +401,6 @@ const MissingCashback: React.FC = () => {
       const response = await fetchMissingCashbackQueue(accessToken, apiStatus, 1, 50);
       const claimsData = response?.data;
       setClaims(Array.isArray(claimsData) ? claimsData : []);
-
-      // Update counts from meta
       if (response?.meta) {
         setClaimCounts({
           pending: response.meta.pending || 0,
@@ -421,11 +420,9 @@ const MissingCashback: React.FC = () => {
       setIsLoadingClaims(false);
     }
   };
+
   const handleSelectRetailer = (retailer: Retailer) => {
     setSelectedRetailer(retailer);
-    // Store group and tracking speed for later use
-    // IMPORTANT: Do NOT default to 'A' - use empty string for unknown groups
-    // This ensures we don't misclassify stores and force wrong additional details flows
     const group = retailer.attributes.group || '';
     const trackingSpeed = retailer.attributes.tracking_speed || '72h';
     console.log('[MissingCashback] Selected retailer:', {
@@ -439,65 +436,44 @@ const MissingCashback: React.FC = () => {
     setStep('dates');
     loadExitClicks(getRetailerId(retailer));
   };
+
   const handleSelectClick = (click: ExitClick) => {
     setSelectedClick(click);
     setStep('orderId');
   };
 
-  // Check if group requires order amount input
   const groupRequiresOrderAmount = (group: string): boolean => {
-    // Group D (Banking) doesn't require order amount
     return group !== 'D';
   };
 
   // Check if group requires additional details after submission
-  // Only B1 and C1 groups require additional details via PUT API
-  // B1: user_type (New/Existing)
-  // C1: Category (Mobile Recharge/No Cashback/Other Category)
+  // B1: user_type, C1: category, C2: invoice upload
   const groupRequiresAdditionalDetails = (group: string): boolean => {
-    return ['B1', 'C1'].includes(group);
+    return ['B1', 'C1', 'C2'].includes(group);
   };
 
-  // Type for additional details - B1 needs user_type, C1 needs category
   type QueueAdditionalDetails = {
     user_type?: string;
     category?: string;
   };
+
   const getAdditionalDetailsForGroup = (group: string): {
     details: QueueAdditionalDetails;
     error?: string;
   } => {
-    // B1 group: requires user_type (New or Existing)
     if (group === 'B1') {
-      if (!selectedUserType) return {
-        details: {},
-        error: 'Please select New or Existing user type.'
-      };
+      if (!selectedUserType) return { details: {}, error: 'Please select New or Existing user type.' };
       console.log('[AddDetails] B1 group - sending user_type:', selectedUserType);
-      return {
-        details: {
-          user_type: selectedUserType
-        }
-      };
+      return { details: { user_type: selectedUserType } };
     }
-
-    // C1 group: backend validation expects "category" (lowercase)
     if (group === 'C1') {
-      if (!selectedCategory) return {
-        details: {},
-        error: 'Please select a category.'
-      };
+      if (!selectedCategory) return { details: {}, error: 'Please select a category.' };
       console.log('[AddDetails] C1 group - sending category:', selectedCategory);
-      return {
-        details: {
-          category: selectedCategory
-        }
-      };
+      return { details: { category: selectedCategory } };
     }
-    return {
-      details: {}
-    };
+    return { details: {} };
   };
+
   const handleValidateOrderId = async () => {
     if (!orderId || !selectedRetailer || !selectedClick) {
       setInfoModalTitle('Missing Information');
@@ -518,12 +494,9 @@ const MissingCashback: React.FC = () => {
       const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
       await validateMissingCashback(accessToken, getRetailerId(selectedRetailer), exitDate, orderId);
 
-      // Check if group D (skip order amount)
       if (!groupRequiresOrderAmount(selectedRetailerGroup)) {
-        // Submit directly with amount "0" for banking
         handleSubmitClaimDirect('0');
       } else {
-        // Move to order amount step
         setStep('orderAmount');
         setInfoModalTitle('Order ID Validated');
         setInfoModalMessage('Please enter your order amount to complete the claim.');
@@ -533,12 +506,9 @@ const MissingCashback: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to validate order:', error);
       const errorMessage = error.message?.toLowerCase() || '';
-
-      // Check if error is "Queue has already been added" - show modal instead of toast
       if (errorMessage.includes('already') && (errorMessage.includes('queue') || errorMessage.includes('added') || errorMessage.includes('tracked'))) {
         setShowQueueAlreadyAddedModal(true);
       } else {
-        // Show validation errors in modal popup style
         setValidationErrorMessage(error.message || 'Failed to validate your order. Please check the Order ID.');
         setShowValidationErrorModal(true);
       }
@@ -556,50 +526,39 @@ const MissingCashback: React.FC = () => {
       const response = await submitMissingCashbackQueue(accessToken, getRetailerId(selectedRetailer), exitDate, orderId, amount);
       setSubmissionResult(response);
 
-      // Store queue ID for potential additional details update
       if (response?.data?.id) {
         setQueueId(String(response.data.id));
       }
 
-      // Check response status and flow:
-      // 1. If cashback was tracked immediately (cashback_id exists), show tracked modal
-      // 2. If status is "Resolved" (already processed), go to success - no additional details needed
-      // 3. If under_tracking is "yes", the system is auto-tracking - skip additional details
-      // 4. IMPORTANT: Only show additional details if:
-      //    - The group requires additional details (B1, C1)
-      //    - AND under_tracking is "no" (system is not auto-tracking)
-      //    - AND the server didn't resolve immediately
-      // 5. Otherwise, normal success flow
-
-      const isUnderTracking = response?.meta?.under_tracking === 'yes';
+      const isUnderTrackingResponse = response?.meta?.under_tracking === 'yes';
       
       if (response?.meta?.cashback_id) {
-        // Cashback tracked immediately - show tracked modal
         setTrackedCashbackId(response.meta.cashback_id);
         setShowTrackedModal(true);
       } else if (response?.meta?.status === 'Resolved') {
-        // Already resolved by the system - no additional details needed
         setStep('success');
         setInfoModalTitle('Claim Submitted!');
         setInfoModalMessage('Your missing cashback claim has been processed.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
-      } else if (isUnderTracking) {
-        // System is auto-tracking - skip additional details step
-        // B1 and other groups with under_tracking="yes" don't need user input
+      } else if (isUnderTrackingResponse) {
+        // System is auto-tracking - show success, user will add details later when tracking completes
         setStep('success');
         setInfoModalTitle('Claim Submitted!');
-        setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed.');
+        setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed. You may need to provide additional details later.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
-      } else if (groupRequiresAdditionalDetails(selectedRetailerGroup)) {
-        // Group B1/C1 requires additional details AND under_tracking is "no"
-        // Server didn't resolve immediately, so we need to collect additional info
+      } else if (selectedRetailerGroup === 'B1') {
+        // B1: Show New/Existing user question
         setStep('additionalDetails');
+      } else if (selectedRetailerGroup === 'C1') {
+        // C1: Show category selection
+        setStep('categorySelection');
+      } else if (selectedRetailerGroup === 'C2') {
+        // C2: Show invoice upload directly
+        setStep('invoiceUpload');
       } else {
         // Normal success flow for Group A, D, or unknown groups
-        // For unknown groups, we let the server handle it - if it needs additional details,
-        // user will see "Needs Info" badge in the claims list and can add details there
         setStep('success');
         setInfoModalTitle('Claim Submitted!');
         setInfoModalMessage('Your missing cashback claim has been added to the queue.');
@@ -616,6 +575,7 @@ const MissingCashback: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
   const handleSubmitClaim = async () => {
     if (!orderAmount || !selectedRetailer || !selectedClick) {
       setInfoModalTitle('Missing Information');
@@ -634,17 +594,14 @@ const MissingCashback: React.FC = () => {
     handleSubmitClaimDirect(orderAmount);
   };
 
-  // Submit additional details (for B1/B2/C1/C2 groups)
+  // Submit additional details for B1 (user_type)
   const handleSubmitAdditionalDetails = async () => {
     if (!queueId || !accessToken) {
       setValidationErrorMessage('Missing queue information. Please try again.');
       setShowValidationErrorModal(true);
       return;
     }
-    const {
-      details,
-      error
-    } = getAdditionalDetailsForGroup(selectedRetailerGroup);
+    const { details, error } = getAdditionalDetailsForGroup(selectedRetailerGroup);
     if (error) {
       setValidationErrorMessage(error);
       setShowValidationErrorModal(true);
@@ -653,13 +610,9 @@ const MissingCashback: React.FC = () => {
     setIsUpdatingDetails(true);
     try {
       const response = await updateMissingCashbackQueue(accessToken, queueId, details);
-
-      // Update submission result with new response
       if (response) {
         setSubmissionResult(response);
       }
-
-      // Check if resolved immediately
       if (response?.meta?.cashback_id) {
         setTrackedCashbackId(response.meta.cashback_id);
         setShowTrackedModal(true);
@@ -679,6 +632,93 @@ const MissingCashback: React.FC = () => {
     }
   };
 
+  // Handle C1 category selection
+  const handleC1CategorySubmit = async () => {
+    if (!queueId || !accessToken || !selectedCategory) {
+      setValidationErrorMessage('Please select a category.');
+      setShowValidationErrorModal(true);
+      return;
+    }
+
+    // If "Other Category" is selected, proceed to invoice upload
+    if (selectedCategory === 'Other Category') {
+      setStep('invoiceUpload');
+      return;
+    }
+
+    // For other categories, submit via PUT API
+    setIsUpdatingDetails(true);
+    try {
+      const response = await updateMissingCashbackQueue(accessToken, queueId, { category: selectedCategory });
+      if (response?.meta?.cashback_id) {
+        setTrackedCashbackId(response.meta.cashback_id);
+        setShowTrackedModal(true);
+      } else {
+        setStep('success');
+        setInfoModalTitle('Details Added!');
+        setInfoModalMessage('Your claim has been updated.');
+        setInfoModalVariant('success');
+        setShowInfoModal(true);
+      }
+    } catch (error: any) {
+      console.error('Failed to update C1 category:', error);
+      setValidationErrorMessage(error.message || 'Failed to update claim. Please try again.');
+      setShowValidationErrorModal(true);
+    } finally {
+      setIsUpdatingDetails(false);
+    }
+  };
+
+  // Handle invoice upload and ticket submission (for C1 "Other Category" and C2)
+  const handleInvoiceSubmit = async () => {
+    if (!accessToken || !selectedClick || !selectedRetailer || uploadedFiles.length === 0) {
+      setValidationErrorMessage('Please upload at least one invoice screenshot.');
+      setShowValidationErrorModal(true);
+      return;
+    }
+
+    setIsUploadingTicket(true);
+    try {
+      const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
+      const exitId = selectedClick.attributes.exit_id || selectedClick.id;
+      const storeId = getRetailerId(selectedRetailer);
+
+      // Convert files to base64
+      const fileData = await Promise.all(uploadedFiles.map(async (file) => ({
+        name: 'ticket_attachment[]',
+        data: await fileToBase64(file),
+        filename: file.name,
+        contentType: file.type
+      })));
+
+      // Prepare ticket data
+      const ticketData = {
+        transaction_id: orderId,
+        total_amount_paid: parseFloat(orderAmount) || 0,
+        missing_txn_queue_id: queueId ? parseInt(queueId) : undefined,
+        query_type: selectedRetailerGroup === 'C1' ? 'Other Category' : 'Missing Cashback',
+        query_sub_type: 'Missing Cashback'
+      };
+
+      console.log('[InvoiceUpload] Raising ticket:', { exitDate, storeId, exitId, ticketData, filesCount: fileData.length });
+
+      const response = await raiseTicket(accessToken, exitDate, storeId, exitId, ticketData, fileData);
+
+      console.log('[InvoiceUpload] Ticket response:', response);
+
+      // Extract ticket ID from response
+      const ticketId = response?.data?.id || response?.data?.attributes?.ticket_id;
+      setTicketResult({ ticketId: ticketId ? String(ticketId) : undefined });
+      setStep('ticketSuccess');
+    } catch (error: any) {
+      console.error('Failed to submit ticket:', error);
+      setValidationErrorMessage(error.message || 'Failed to upload invoice. Please try again.');
+      setShowValidationErrorModal(true);
+    } finally {
+      setIsUploadingTicket(false);
+    }
+  };
+
   // Handle B1 user type selection - show confirmation first
   const handleB1UserTypeSelection = (userType: string) => {
     console.log('[AddDetails] B1 user type selected:', userType);
@@ -690,16 +730,11 @@ const MissingCashback: React.FC = () => {
   const handleB1ConfirmSubmit = async () => {
     if (!selectedClaimForDetails || !accessToken || !pendingUserType) return;
     const claimQueueId = String(selectedClaimForDetails.id);
-    console.log('[AddDetails] B1 confirmation - submitting:', {
-      queueId: claimQueueId,
-      user_type: pendingUserType
-    });
+    console.log('[AddDetails] B1 confirmation - submitting:', { queueId: claimQueueId, user_type: pendingUserType });
     setIsUpdatingDetails(true);
     setShowB1ConfirmationSheet(false);
     try {
-      const response = await updateMissingCashbackQueue(accessToken, claimQueueId, {
-        user_type: pendingUserType
-      });
+      const response = await updateMissingCashbackQueue(accessToken, claimQueueId, { user_type: pendingUserType });
       console.log('[AddDetails] B1 update response:', response);
       setInfoModalTitle('Details Added!');
       setInfoModalMessage('Your claim has been updated.');
@@ -709,12 +744,9 @@ const MissingCashback: React.FC = () => {
       setSelectedClaimForDetails(null);
       setSelectedUserType('');
       setPendingUserType('');
-
-      // Reload claims
       loadClaims();
     } catch (error: any) {
       console.error('[AddDetails] Failed to update B1 claim:', error);
-      // Show validation errors in modal popup style
       setValidationErrorMessage(error.message || 'Failed to update claim details.');
       setShowValidationErrorModal(true);
     } finally {
@@ -722,33 +754,38 @@ const MissingCashback: React.FC = () => {
     }
   };
 
-  // Handle adding details to existing claim from claims list (for C1/B2 categories)
+  // Handle adding details to existing claim from claims list
   const handleAddDetailsToExistingClaim = async () => {
     if (!selectedClaimForDetails || !accessToken) return;
     const claimQueueId = String(selectedClaimForDetails.id);
     const claimGroup = selectedClaimForDetails.attributes.groupid || '';
     console.log('[AddDetails] Submitting for group:', claimGroup);
 
-    // B1 is handled separately via handleB1UserTypeSelection -> handleB1ConfirmSubmit
+    // B1 is handled separately
     if (claimGroup === 'B1') {
       return;
     }
+
+    // C1 with "Other Category" or C2 needs invoice upload - redirect to invoice upload flow
+    if ((claimGroup === 'C1' && selectedCategory === 'Other Category') || claimGroup === 'C2') {
+      // Set up context for invoice upload
+      setQueueId(claimQueueId);
+      setSelectedRetailerGroup(claimGroup);
+      setShowAddDetailsModal(false);
+      setStep('invoiceUpload');
+      return;
+    }
+
     setIsUpdatingDetails(true);
     try {
-      const {
-        details,
-        error
-      } = getAdditionalDetailsForGroup(claimGroup);
+      const { details, error } = getAdditionalDetailsForGroup(claimGroup);
       if (error) {
         setValidationErrorMessage(error);
         setShowValidationErrorModal(true);
         setIsUpdatingDetails(false);
         return;
       }
-      console.log('[AddDetails] Sending PUT request:', {
-        queueId: claimQueueId,
-        details
-      });
+      console.log('[AddDetails] Sending PUT request:', { queueId: claimQueueId, details });
       const response = await updateMissingCashbackQueue(accessToken, claimQueueId, details);
       console.log('[AddDetails] Response:', response);
       setInfoModalTitle('Details Added!');
@@ -759,18 +796,16 @@ const MissingCashback: React.FC = () => {
       setSelectedClaimForDetails(null);
       setSelectedUserType('');
       setSelectedCategory('');
-
-      // Reload claims
       loadClaims();
     } catch (error: any) {
       console.error('[AddDetails] Failed to update claim details:', error);
-      // Show validation errors in modal popup style
       setValidationErrorMessage(error.message || 'Failed to update claim details.');
       setShowValidationErrorModal(true);
     } finally {
       setIsUpdatingDetails(false);
     }
   };
+
   const handleBack = () => {
     if (step === 'retailers') {
       setStep('claims');
@@ -792,28 +827,31 @@ const MissingCashback: React.FC = () => {
     } else if (step === 'additionalDetails') {
       setStep('orderAmount');
       setSelectedUserType('');
+    } else if (step === 'categorySelection') {
+      setStep('orderAmount');
       setSelectedCategory('');
+    } else if (step === 'invoiceUpload') {
+      // Go back based on group
+      if (selectedRetailerGroup === 'C1') {
+        setStep('categorySelection');
+      } else {
+        setStep('orderAmount');
+      }
+      setUploadedFiles([]);
     }
   };
+
   const handleNewClaim = () => {
     setStep('retailers');
-    setSelectedRetailer(null);
-    setSelectedClick(null);
-    setOrderId('');
-    setOrderAmount('');
-    setOrderIdMeta(null);
-    setOrderIdFormatError(null);
-    setSubmissionResult(null);
-    setShowTrackedModal(false);
-    setTrackedCashbackId(null);
-    setSelectedRetailerGroup('');
-    setSelectedRetailerTrackingSpeed('');
-    setQueueId(null);
-    setSelectedUserType('');
-    setSelectedCategory('');
+    resetClaimState();
   };
+
   const handleViewClaims = () => {
     setStep('claims');
+    resetClaimState();
+  };
+
+  const resetClaimState = () => {
     setSelectedRetailer(null);
     setSelectedClick(null);
     setOrderId('');
@@ -828,20 +866,26 @@ const MissingCashback: React.FC = () => {
     setQueueId(null);
     setSelectedUserType('');
     setSelectedCategory('');
+    setUploadedFiles([]);
+    setTicketResult(null);
   };
+
   const handleViewTrackedDetails = () => {
     setShowTrackedModal(false);
     if (trackedCashbackId) {
       navigate(`/order/${trackedCashbackId}`);
     }
   };
+
   const getRetailerName = (retailer: Retailer) => retailer.attributes.store_name || retailer.attributes.report_merchant_name || 'Unknown Store';
   const getRetailerImage = (retailer: Retailer) => retailer.attributes.store_logo || retailer.attributes.image_url || '';
   const getRetailerId = (retailer: Retailer) => retailer.attributes.store_id || String(retailer.id);
+
   const filteredRetailers = retailers.filter(r => {
     const name = getRetailerName(r);
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
@@ -850,6 +894,7 @@ const MissingCashback: React.FC = () => {
       return dateStr;
     }
   };
+
   const formatFullDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -861,6 +906,7 @@ const MissingCashback: React.FC = () => {
       return dateStr;
     }
   };
+
   const formatExpectedDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -872,136 +918,121 @@ const MissingCashback: React.FC = () => {
       return dateStr;
     }
   };
+
   const getMonthFromDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).toLocaleDateString('en-IN', {
-        month: 'long'
-      });
+      return new Date(dateStr).toLocaleDateString('en-IN', { month: 'long' });
     } catch {
       return '';
     }
   };
 
-  // Calculate expected resolution date using status_update + tracking_speed from retailer
   const getExpectedResolutionDate = (claim: Claim): string | null => {
-    // First check if API provides expected_resolution_date
     if (claim.attributes.expected_resolution_date) {
       return claim.attributes.expected_resolution_date;
     }
-
-    // Use status_update as base time if available
     const baseTime = claim.attributes.status_update || claim.attributes.click_date;
     if (!baseTime) return null;
     const baseDate = new Date(baseTime);
-
-    // Try to find tracking speed from the retailer data
-    // For claims list, we need to estimate based on group or use a default
-    // Look up from retailers list if available
     const storeId = claim.attributes.store_id;
     const matchingRetailer = retailers.find(r => String(r.id) === String(storeId) || r.attributes.store_id === String(storeId));
     let trackingSpeedMs: number;
     if (matchingRetailer?.attributes.tracking_speed) {
       trackingSpeedMs = parseTrackingSpeed(matchingRetailer.attributes.tracking_speed);
     } else {
-      // Default based on group
       const group = claim.attributes.groupid || '';
       switch (group) {
         case 'A':
         case 'D':
-          trackingSpeedMs = 72 * 60 * 60 * 1000; // 72h
+          trackingSpeedMs = 72 * 60 * 60 * 1000;
           break;
         case 'B1':
         case 'B2':
-          trackingSpeedMs = 48 * 60 * 60 * 1000; // 48h
+          trackingSpeedMs = 48 * 60 * 60 * 1000;
           break;
         case 'C1':
         case 'C2':
-          trackingSpeedMs = 36 * 60 * 60 * 1000; // 36h
+          trackingSpeedMs = 36 * 60 * 60 * 1000;
           break;
         default:
           trackingSpeedMs = 72 * 60 * 60 * 1000;
-        // Default 72h
       }
     }
     const expectedDate = new Date(baseDate.getTime() + trackingSpeedMs);
     return expectedDate.toISOString();
   };
 
-  // Check if claim is still under tracking (within tracking period)
   const isUnderTracking = (claim: Claim): boolean => {
-    // If API explicitly says under_tracking
     if (claim.attributes.under_tracking === 'yes') return true;
     if (claim.attributes.under_tracking === 'no') return false;
-
-    // Otherwise calculate based on expected resolution date
     const expectedDate = getExpectedResolutionDate(claim);
     if (!expectedDate) return false;
     return new Date(expectedDate).getTime() > Date.now();
   };
 
-  // Check if claim needs additional details via PUT API
-  // Only B1 and C1 groups use the PUT API for additional details
-  // C2 (Flipkart) uses a different "Raise Ticket" flow
+  // Check if claim needs additional details
   const claimNeedsAdditionalDetails = (claim: Claim): boolean => {
     const groupId = claim.attributes.groupid || '';
     const details = claim.attributes.details || '';
 
-    // Only show "Add Details" for B1 and C1 groups that need additional details
-    if (!['B1', 'C1'].includes(groupId)) {
+    // Only show "Add Details" for B1, C1, and C2 groups that need additional details
+    if (!['B1', 'C1', 'C2'].includes(groupId)) {
       return false;
     }
-    return details === 'Waiting for User Additional Details';
+
+    // Check if details indicate waiting for user input
+    const needsInfo = details.toLowerCase().includes('waiting') || 
+                     details.toLowerCase().includes('additional') ||
+                     details.toLowerCase().includes('user');
+
+    // Also check if tracking time has elapsed
+    const underTracking = isUnderTracking(claim);
+
+    return needsInfo && !underTracking;
   };
 
-  // Get claim image URL (handle both field names)
-  const getClaimImageUrl = (claim: Claim): string | undefined => {
-    return claim.attributes.imageurl || claim.attributes.image_url;
-  };
-
-  // Get claim store name (handle both field names)
-  const getClaimStoreName = (claim: Claim): string => {
-    return claim.attributes.report_storename || claim.attributes.store_name || claim.attributes.merchant_name || 'Store';
-  };
-
-  // Group exit clicks by month
-  const groupedExitClicks = exitClicks.reduce((acc, click) => {
-    const exitDate = click.attributes.exitclick_date || click.attributes.exit_date || '';
-    const month = click.attributes.month || getMonthFromDate(exitDate);
-    if (!acc[month]) {
-      acc[month] = [];
-    }
-    acc[month].push(click);
-    return acc;
-  }, {} as Record<string, ExitClick[]>);
-  const getStatusBadgeStyle = (status: string) => {
-    const lowerStatus = status?.toLowerCase();
-    if (lowerStatus === 'pending' || lowerStatus === 'in review') {
-      return 'bg-amber-500 text-white';
-    }
-    if (lowerStatus === 'resolved' || lowerStatus === 'closed') {
-      return 'bg-emerald-500 text-white';
-    }
-    if (lowerStatus === 'rejected') {
-      return 'bg-red-500 text-white';
-    }
-    return 'bg-muted text-muted-foreground';
-  };
-
-  // Open add details modal for a claim
   const openAddDetailsModal = (claim: Claim) => {
     setSelectedClaimForDetails(claim);
     setSelectedUserType('');
     setSelectedCategory('');
+    setShowB1ConfirmationSheet(false);
     setShowAddDetailsModal(true);
   };
+
+  const getClaimStoreName = (claim: Claim) => {
+    return claim.attributes.report_storename || claim.attributes.store_name || claim.attributes.merchant_name || 'Unknown Store';
+  };
+
+  const getClaimImageUrl = (claim: Claim) => {
+    return claim.attributes.imageurl || claim.attributes.image_url || '';
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus.includes('resolved') || lowerStatus.includes('tracked')) {
+      return 'bg-success/10 text-success border-success/20';
+    }
+    if (lowerStatus.includes('rejected') || lowerStatus.includes('denied')) {
+      return 'bg-destructive/10 text-destructive border-destructive/20';
+    }
+    return 'bg-primary/10 text-primary border-primary/20';
+  };
+
+  // Render loading state
   if (!isAuthenticated) {
-    return <AppLayout>
-        <LoginPrompt title="File Missing Cashback" description="Login to submit missing cashback claims and track their status" icon={AlertCircle} />
-      </AppLayout>;
+    return (
+      <AppLayout>
+        <LoginPrompt 
+          title="Login to View Missing Cashback"
+          description="Please login to track your missing cashback claims"
+        />
+      </AppLayout>
+    );
   }
 
-  // Render Claims View (Landing page)
-  const renderClaimsView = () => <div className="animate-fade-in">
+  // Render Claims View
+  const renderClaimsView = () => (
+    <div className="animate-fade-in">
       {/* Have more cashback to track? Banner - Desktop */}
       <div className="hidden md:flex bg-primary rounded-xl p-4 md:p-6 mb-6 items-center justify-between">
         <h2 className="text-lg md:text-xl font-semibold text-primary-foreground">
@@ -1024,32 +1055,38 @@ const MissingCashback: React.FC = () => {
 
       {/* Status Filter Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 border-b border-border">
-        {[{
-        key: 'In Review',
-        count: claimCounts.pending
-      }, {
-        key: 'Closed',
-        count: claimCounts.resolved
-      }, {
-        key: 'Others',
-        count: claimCounts.others
-      }].map(({
-        key,
-        count
-      }) => {
-        const isActive = claimStatusFilter === key;
-        return <button key={key} onClick={() => setClaimStatusFilter(key)} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px] ${isActive ? 'text-foreground border-foreground' : 'text-muted-foreground border-transparent hover:text-foreground'}`}>
+        {[
+          { key: 'In Review', count: claimCounts.pending },
+          { key: 'Closed', count: claimCounts.resolved },
+          { key: 'Others', count: claimCounts.others }
+        ].map(({ key, count }) => {
+          const isActive = claimStatusFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setClaimStatusFilter(key)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-[1px] ${
+                isActive ? 'text-foreground border-foreground' : 'text-muted-foreground border-transparent hover:text-foreground'
+              }`}
+            >
               {key}
-              {count > 0 && <span className={`px-1.5 py-0.5 rounded text-xs ${isActive ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'}`}>
+              {count > 0 && (
+                <span className={`px-1.5 py-0.5 rounded text-xs ${
+                  isActive ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'
+                }`}>
                   {count}
-                </span>}
-            </button>;
-      })}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Claims List */}
-      {isLoadingClaims ? <div className="space-y-4">
-          {[1, 2, 3].map(i => <div key={i} className="border-b border-border pb-4">
+      {isLoadingClaims ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="border-b border-border pb-4">
               <div className="flex items-start gap-3">
                 <Skeleton className="w-16 h-16 rounded" />
                 <div className="flex-1">
@@ -1058,72 +1095,91 @@ const MissingCashback: React.FC = () => {
                   <Skeleton className="h-4 w-40" />
                 </div>
               </div>
-            </div>)}
-        </div> : claimsError ? <div className="p-6 text-center">
+            </div>
+          ))}
+        </div>
+      ) : claimsError ? (
+        <div className="p-6 text-center">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <p className="text-destructive mb-4">{claimsError}</p>
           <Button onClick={loadClaims} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Retry
           </Button>
-        </div> : claims.length === 0 ? <div className="p-8 text-center">
-          {/* Empty state based on filter */}
-          {claimStatusFilter === 'Closed' ? <>
+        </div>
+      ) : claims.length === 0 ? (
+        <div className="p-8 text-center">
+          {claimStatusFilter === 'Closed' ? (
+            <>
               <div className="w-24 h-24 mx-auto mb-4 bg-muted/50 rounded-lg flex items-center justify-center">
                 <CheckCircle className="w-12 h-12 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground mb-2">
                 Successfully tracked Cashbacks will show up here
               </p>
-            </> : claimStatusFilter === 'In Review' ? <>
+            </>
+          ) : claimStatusFilter === 'In Review' ? (
+            <>
               <div className="w-24 h-24 mx-auto mb-4 bg-muted/50 rounded-lg flex items-center justify-center">
                 <Clock className="w-12 h-12 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground mb-2">
                 Cashbacks being tracked show up here
               </p>
-            </> : <>
+            </>
+          ) : (
+            <>
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">
                 No {claimStatusFilter.toLowerCase()} claims found
               </p>
-            </>}
-        </div> : <div className="divide-y divide-border">
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
           {claims.map(claim => {
-        const underTracking = isUnderTracking(claim);
-        const expectedDate = getExpectedResolutionDate(claim);
-        const storeName = getClaimStoreName(claim);
-        const storeImage = getClaimImageUrl(claim);
-        const isClosed = claimStatusFilter === 'Closed';
-        const needsDetails = claimNeedsAdditionalDetails(claim);
-        return <div key={claim.id} className="py-4 flex items-start gap-4">
-                {/* Store Logo */}
+            const underTracking = isUnderTracking(claim);
+            const expectedDate = getExpectedResolutionDate(claim);
+            const storeName = getClaimStoreName(claim);
+            const storeImage = getClaimImageUrl(claim);
+            const isClosed = claimStatusFilter === 'Closed';
+            const needsDetails = claimNeedsAdditionalDetails(claim);
+
+            return (
+              <div key={claim.id} className="py-4 flex items-start gap-4">
                 <div className="w-16 h-10 bg-background rounded border flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {storeImage ? <img src={storeImage} alt={storeName} className="max-w-full max-h-full object-contain p-1" /> : <span className="text-lg font-semibold text-muted-foreground">
+                  {storeImage ? (
+                    <img src={storeImage} alt={storeName} className="max-w-full max-h-full object-contain p-1" />
+                  ) : (
+                    <span className="text-lg font-semibold text-muted-foreground">
                       {storeName.charAt(0)}
-                    </span>}
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  {/* Status message based on tracking status */}
-                  {isClosed ? <>
-                      {/* Closed/Resolved claim - show cashback added message */}
-                      <p className="text-sm text-foreground mb-1">
-                        Hurray! Cashback of ₹{claim.attributes.cashbackvalue || '0'} is added to your CashKaro Account
-                      </p>
-                    </> : needsDetails ? <>
-                      {/* Needs additional details */}
+                  {isClosed ? (
+                    <p className="text-sm text-foreground mb-1">
+                      Hurray! Cashback of ₹{claim.attributes.cashbackvalue || '0'} is added to your CashKaro Account
+                    </p>
+                  ) : needsDetails ? (
+                    <>
                       <p className="text-sm text-foreground mb-1">
                         Additional information required for your claim
                       </p>
                       <Badge variant="outline" className="mb-2 bg-amber-100 text-amber-800 border-amber-300">
                         Needs Info
                       </Badge>
-                      <button onClick={() => openAddDetailsModal(claim)} className="block text-sm text-primary hover:underline mt-1">
+                      <button
+                        onClick={() => openAddDetailsModal(claim)}
+                        className="block text-sm text-primary hover:underline mt-1"
+                      >
                         Add Details →
                       </button>
-                    </> : underTracking && expectedDate ? <>
-                      {/* Under tracking - show timer */}
+                    </>
+                  ) : underTracking && expectedDate ? (
+                    <>
                       <p className="text-sm text-foreground mb-1">
                         Your missing Cashback ticket is under review.
                       </p>
@@ -1131,44 +1187,54 @@ const MissingCashback: React.FC = () => {
                         <span className="text-sm text-muted-foreground">Expect update in</span>
                         <CountdownTimer targetDate={expectedDate} />
                       </div>
-                    </> : <>
-                      {/* Not under tracking anymore */}
+                    </>
+                  ) : (
+                    <>
                       <p className="text-sm text-foreground mb-1">
                         Your missing Cashback ticket is under review.
                       </p>
-                      {expectedDate && <div className="flex items-center gap-2 mb-2">
+                      {expectedDate && (
+                        <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm text-muted-foreground">Expected by</span>
                           <span className="text-sm text-muted-foreground">
                             {formatExpectedDate(expectedDate)}
                           </span>
-                        </div>}
-                    </>}
+                        </div>
+                      )}
+                    </>
+                  )}
                   
-                  {/* Order details */}
                   <div className="space-y-0.5 text-sm text-muted-foreground">
                     <p>Order ID: {claim.attributes.order_id}</p>
                     {claim.attributes.order_amount && <p>Order Amount: ₹{claim.attributes.order_amount}</p>}
                     {claim.attributes.ticket_id && <p>Ticket ID: {claim.attributes.ticket_id}</p>}
-                    {claim.attributes.ticket_status && <Badge variant="outline" className={`text-xs ${getStatusBadgeStyle(claim.attributes.ticket_status)}`}>
+                    {claim.attributes.ticket_status && (
+                      <Badge variant="outline" className={`text-xs ${getStatusBadgeStyle(claim.attributes.ticket_status)}`}>
                         {claim.attributes.ticket_status}
-                      </Badge>}
+                      </Badge>
+                    )}
                   </div>
                   
-                  {/* View Details link for Closed claims */}
-                  {isClosed && claim.attributes.cashback_id && <button onClick={() => navigate(`/order/${claim.attributes.cashback_id}`)} className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1">
+                  {isClosed && claim.attributes.cashback_id && (
+                    <button
+                      onClick={() => navigate(`/order/${claim.attributes.cashback_id}`)}
+                      className="text-sm text-primary hover:underline mt-2 inline-flex items-center gap-1"
+                    >
                       View Details <ArrowRight className="w-3 h-3" />
-                    </button>}
+                    </button>
+                  )}
                 </div>
-                
-                {/* Chevron for navigation */}
-                
-              </div>;
-      })}
-        </div>}
-    </div>;
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
-  // Render Retailer Selection (Step 1 of new claim flow)
-  const renderRetailersView = () => <div className="animate-fade-in">
+  // Render Retailer Selection
+  const renderRetailersView = () => (
+    <div className="animate-fade-in">
       <div className="mb-6 text-center">
         <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
           Where did you shop?
@@ -1178,46 +1244,74 @@ const MissingCashback: React.FC = () => {
         </p>
       </div>
 
-      {isLoadingRetailers ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="card-elevated p-4 text-center">
+      {isLoadingRetailers ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="card-elevated p-4 text-center">
               <Skeleton className="w-16 h-16 mx-auto mb-3 rounded" />
               <Skeleton className="h-4 w-20 mx-auto" />
-            </div>)}
-        </div> : retailersError ? <div className="card-elevated p-6 text-center">
+            </div>
+          ))}
+        </div>
+      ) : retailersError ? (
+        <div className="card-elevated p-6 text-center">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <p className="text-destructive mb-4">{retailersError}</p>
           <Button onClick={loadRetailers} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Retry
           </Button>
-        </div> : filteredRetailers.length === 0 ? <div className="card-elevated p-8 text-center">
+        </div>
+      ) : filteredRetailers.length === 0 ? (
+        <div className="card-elevated p-8 text-center">
           <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">
             {searchQuery ? 'No stores match your search' : 'No recent store visits found'}
           </p>
-        </div> : <>
+        </div>
+      ) : (
+        <>
           {/* Desktop: Grid layout */}
           <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {filteredRetailers.map(retailer => <button key={retailer.id} onClick={() => handleSelectRetailer(retailer)} className="card-elevated p-4 text-center hover:border-primary transition-colors">
+            {filteredRetailers.map(retailer => (
+              <button
+                key={retailer.id}
+                onClick={() => handleSelectRetailer(retailer)}
+                className="card-elevated p-4 text-center hover:border-primary transition-colors"
+              >
                 <div className="w-20 h-12 mx-auto mb-3 flex items-center justify-center">
-                  {getRetailerImage(retailer) ? <img src={getRetailerImage(retailer)} alt={getRetailerName(retailer)} className="max-w-full max-h-full object-contain" /> : <span className="text-2xl font-bold text-muted-foreground">
+                  {getRetailerImage(retailer) ? (
+                    <img src={getRetailerImage(retailer)} alt={getRetailerName(retailer)} className="max-w-full max-h-full object-contain" />
+                  ) : (
+                    <span className="text-2xl font-bold text-muted-foreground">
                       {getRetailerName(retailer).charAt(0)}
-                    </span>}
+                    </span>
+                  )}
                 </div>
                 <span className="text-sm text-primary">
                   Autotracks within {retailer.attributes.tracking_speed || '72h'}
                 </span>
-              </button>)}
+              </button>
+            ))}
           </div>
 
           {/* Mobile: List layout */}
           <div className="md:hidden divide-y divide-border">
-            {filteredRetailers.map(retailer => <button key={retailer.id} onClick={() => handleSelectRetailer(retailer)} className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+            {filteredRetailers.map(retailer => (
+              <button
+                key={retailer.id}
+                onClick={() => handleSelectRetailer(retailer)}
+                className="w-full p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-secondary rounded flex items-center justify-center overflow-hidden">
-                    {getRetailerImage(retailer) ? <img src={getRetailerImage(retailer)} alt={getRetailerName(retailer)} className="w-full h-full object-contain" /> : <span className="text-lg font-semibold text-muted-foreground">
+                    {getRetailerImage(retailer) ? (
+                      <img src={getRetailerImage(retailer)} alt={getRetailerName(retailer)} className="w-full h-full object-contain" />
+                    ) : (
+                      <span className="text-lg font-semibold text-muted-foreground">
                         {getRetailerName(retailer).charAt(0)}
-                      </span>}
+                      </span>
+                    )}
                   </div>
                   <div className="text-left">
                     <span className="font-medium text-foreground block">
@@ -1229,276 +1323,421 @@ const MissingCashback: React.FC = () => {
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </button>)}
+              </button>
+            ))}
           </div>
-        </>}
-    </div>;
+        </>
+      )}
+    </div>
+  );
 
-  // Render Additional Details Step (for B1/B2/C1/C2 groups)
+  // Render Additional Details Step (B1: New/Existing user)
   const renderAdditionalDetailsStep = () => {
     const storeName = selectedRetailer ? getRetailerName(selectedRetailer) : 'the store';
     const storeImage = selectedRetailer ? getRetailerImage(selectedRetailer) : '';
-    return <div className="animate-fade-in">
-        {/* Store Logo */}
+
+    return (
+      <div className="animate-fade-in">
         <div className="mb-6 text-center">
           <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
-            {storeImage ? <img src={storeImage} alt={storeName} className="max-w-full max-h-full object-contain p-2" /> : <span className="text-xl font-bold text-muted-foreground">
+            {storeImage ? (
+              <img src={storeImage} alt={storeName} className="max-w-full max-h-full object-contain p-2" />
+            ) : (
+              <span className="text-xl font-bold text-muted-foreground">
                 {storeName.charAt(0)}
-              </span>}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="max-w-md mx-auto space-y-6">
-          {selectedRetailerGroup === 'B1' ? <>
-              {/* B1 Group: New/Existing User Question */}
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Great! Are you a new user on {storeName}?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {storeName} gives different Cashbacks to new and existing users.
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                {USER_TYPE_OPTIONS.map(option => (
-                  <button 
-                    key={option.value} 
-                    onClick={() => setSelectedUserType(option.value)} 
-                    className={`w-full p-4 rounded-xl border-2 flex items-center justify-center transition-all ${
-                      selectedUserType === option.value 
-                        ? 'border-primary bg-primary text-primary-foreground' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <span className="font-medium">{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </> : <>
-              {/* C1 Group: Category Selection */}
-              <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Tell us your product category
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Select categories from the list below or add more categories
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                {CATEGORY_OPTIONS_C1.map(category => (
-                  <div key={category.value}>
-                    <button 
-                      onClick={() => setSelectedCategory(category.value)} 
-                      className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${
-                        selectedCategory === category.value 
-                          ? 'border-primary bg-primary/5' 
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        selectedCategory === category.value 
-                          ? 'border-primary' 
-                          : 'border-muted-foreground'
-                      }`}>
-                        {selectedCategory === category.value && (
-                          <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                        )}
-                      </div>
-                      <span className={`font-medium ${
-                        selectedCategory === category.value ? 'text-primary' : 'text-foreground'
-                      }`}>
-                        {category.label}
-                      </span>
-                    </button>
-                    <p className="text-xs text-muted-foreground mt-1 ml-8">
-                      {category.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>}
+          <div className="text-center mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Great! Are you a new user on {storeName}?
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {storeName} gives different Cashbacks to new and existing users.
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            {USER_TYPE_OPTIONS.map(option => (
+              <button 
+                key={option.value} 
+                onClick={() => setSelectedUserType(option.value)} 
+                className={`w-full p-4 rounded-xl border-2 flex items-center justify-center transition-all ${
+                  selectedUserType === option.value 
+                    ? 'border-primary bg-primary text-primary-foreground' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <span className="font-medium">{option.label}</span>
+              </button>
+            ))}
+          </div>
 
-          <Button onClick={handleSubmitAdditionalDetails} disabled={isUpdatingDetails || (selectedRetailerGroup === 'B1' ? !selectedUserType : !selectedCategory)} className="w-full h-12">
-            {isUpdatingDetails ? <>
+          <Button
+            onClick={handleSubmitAdditionalDetails}
+            disabled={isUpdatingDetails || !selectedUserType}
+            className="w-full h-12"
+          >
+            {isUpdatingDetails ? (
+              <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Submitting...
-              </> : 'Continue'}
+              </>
+            ) : (
+              'Continue'
+            )}
           </Button>
         </div>
-      </div>;
+      </div>
+    );
   };
-  return <Layout>
+
+  // Render Category Selection Step (C1: Amazon)
+  const renderCategorySelectionStep = () => {
+    const storeName = selectedRetailer ? getRetailerName(selectedRetailer) : 'the store';
+    const storeImage = selectedRetailer ? getRetailerImage(selectedRetailer) : '';
+
+    return (
+      <div className="animate-fade-in">
+        <div className="mb-6 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
+            {storeImage ? (
+              <img src={storeImage} alt={storeName} className="max-w-full max-h-full object-contain p-2" />
+            ) : (
+              <span className="text-xl font-bold text-muted-foreground">
+                {storeName.charAt(0)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="text-center mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Tell us your product category
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Select categories from the list below
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            {CATEGORY_OPTIONS_C1.map(category => (
+              <div key={category.value}>
+                <button 
+                  onClick={() => setSelectedCategory(category.value)} 
+                  className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${
+                    selectedCategory === category.value 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedCategory === category.value 
+                      ? 'border-primary' 
+                      : 'border-muted-foreground'
+                  }`}>
+                    {selectedCategory === category.value && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <span className={`font-medium ${
+                    selectedCategory === category.value ? 'text-primary' : 'text-foreground'
+                  }`}>
+                    {category.label}
+                  </span>
+                </button>
+                <p className="text-xs text-muted-foreground mt-1 ml-8">
+                  {category.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            onClick={handleC1CategorySubmit}
+            disabled={isUpdatingDetails || !selectedCategory}
+            className="w-full h-12"
+          >
+            {isUpdatingDetails ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              'Continue'
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Invoice Upload Step (C1 "Other Category" & C2)
+  const renderInvoiceUploadStep = () => {
+    const storeName = selectedRetailer ? getRetailerName(selectedRetailer) : 'the store';
+    const storeImage = selectedRetailer ? getRetailerImage(selectedRetailer) : '';
+
+    return (
+      <InvoiceUpload
+        files={uploadedFiles}
+        onFilesChange={setUploadedFiles}
+        storeName={storeName}
+        storeImage={storeImage}
+        onContinue={handleInvoiceSubmit}
+        onBack={handleBack}
+        isUploading={isUploadingTicket}
+        helpTitle={`Where to Find Invoice in ${storeName} App`}
+      />
+    );
+  };
+
+  // Render Ticket Success Step
+  const renderTicketSuccessStep = () => {
+    const storeName = selectedRetailer ? getRetailerName(selectedRetailer) : 'the store';
+    const storeImage = selectedRetailer ? getRetailerImage(selectedRetailer) : '';
+
+    return (
+      <TicketSuccess
+        storeName={storeName}
+        storeImage={storeImage}
+        orderId={orderId}
+        ticketId={ticketResult?.ticketId}
+        onContinue={handleViewClaims}
+      />
+    );
+  };
+
+  return (
+    <Layout>
       <div className="w-full max-w-4xl lg:max-w-none">
         {/* Header with Back button */}
-        {step !== 'claims' && <button onClick={handleBack} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        {step !== 'claims' && step !== 'success' && step !== 'ticketSuccess' && (
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          >
             <ChevronLeft className="w-5 h-5" />
             <span>Back</span>
-          </button>}
+          </button>
+        )}
 
-        {/* Claims View (Landing) */}
+        {/* Claims View */}
         {step === 'claims' && renderClaimsView()}
 
         {/* Retailer Selection */}
         {step === 'retailers' && renderRetailersView()}
 
-        {/* Step 2: Select Visit Date */}
-        {step === 'dates' && selectedRetailer && <div className="animate-fade-in">
-            {/* Selected Retailer Badge */}
+        {/* Date Selection */}
+        {step === 'dates' && selectedRetailer && (
+          <div className="animate-fade-in">
             <div className="mb-6 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
-                {getRetailerImage(selectedRetailer) ? <img src={getRetailerImage(selectedRetailer)} alt={getRetailerName(selectedRetailer)} className="max-w-full max-h-full object-contain p-2" /> : <span className="text-xl font-bold text-muted-foreground">
-                    {getRetailerName(selectedRetailer).charAt(0)}
-                  </span>}
-              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
+                When did you shop?
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Select the date when you visited {getRetailerName(selectedRetailer)}
+              </p>
             </div>
 
-            {isLoadingExitClicks ? <div className="space-y-6">
-                <Skeleton className="h-6 w-24 mx-auto" />
-                <div className="flex flex-wrap gap-3 justify-center">
-                  {[1, 2, 3].map(i => <Skeleton key={i} className="w-12 h-12 rounded-full" />)}
-                </div>
-              </div> : exitClicksError ? <div className="card-elevated p-6 text-center">
+            {isLoadingExitClicks ? (
+              <div className="flex gap-3 flex-wrap justify-center">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <Skeleton key={i} className="w-16 h-16 rounded-lg" />
+                ))}
+              </div>
+            ) : exitClicksError ? (
+              <div className="card-elevated p-6 text-center">
                 <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
                 <p className="text-destructive mb-4">{exitClicksError}</p>
                 <Button onClick={() => loadExitClicks(getRetailerId(selectedRetailer))} variant="outline">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
                 </Button>
-              </div> : exitClicks.length === 0 ? <div className="card-elevated p-8 text-center">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No visit history found for this store</p>
-              </div> : <div className="space-y-8">
-                {Object.entries(groupedExitClicks).map(([month, clicks]) => <div key={month} className="text-center">
-                    {/* Month Header */}
-                    <div className="mb-4">
-                      <div className="inline-block">
-                        <div className="w-16 h-0.5 bg-muted mx-auto mb-2" />
-                        <span className="text-sm font-medium text-foreground">{month}</span>
-                      </div>
-                    </div>
-                    
-                    {/* Date Circles */}
-                    <div className="flex flex-wrap gap-4 justify-center">
-                      {clicks.map(click => {
-                const exitDate = click.attributes.exitclick_date || click.attributes.exit_date || '';
-                const dayNum = formatDate(exitDate);
-                const isSelected = selectedClick?.id === click.id;
-                return <button key={click.id} onClick={() => handleSelectClick(click)} className={`w-14 h-14 rounded-full border-2 flex items-center justify-center text-lg font-semibold transition-colors ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-primary text-primary hover:bg-primary/10'}`}>
-                            {dayNum}
-                          </button>;
-              })}
-                    </div>
-                  </div>)}
-                
-                <p className="text-center text-sm text-muted-foreground">
-                  These are the dates you visited {getRetailerName(selectedRetailer)} via CashKaro
-                </p>
-                
-                {selectedClick && <Button onClick={() => setStep('orderId')} className="w-full h-12">
-                    Continue
-                  </Button>}
-              </div>}
-          </div>}
-
-        {/* Step 3: Enter Order ID */}
-        {step === 'orderId' && selectedRetailer && selectedClick && <div className="animate-fade-in">
-            {/* Selected Retailer Logo - Centered with store name */}
-            <div className="mb-6 text-center">
-              <div className="inline-flex items-center gap-3 px-4 py-2 bg-background border rounded-lg">
-                <div className="w-12 h-8 flex items-center justify-center">
-                  {getRetailerImage(selectedRetailer) ? <img src={getRetailerImage(selectedRetailer)} alt={getRetailerName(selectedRetailer)} className="max-w-full max-h-full object-contain" /> : <span className="text-xl font-bold text-muted-foreground">
-                      {getRetailerName(selectedRetailer).charAt(0)}
-                    </span>}
-                </div>
-                <span className="font-medium text-foreground">{getRetailerName(selectedRetailer)}</span>
               </div>
+            ) : exitClicks.length === 0 ? (
+              <div className="card-elevated p-8 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No recent visits found for this store</p>
+              </div>
+            ) : (
+              <div className="flex gap-3 flex-wrap justify-center">
+                {exitClicks.map(click => {
+                  const date = click.attributes.exitclick_date || click.attributes.exit_date || '';
+                  const month = click.attributes.month || getMonthFromDate(date);
+                  return (
+                    <button
+                      key={click.id}
+                      onClick={() => handleSelectClick(click)}
+                      className="card-elevated p-3 text-center hover:border-primary transition-colors min-w-[70px]"
+                    >
+                      <div className="text-2xl font-bold text-foreground">
+                        {formatDate(date)}
+                      </div>
+                      <div className="text-xs text-muted-foreground uppercase">
+                        {month.substring(0, 3)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Order ID Input */}
+        {step === 'orderId' && selectedRetailer && selectedClick && (
+          <div className="animate-fade-in">
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
+                {getRetailerImage(selectedRetailer) ? (
+                  <img
+                    src={getRetailerImage(selectedRetailer)}
+                    alt={getRetailerName(selectedRetailer)}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-muted-foreground">
+                    {getRetailerName(selectedRetailer).charAt(0)}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
+                Enter your Order ID
+              </h2>
+              {orderIdMeta?.orderid_hint_message && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  {orderIdMeta.orderid_hint_message}
+                </p>
+              )}
+              {orderIdMeta?.sample_orderid && (
+                <p className="text-xs text-muted-foreground">
+                  Example: {orderIdMeta.sample_orderid}
+                </p>
+              )}
             </div>
 
-            {/* Title */}
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground text-center mb-8">
-              Now, tell us your {getRetailerName(selectedRetailer)} order ID
-            </h2>
-
-            <div className="space-y-6 max-w-md mx-auto">
-              {/* Order ID Input with floating label style */}
-              <div>
-                <div className="relative">
-                  <Input type="text" id="orderId" placeholder=" " value={orderId} onChange={e => handleOrderIdChange(e.target.value)} className={`h-14 text-lg pt-4 peer ${orderIdFormatError ? 'border-orange-500 focus-visible:ring-orange-500' : 'border-primary'}`} />
-                  <label htmlFor="orderId" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-all duration-200 pointer-events-none
-                      peer-focus:top-2 peer-focus:text-xs peer-focus:text-primary
-                      peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs">
-                    Enter Order ID
-                  </label>
-                </div>
-                
-                {/* Sample Order ID hint - show when available */}
-                {orderIdMeta?.sample_orderid && !orderIdFormatError && <p className="text-sm text-primary mt-2 text-center">
-                    Order ID should look like {orderIdMeta.sample_orderid}
-                  </p>}
-                
-                {/* Show format validation error in orange */}
-                {orderIdFormatError && <p className="text-sm text-orange-600 mt-2 flex items-center justify-center gap-1">
-                    <span className="text-orange-500">⚠</span>
-                    {orderIdFormatError}
-                  </p>}
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={orderId}
+                  onChange={(e) => handleOrderIdChange(e.target.value)}
+                  placeholder="Enter Order ID"
+                  className="pl-10 h-12"
+                />
               </div>
 
-              <Button onClick={handleValidateOrderId} disabled={isValidating || !orderId} className="w-full h-12 bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground disabled:bg-muted disabled:text-muted-foreground transition-colors">
-                {isValidating ? <>
+              {orderIdFormatError && (
+                <p className="text-sm text-destructive">{orderIdFormatError}</p>
+              )}
+
+              <Button
+                onClick={handleValidateOrderId}
+                disabled={!orderId || isValidating || !!orderIdFormatError}
+                className="w-full h-12"
+              >
+                {isValidating ? (
+                  <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Validating...
-                  </> : 'Continue'}
+                  </>
+                ) : (
+                  'Continue'
+                )}
               </Button>
             </div>
-          </div>}
+          </div>
+        )}
 
-        {/* Step 4: Enter Order Amount (skip for Group D) */}
-        {step === 'orderAmount' && selectedRetailer && selectedClick && <div className="animate-fade-in">
-            {/* Selected Retailer Logo - Centered */}
+        {/* Order Amount Input */}
+        {step === 'orderAmount' && selectedRetailer && (
+          <div className="animate-fade-in">
             <div className="mb-6 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg">
-                {getRetailerImage(selectedRetailer) ? <img src={getRetailerImage(selectedRetailer)} alt={getRetailerName(selectedRetailer)} className="max-w-full max-h-full object-contain p-2" /> : <span className="text-xl font-bold text-muted-foreground">
+              <div className="inline-flex items-center justify-center w-20 h-12 bg-background border rounded-lg mb-4">
+                {getRetailerImage(selectedRetailer) ? (
+                  <img
+                    src={getRetailerImage(selectedRetailer)}
+                    alt={getRetailerName(selectedRetailer)}
+                    className="max-w-full max-h-full object-contain p-2"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-muted-foreground">
                     {getRetailerName(selectedRetailer).charAt(0)}
-                  </span>}
+                  </span>
+                )}
               </div>
+              <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
+                Enter your Order Amount
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Order ID: {orderId}
+              </p>
             </div>
 
-            <div className="space-y-6 max-w-md mx-auto">
-              <div>
-                <p className="text-sm text-muted-foreground mb-4 text-center">
-                  Enter amount you paid after discounts
-                </p>
-                <label className="text-sm text-muted-foreground mb-2 block">
-                  Enter Order Amount
-                </label>
-                <Input type="number" placeholder="e.g., 5999" value={orderAmount} onChange={e => setOrderAmount(e.target.value)} className="h-14 text-lg" />
+            <div className="max-w-md mx-auto space-y-4">
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={orderAmount}
+                  onChange={(e) => setOrderAmount(e.target.value)}
+                  placeholder="Enter Order Amount"
+                  className="pl-10 h-12"
+                  min="0"
+                />
               </div>
 
-              <Button onClick={handleSubmitClaim} disabled={isSubmitting || !orderAmount} className="w-full h-12">
-                {isSubmitting ? <>
+              <Button
+                onClick={handleSubmitClaim}
+                disabled={!orderAmount || isSubmitting}
+                className="w-full h-12"
+              >
+                {isSubmitting ? (
+                  <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Submitting...
-                  </> : 'Continue'}
+                  </>
+                ) : (
+                  'Submit Claim'
+                )}
               </Button>
             </div>
-          </div>}
+          </div>
+        )}
 
-        {/* Step 5: Additional Details (for B1/B2/C1/C2 groups) */}
+        {/* Additional Details (B1) */}
         {step === 'additionalDetails' && renderAdditionalDetailsStep()}
 
-        {/* Success State */}
-        {step === 'success' && <div className="animate-fade-in">
-            <div className="card-elevated p-8 text-center max-w-md mx-auto">
-              <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-success" />
+        {/* Category Selection (C1) */}
+        {step === 'categorySelection' && renderCategorySelectionStep()}
+
+        {/* Invoice Upload (C1 Other Category & C2) */}
+        {step === 'invoiceUpload' && renderInvoiceUploadStep()}
+
+        {/* Ticket Success */}
+        {step === 'ticketSuccess' && renderTicketSuccessStep()}
+
+        {/* Success Step */}
+        {step === 'success' && (
+          <div className="animate-fade-in">
+            <div className="max-w-md mx-auto text-center py-8">
+              <div className="w-20 h-20 mx-auto mb-6 bg-success/10 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-success" />
               </div>
-              <h2 className="text-xl font-semibold text-foreground mb-2">
-                {submissionResult?.meta?.cashback_id ? 'Cashback Added!' : 'Claim Submitted!'}
+              
+              <h2 className="text-2xl font-semibold text-foreground mb-3">
+                Claim Submitted!
               </h2>
+              
               <p className="text-muted-foreground mb-6">
-                {submissionResult?.meta?.cashback_id ? `₹${submissionResult.meta.cashbackvalue || '0'} ${submissionResult.meta.cashback_type || 'Cashback'} has been added to your account.` : 'Your missing cashback claim has been added to the review queue.'}
+                {submissionResult?.meta?.cashback_id
+                  ? `₹${submissionResult.meta.cashbackvalue || '0'} ${submissionResult.meta.cashback_type || 'Cashback'} has been added to your account.`
+                  : 'Your missing cashback claim has been added to the review queue.'}
               </p>
               
               <div className="bg-muted/50 rounded-lg p-4 mb-6 text-left">
@@ -1506,7 +1745,9 @@ const MissingCashback: React.FC = () => {
                   <p><strong>Store:</strong> {selectedRetailer && getRetailerName(selectedRetailer)}</p>
                   <p><strong>Order ID:</strong> {orderId}</p>
                   {orderAmount && <p><strong>Amount:</strong> ₹{orderAmount}</p>}
-                  {submissionResult?.meta?.under_tracking === 'no' && <p className="text-success"><strong>Status:</strong> Cashback resolved immediately</p>}
+                  {submissionResult?.meta?.under_tracking === 'no' && (
+                    <p className="text-success"><strong>Status:</strong> Cashback resolved immediately</p>
+                  )}
                 </div>
               </div>
               
@@ -1519,37 +1760,44 @@ const MissingCashback: React.FC = () => {
                 </Button>
               </div>
             </div>
-          </div>}
+          </div>
+        )}
 
         {/* Cashback Tracked Modal */}
         <Dialog open={showTrackedModal} onOpenChange={setShowTrackedModal}>
           <DialogContent className="sm:max-w-md">
-            {/* Close button is handled by DialogContent */}
             <div className="text-center py-2">
-              {/* Store Logo */}
-              {selectedRetailer && <div className="w-24 h-12 mx-auto mb-4 flex items-center justify-center border rounded-lg bg-background p-2">
-                  {getRetailerImage(selectedRetailer) ? <img src={getRetailerImage(selectedRetailer)} alt={getRetailerName(selectedRetailer)} className="max-w-full max-h-full object-contain" /> : <span className="text-xl font-bold text-muted-foreground">
+              {selectedRetailer && (
+                <div className="w-24 h-12 mx-auto mb-4 flex items-center justify-center border rounded-lg bg-background p-2">
+                  {getRetailerImage(selectedRetailer) ? (
+                    <img
+                      src={getRetailerImage(selectedRetailer)}
+                      alt={getRetailerName(selectedRetailer)}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xl font-bold text-muted-foreground">
                       {getRetailerName(selectedRetailer).charAt(0)}
-                    </span>}
-                </div>}
+                    </span>
+                  )}
+                </div>
+              )}
               
-              {/* Title */}
               <h2 className="text-xl font-semibold text-foreground mb-3">
                 Cashback Tracked
               </h2>
               
-              {/* Message with user name */}
               <p className="text-muted-foreground mb-6">
                 Hi{user?.firstName ? ` ${user.firstName}` : ''}, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.
               </p>
               
-              {/* Order ID Box */}
-              {orderId && <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
+              {orderId && (
+                <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
                   <span className="text-sm text-muted-foreground">Order ID: </span>
                   <span className="text-sm font-medium text-foreground">{orderId}</span>
-                </div>}
+                </div>
+              )}
               
-              {/* View Details Button */}
               <Button onClick={handleViewTrackedDetails} className="w-full h-12">
                 View Details
               </Button>
@@ -1557,89 +1805,163 @@ const MissingCashback: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Add Details Modal (for claims needing additional info) */}
-        <Dialog open={showAddDetailsModal} onOpenChange={open => {
-        setShowAddDetailsModal(open);
-        if (!open) {
-          setShowB1ConfirmationSheet(false);
-          setPendingUserType('');
-        }
-      }}>
+        {/* Add Details Modal */}
+        <Dialog
+          open={showAddDetailsModal}
+          onOpenChange={(open) => {
+            setShowAddDetailsModal(open);
+            if (!open) {
+              setShowB1ConfirmationSheet(false);
+              setPendingUserType('');
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-md">
             <div className="py-2">
-              {selectedClaimForDetails && <>
-                  {/* B1 Group - New/Existing User Flow (Redesigned to match screenshot) */}
-                  {selectedClaimForDetails.attributes.groupid === 'B1' && !showB1ConfirmationSheet ? <div className="text-center">
-                      {/* Store Logo - Prominent at top */}
+              {selectedClaimForDetails && (
+                <>
+                  {/* B1 Group - New/Existing User Flow */}
+                  {selectedClaimForDetails.attributes.groupid === 'B1' && !showB1ConfirmationSheet ? (
+                    <div className="text-center">
                       <div className="w-28 h-16 mx-auto mb-6 flex items-center justify-center border rounded-xl bg-background p-3">
-                        {getClaimImageUrl(selectedClaimForDetails) ? <img src={getClaimImageUrl(selectedClaimForDetails)} alt={getClaimStoreName(selectedClaimForDetails)} className="max-w-full max-h-full object-contain" /> : <span className="text-2xl font-bold text-muted-foreground">
+                        {getClaimImageUrl(selectedClaimForDetails) ? (
+                          <img
+                            src={getClaimImageUrl(selectedClaimForDetails)}
+                            alt={getClaimStoreName(selectedClaimForDetails)}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">
                             {getClaimStoreName(selectedClaimForDetails).charAt(0)}
-                          </span>}
+                          </span>
+                        )}
                       </div>
                       
-                      {/* Heading */}
                       <h2 className="text-lg font-semibold text-foreground mb-2">
                         Great! Are you a new user on {getClaimStoreName(selectedClaimForDetails)}?
                       </h2>
                       
-                      {/* Description */}
                       <p className="text-sm text-muted-foreground mb-2">
                         {getClaimStoreName(selectedClaimForDetails)} gives different Cashbacks to new and existing users.
                       </p>
                       
-                      {/* Learn More Link */}
                       <button className="text-sm text-primary font-medium mb-8 inline-flex items-center gap-1 hover:underline">
                         Learn More <ArrowRight className="w-3 h-3" />
                       </button>
                       
-                      {/* Primary Button - New User */}
-                      <Button onClick={() => handleB1UserTypeSelection('New')} className="w-full h-12 mb-4" disabled={isUpdatingDetails}>
-                        {isUpdatingDetails ? <>
+                      <Button
+                        onClick={() => handleB1UserTypeSelection('New')}
+                        className="w-full h-12 mb-4"
+                        disabled={isUpdatingDetails}
+                      >
+                        {isUpdatingDetails ? (
+                          <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Processing...
-                          </> : 'Yes, I am a New User'}
+                          </>
+                        ) : (
+                          'Yes, I am a New User'
+                        )}
                       </Button>
                       
-                      {/* Secondary Link - Existing User */}
-                      <button onClick={() => handleB1UserTypeSelection('Existing')} className="text-sm text-muted-foreground hover:text-foreground transition-colors" disabled={isUpdatingDetails}>
+                      <button
+                        onClick={() => handleB1UserTypeSelection('Existing')}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        disabled={isUpdatingDetails}
+                      >
                         No, I am an Existing User
                       </button>
-                    </div> : selectedClaimForDetails.attributes.groupid === 'B1' && showB1ConfirmationSheet ? (/* B1 Confirmation Bottom Sheet */
-              <div className="text-center">
-                      {/* Store Logo */}
+                    </div>
+                  ) : selectedClaimForDetails.attributes.groupid === 'B1' && showB1ConfirmationSheet ? (
+                    <div className="text-center">
                       <div className="w-28 h-16 mx-auto mb-6 flex items-center justify-center border rounded-xl bg-background p-3">
-                        {getClaimImageUrl(selectedClaimForDetails) ? <img src={getClaimImageUrl(selectedClaimForDetails)} alt={getClaimStoreName(selectedClaimForDetails)} className="max-w-full max-h-full object-contain" /> : <span className="text-2xl font-bold text-muted-foreground">
+                        {getClaimImageUrl(selectedClaimForDetails) ? (
+                          <img
+                            src={getClaimImageUrl(selectedClaimForDetails)}
+                            alt={getClaimStoreName(selectedClaimForDetails)}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">
                             {getClaimStoreName(selectedClaimForDetails).charAt(0)}
-                          </span>}
+                          </span>
+                        )}
                       </div>
                       
-                      {/* Confirmation Title */}
                       <h2 className="text-lg font-semibold text-foreground mb-3">
                         {pendingUserType === 'New' ? 'New' : 'Existing'} user cashback
                       </h2>
                       
-                      {/* Confirmation Description */}
                       <p className="text-sm text-muted-foreground mb-8">
                         Once {getClaimStoreName(selectedClaimForDetails)} confirms you as a {pendingUserType === 'New' ? 'new' : 'existing'} user, your cashback may increase or decrease.
                       </p>
                       
-                      {/* Okay Button */}
-                      <Button onClick={handleB1ConfirmSubmit} className="w-full h-12" disabled={isUpdatingDetails}>
-                        {isUpdatingDetails ? <>
+                      <Button
+                        onClick={handleB1ConfirmSubmit}
+                        className="w-full h-12"
+                        disabled={isUpdatingDetails}
+                      >
+                        {isUpdatingDetails ? (
+                          <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Submitting...
-                          </> : 'Okay'}
+                          </>
+                        ) : (
+                          'Okay'
+                        )}
                       </Button>
                       
-                      {/* Back option */}
-                      <button onClick={() => {
-                  setShowB1ConfirmationSheet(false);
-                  setPendingUserType('');
-                }} className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-4" disabled={isUpdatingDetails}>
+                      <button
+                        onClick={() => {
+                          setShowB1ConfirmationSheet(false);
+                          setPendingUserType('');
+                        }}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-4"
+                        disabled={isUpdatingDetails}
+                      >
                         Go Back
                       </button>
-                    </div>) : (/* C1/B2 Group - Category Selection Flow */
-              <>
+                    </div>
+                  ) : selectedClaimForDetails.attributes.groupid === 'C2' ? (
+                    /* C2 Group - Direct to Invoice Upload */
+                    <div className="text-center">
+                      <div className="w-28 h-16 mx-auto mb-6 flex items-center justify-center border rounded-xl bg-background p-3">
+                        {getClaimImageUrl(selectedClaimForDetails) ? (
+                          <img
+                            src={getClaimImageUrl(selectedClaimForDetails)}
+                            alt={getClaimStoreName(selectedClaimForDetails)}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-2xl font-bold text-muted-foreground">
+                            {getClaimStoreName(selectedClaimForDetails).charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h2 className="text-lg font-semibold text-foreground mb-3">
+                        Upload Invoice Screenshot
+                      </h2>
+                      
+                      <p className="text-sm text-muted-foreground mb-6">
+                        Please upload a screenshot of your invoice to proceed with your claim.
+                      </p>
+                      
+                      <Button
+                        onClick={() => {
+                          setQueueId(String(selectedClaimForDetails.id));
+                          setSelectedRetailerGroup('C2');
+                          setShowAddDetailsModal(false);
+                          setStep('invoiceUpload');
+                        }}
+                        className="w-full h-12"
+                      >
+                        Upload Invoice
+                      </Button>
+                    </div>
+                  ) : (
+                    /* C1 Group - Category Selection Flow */
+                    <>
                       <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-center">
                           Tell us your product category
@@ -1647,31 +1969,35 @@ const MissingCashback: React.FC = () => {
                       </DialogHeader>
                       <div className="pt-4">
                         <p className="text-sm text-muted-foreground text-center mb-6">
-                          Select categories from the list below or add more categories
+                          Select categories from the list below
                         </p>
                         <div className="space-y-3 mb-6">
                           {CATEGORY_OPTIONS_C1.map(category => (
                             <div key={category.value}>
-                              <button 
-                                onClick={() => setSelectedCategory(category.value)} 
+                              <button
+                                onClick={() => setSelectedCategory(category.value)}
                                 className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition-all ${
-                                  selectedCategory === category.value 
-                                    ? 'border-primary bg-primary/5' 
+                                  selectedCategory === category.value
+                                    ? 'border-primary bg-primary/5'
                                     : 'border-border hover:border-primary/50'
                                 }`}
                               >
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                  selectedCategory === category.value 
-                                    ? 'border-primary' 
-                                    : 'border-muted-foreground'
-                                }`}>
+                                <div
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    selectedCategory === category.value
+                                      ? 'border-primary'
+                                      : 'border-muted-foreground'
+                                  }`}
+                                >
                                   {selectedCategory === category.value && (
                                     <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                                   )}
                                 </div>
-                                <span className={`font-medium ${
-                                  selectedCategory === category.value ? 'text-primary' : 'text-foreground'
-                                }`}>
+                                <span
+                                  className={`font-medium ${
+                                    selectedCategory === category.value ? 'text-primary' : 'text-foreground'
+                                  }`}
+                                >
                                   {category.label}
                                 </span>
                               </button>
@@ -1682,86 +2008,103 @@ const MissingCashback: React.FC = () => {
                           ))}
                         </div>
                         
-                        <Button onClick={handleAddDetailsToExistingClaim} disabled={isUpdatingDetails || !selectedCategory} className="w-full h-12">
-                          {isUpdatingDetails ? <>
+                        <Button
+                          onClick={handleAddDetailsToExistingClaim}
+                          disabled={isUpdatingDetails || !selectedCategory}
+                          className="w-full h-12"
+                        >
+                          {isUpdatingDetails ? (
+                            <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Submitting...
-                            </> : 'Continue'}
+                            </>
+                          ) : (
+                            'Continue'
+                          )}
                         </Button>
                       </div>
-                    </>)}
-              </>}
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Queue Already Added Modal (for "already been added" validation error) */}
+        {/* Queue Already Added Modal */}
         <Dialog open={showQueueAlreadyAddedModal} onOpenChange={setShowQueueAlreadyAddedModal}>
           <DialogContent className="sm:max-w-md">
             <div className="text-center py-2">
-              {/* Store Logo */}
-              {selectedRetailer && <div className="w-24 h-12 mx-auto mb-4 flex items-center justify-center border rounded-lg bg-background p-2">
-                  {getRetailerImage(selectedRetailer) ? <img src={getRetailerImage(selectedRetailer)} alt={getRetailerName(selectedRetailer)} className="max-w-full max-h-full object-contain" /> : <span className="text-xl font-bold text-muted-foreground">
+              {selectedRetailer && (
+                <div className="w-24 h-12 mx-auto mb-4 flex items-center justify-center border rounded-lg bg-background p-2">
+                  {getRetailerImage(selectedRetailer) ? (
+                    <img
+                      src={getRetailerImage(selectedRetailer)}
+                      alt={getRetailerName(selectedRetailer)}
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xl font-bold text-muted-foreground">
                       {getRetailerName(selectedRetailer).charAt(0)}
-                    </span>}
-                </div>}
+                    </span>
+                  )}
+                </div>
+              )}
               
-              {/* Title */}
               <h2 className="text-xl font-semibold text-foreground mb-3">
                 Cashback Tracked
               </h2>
               
-              {/* Message with user name */}
               <p className="text-muted-foreground mb-6">
                 Hi{user?.firstName ? ` ${user.firstName}` : ''}, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.
               </p>
               
-              {/* Order ID Box */}
-              {orderId && <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
+              {orderId && (
+                <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
                   <span className="text-sm text-muted-foreground">Order ID: </span>
                   <span className="text-sm font-medium text-foreground">{orderId}</span>
-                </div>}
+                </div>
+              )}
               
-              {/* View Details Button */}
-              <Button onClick={() => {
-              setShowQueueAlreadyAddedModal(false);
-              handleViewClaims();
-            }} className="w-full h-12">
+              <Button
+                onClick={() => {
+                  setShowQueueAlreadyAddedModal(false);
+                  handleViewClaims();
+                }}
+                className="w-full h-12"
+              >
                 View Details
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Validation Error Modal - Consistent popup style for all validation errors */}
+        {/* Validation Error Modal */}
         <Dialog open={showValidationErrorModal} onOpenChange={setShowValidationErrorModal}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="sr-only">Validation Error</DialogTitle>
             </DialogHeader>
             <div className="text-center py-2">
-              {/* Error Icon */}
               <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full bg-destructive/10">
                 <XCircle className="w-8 h-8 text-destructive" />
               </div>
               
-              {/* Title */}
               <h2 className="text-xl font-semibold text-foreground mb-3">
                 Unable to Process
               </h2>
               
-              {/* Error Message */}
               <p className="text-muted-foreground mb-6">
                 {validationErrorMessage}
               </p>
               
-              {/* Order ID Box (if available) */}
-              {orderId && <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
+              {orderId && (
+                <div className="bg-muted/50 border rounded-full px-4 py-3 mb-6 inline-block">
                   <span className="text-sm text-muted-foreground">Order ID: </span>
                   <span className="text-sm font-medium text-foreground">{orderId}</span>
-                </div>}
+                </div>
+              )}
               
-              {/* Close Button */}
               <Button onClick={() => setShowValidationErrorModal(false)} className="w-full h-12">
                 Okay
               </Button>
@@ -1769,7 +2112,7 @@ const MissingCashback: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Info/Success Modal - Clear popup for important messages */}
+        {/* Info/Success Modal */}
         <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -1778,11 +2121,15 @@ const MissingCashback: React.FC = () => {
               </DialogTitle>
             </DialogHeader>
             <div className="text-center py-2">
-              {/* Icon based on variant */}
-              <div className={`w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full ${
-                infoModalVariant === 'success' ? 'bg-success/10' : 
-                infoModalVariant === 'error' ? 'bg-destructive/10' : 'bg-primary/10'
-              }`}>
+              <div
+                className={`w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full ${
+                  infoModalVariant === 'success'
+                    ? 'bg-success/10'
+                    : infoModalVariant === 'error'
+                    ? 'bg-destructive/10'
+                    : 'bg-primary/10'
+                }`}
+              >
                 {infoModalVariant === 'success' ? (
                   <CheckCircle className="w-8 h-8 text-success" />
                 ) : infoModalVariant === 'error' ? (
@@ -1792,17 +2139,14 @@ const MissingCashback: React.FC = () => {
                 )}
               </div>
               
-              {/* Title */}
               <h2 className="text-xl font-semibold text-foreground mb-3">
                 {infoModalTitle}
               </h2>
               
-              {/* Message */}
               <p className="text-muted-foreground mb-6">
                 {infoModalMessage}
               </p>
               
-              {/* Close Button */}
               <Button onClick={() => setShowInfoModal(false)} className="w-full h-12">
                 Okay
               </Button>
@@ -1810,6 +2154,8 @@ const MissingCashback: React.FC = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default MissingCashback;

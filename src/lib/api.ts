@@ -491,7 +491,7 @@ export const raiseTicket = async (
   exitId: string,
   ticketData: {
     transaction_id: string;
-    total_amount_paid: number;
+    total_amount_paid?: number; // Optional - only include if has valid value
     coupon_code_used?: string;
     transaction_details?: string;
     missing_txn_queue_id?: number;
@@ -504,8 +504,12 @@ export const raiseTicket = async (
   // Build form fields for multipart request
   const formFields: Record<string, string> = {
     transaction_id: ticketData.transaction_id,
-    total_amount_paid: String(ticketData.total_amount_paid),
   };
+  
+  // Only add total_amount_paid if it's a valid positive number
+  if (ticketData.total_amount_paid && ticketData.total_amount_paid > 0) {
+    formFields.total_amount_paid = String(ticketData.total_amount_paid);
+  }
   
   if (ticketData.coupon_code_used) {
     formFields.coupon_code_used = ticketData.coupon_code_used;
@@ -526,8 +530,16 @@ export const raiseTicket = async (
     formFields.cashback_id = String(ticketData.cashback_id);
   }
 
+  console.log('[API] raiseTicket called:', {
+    endpoint: `/users/tickets/${exitClickDate}/${storeId}/${exitId}`,
+    formFields,
+    hasFiles: files && files.length > 0,
+    filesCount: files?.length || 0,
+  });
+
   // If we have files, use multipart form data
   if (files && files.length > 0) {
+    console.log('[API] Using multipart form data for ticket with files');
     const { data, error } = await supabase.functions.invoke('cashkaro-proxy', {
       body: {
         endpoint: `/users/tickets/${exitClickDate}/${storeId}/${exitId}`,
@@ -538,6 +550,8 @@ export const raiseTicket = async (
         files,
       },
     });
+
+    console.log('[API] Multipart response:', { data, error });
 
     if (error) {
       console.error('[API] Proxy error:', error);
@@ -555,11 +569,26 @@ export const raiseTicket = async (
     return data;
   }
 
-  // No files, use regular JSON request
+  // No files, use regular JSON request with data wrapper
+  console.log('[API] Using JSON request for ticket without files');
   return callProxy(
     `/users/tickets/${exitClickDate}/${storeId}/${exitId}`,
     'POST',
-    formFields,
+    {
+      data: {
+        type: 'ticket',
+        attributes: {
+          transaction_id: ticketData.transaction_id,
+          ...(ticketData.total_amount_paid && ticketData.total_amount_paid > 0 ? { total_amount_paid: ticketData.total_amount_paid } : {}),
+          ...(ticketData.coupon_code_used ? { coupon_code_used: ticketData.coupon_code_used } : {}),
+          ...(ticketData.transaction_details ? { transaction_details: ticketData.transaction_details } : {}),
+          ...(ticketData.missing_txn_queue_id ? { missing_txn_queue_id: ticketData.missing_txn_queue_id } : {}),
+          ...(ticketData.query_type ? { type: ticketData.query_type } : {}),
+          ...(ticketData.query_sub_type ? { sub_type: ticketData.query_sub_type } : {}),
+          ...(ticketData.cashback_id ? { cashback_id: ticketData.cashback_id } : {}),
+        },
+      },
+    },
     accessToken
   );
 };

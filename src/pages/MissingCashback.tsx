@@ -717,10 +717,10 @@ const MissingCashback: React.FC = () => {
 
     setIsUploadingTicket(true);
     try {
-      // Convert files to base64
+      // Convert files to base64 - use 'ticket_attachment' as the field name (matches curl)
       const fileData = await Promise.all(
         uploadedFiles.map(async (file) => ({
-          name: 'ticket_attachment[]',
+          name: 'ticket_attachment',
           data: await fileToBase64(file),
           filename: file.name,
           contentType: file.type,
@@ -729,14 +729,24 @@ const MissingCashback: React.FC = () => {
 
       const totalPaid = Number.parseFloat(String(txnOrderAmountStr || '0')) || 0;
 
-      // Prepare ticket data
-      const ticketData = {
+      // Prepare ticket data - total_amount_paid is optional (only include if > 0)
+      const ticketData: {
+        transaction_id: string;
+        total_amount_paid?: number;
+        missing_txn_queue_id?: number;
+        query_type?: string;
+        query_sub_type?: string;
+      } = {
         transaction_id: txnOrderId,
-        total_amount_paid: totalPaid,
         missing_txn_queue_id: effectiveQueueId ? Number.parseInt(effectiveQueueId, 10) : undefined,
         query_type: selectedRetailerGroup === 'C1' ? 'Other Category' : 'Missing Cashback',
         query_sub_type: 'Missing Cashback',
       };
+      
+      // Only add total_amount_paid if it's a valid positive number
+      if (totalPaid > 0) {
+        ticketData.total_amount_paid = totalPaid;
+      }
 
       console.log('[InvoiceUpload] Raising ticket:', {
         exitDate,

@@ -130,9 +130,14 @@ serve(async (req) => {
     // Build the full URL
     const url = `${CASHKARO_CONFIG.BASE_URL}${endpoint}`;
 
-    // Build headers
+    // Build headers - Include browser-like headers to avoid CloudFront WAF blocking
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.api+json',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Origin': 'https://www.cashkaro.com',
+      'Referer': 'https://www.cashkaro.com/',
       'x-api-key': CASHKARO_CONFIG.API_KEY,
       'x-chkr-app-version': CASHKARO_CONFIG.APP_VERSION,
     };

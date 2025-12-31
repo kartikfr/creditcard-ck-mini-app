@@ -363,7 +363,7 @@ const Earnings: React.FC = () => {
       
       switch (selectedMethod) {
         case 'amazon':
-          await submitAmazonPayment(accessToken, paymentType, mobileNumber, otpGuid);
+          await submitAmazonPayment(accessToken, paymentType, mobileNumber, email, otpGuid);
           break;
         case 'flipkart':
           await submitFlipkartPayment(accessToken, paymentType, email, otpGuid);
@@ -414,9 +414,13 @@ const Earnings: React.FC = () => {
   const isDetailsValid = (): boolean => {
     switch (selectedMethod) {
       case 'amazon':
-        return mobileNumber.length === 10 && 
+        const validMobile = mobileNumber.length === 10 && 
                mobileNumber === confirmMobileNumber &&
                /^[6-9]\d{9}$/.test(mobileNumber);
+        const validAmazonEmail = email.includes('@') && 
+               email.includes('.') &&
+               email === confirmEmail;
+        return validMobile && validAmazonEmail;
       case 'flipkart':
         return email.includes('@') && 
                email.includes('.') &&
@@ -804,6 +808,33 @@ const Earnings: React.FC = () => {
                   />
                   {confirmMobileNumber && mobileNumber !== confirmMobileNumber && (
                     <p className="text-xs text-destructive mt-1">Mobile numbers don't match</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Email Address (linked to Amazon)
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Confirm Email Address
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="Re-enter email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    className="h-11"
+                  />
+                  {confirmEmail && email !== confirmEmail && (
+                    <p className="text-xs text-destructive mt-1">Email addresses don't match</p>
                   )}
                 </div>
               </>

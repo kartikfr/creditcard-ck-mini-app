@@ -702,6 +702,7 @@ export const submitAmazonPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   mobile: string,
+  email: string,
   otpGuid: string
 ) => {
   return callProxy('/payment/paymentV1?device=Desktop', 'POST', {
@@ -711,6 +712,7 @@ export const submitAmazonPayment = async (
         payment_type: paymentType,
         payment_method_id: 12,
         mobile: parseInt(mobile),
+        email: email,
         otp_guid: otpGuid,
       },
     },

@@ -152,7 +152,7 @@ const Payments: React.FC = () => {
       
       switch (selectedMethod) {
         case 'amazon':
-          await submitAmazonPayment(accessToken, paymentType, mobileNumber, otpGuid);
+          await submitAmazonPayment(accessToken, paymentType, mobileNumber, email, otpGuid);
           break;
         case 'flipkart':
           await submitFlipkartPayment(accessToken, paymentType, email, otpGuid);
@@ -212,8 +212,10 @@ const Payments: React.FC = () => {
 
   const isDetailsValid = () => {
     if (selectedMethod === 'amazon') {
-      // Mobile must be 10 digits starting with 6-9
-      return /^[6-9][0-9]{9}$/.test(mobileNumber);
+      // Mobile must be 10 digits starting with 6-9, and valid email required
+      const validMobile = /^[6-9][0-9]{9}$/.test(mobileNumber);
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return validMobile && validEmail;
     } else if (selectedMethod === 'flipkart') {
       // Valid email
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -565,24 +567,42 @@ const Payments: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Amazon Pay - Mobile Number */}
+                  {/* Amazon Pay - Mobile Number + Email */}
                   {selectedMethod === 'amazon' && (
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Mobile Number (linked to Amazon)
-                      </label>
-                      <Input
-                        type="tel"
-                        placeholder="Enter 10-digit mobile number"
-                        value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        className="h-12"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Amazon Pay balance will be credited to this mobile number
-                      </p>
-                    </div>
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Mobile Number (linked to Amazon)
+                        </label>
+                        <Input
+                          type="tel"
+                          placeholder="Enter 10-digit mobile number"
+                          value={mobileNumber}
+                          onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          className="h-12"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Amazon Pay balance will be credited to this mobile number
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Email Address (linked to Amazon)
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder="Enter your email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="h-12"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Gift card details will be sent to this email
+                        </p>
+                      </div>
+                    </>
                   )}
 
                   {/* Flipkart - Email */}

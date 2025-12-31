@@ -134,6 +134,17 @@ serve(async (req) => {
     console.log(`[CashKaro Proxy] Has userAccessToken:`, !!userAccessToken);
     console.log(`[CashKaro Proxy] Is multipart:`, !!isMultipart);
 
+    // Enhanced logging for payment submissions
+    if (endpoint.includes('/payment/paymentV1')) {
+      const paymentMethodId = body?.data?.attributes?.payment_method_id;
+      console.log(`[CashKaro Proxy] Payment submission details:`, {
+        type: body?.data?.type,
+        payment_method_id: paymentMethodId,
+        payment_method_id_typeof: typeof paymentMethodId,
+        payment_type: body?.data?.attributes?.payment_type,
+      });
+    }
+
     // Build the full URL
     const url = `${CASHKARO_CONFIG.BASE_URL}${endpoint}`;
 

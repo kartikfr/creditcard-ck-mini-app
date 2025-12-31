@@ -738,7 +738,7 @@ export const submitAmazonPayment = async (
 };
 
 // Submit Flipkart Gift Card payment
-// API expects: email, payment_method_id as string "13"
+// API expects: email, payment_method_id as number 13
 export const submitFlipkartPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -752,7 +752,7 @@ export const submitFlipkartPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '13',
+        payment_method_id: 13,
         email: email,
       },
     },
@@ -760,10 +760,10 @@ export const submitFlipkartPayment = async (
 };
 
 // Submit UPI payment
-// API expects: payment_method_id as string "20"
+// API expects: payment_method_id as number 20
 export const submitUPIPayment = async (
   accessToken: string,
-  paymentType: 'cashback',
+  paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   upiId: string,
   otpGuid: string
 ) => {
@@ -774,7 +774,7 @@ export const submitUPIPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '20',
+        payment_method_id: 20,
         upi_id: upiId,
       },
     },
@@ -782,10 +782,10 @@ export const submitUPIPayment = async (
 };
 
 // Submit Bank Transfer (IMPS/RTGS) payment
-// API expects: payment_method_id as string "18", no bank_name or branch
+// API expects: payment_method_id as number 18
 export const submitBankPayment = async (
   accessToken: string,
-  paymentType: 'cashback',
+  paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   ifscCode: string,
   accountHolderName: string,
   accountNumber: string,
@@ -798,7 +798,7 @@ export const submitBankPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '18',
+        payment_method_id: 18,
         ifsc_code: ifscCode,
         account_holder_name: accountHolderName,
         account_number: accountNumber,

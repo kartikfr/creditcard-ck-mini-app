@@ -406,10 +406,10 @@ const Earnings: React.FC = () => {
           await submitFlipkartPayment(accessToken, paymentType, email, otpGuid);
           break;
         case 'upi':
-          await submitUPIPayment(accessToken, 'cashback', upiId, otpGuid);
+          await submitUPIPayment(accessToken, paymentType, upiId, otpGuid);
           break;
         case 'bank':
-          await submitBankPayment(accessToken, 'cashback', ifscCode, accountHolderName, accountNumber, otpGuid);
+          await submitBankPayment(accessToken, paymentType, ifscCode, accountHolderName, accountNumber, otpGuid);
           break;
       }
 

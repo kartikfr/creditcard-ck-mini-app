@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { requestOTP, verifyOTPAndLogin, requestSignupOTP, signupUser, fetchOTPFromGenerator } from '@/lib/api';
+import { requestOTP, verifyOTPAndLogin, requestSignupOTP, signupUser } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -107,11 +107,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
           setStep('otp');
           setCountdown(30);
           
-          // Fetch and auto-fill OTP for testing
-          const generatedOTP = await fetchOTPFromGenerator(phone);
-          if (generatedOTP) {
-            setOtp(generatedOTP);
-          }
           return;
         }
       } catch (loginError) {
@@ -127,11 +122,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
               setStep('otp');
               setCountdown(30);
               
-              // Fetch and auto-fill OTP for testing
-              const generatedOTP = await fetchOTPFromGenerator(phone);
-              if (generatedOTP) {
-                setOtp(generatedOTP);
-              }
               return;
             }
           } catch (signupError) {
@@ -255,11 +245,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       setCountdown(30);
       setOtp('');
       
-      // Fetch and auto-fill new OTP for testing
-      const generatedOTP = await fetchOTPFromGenerator(phone);
-      if (generatedOTP) {
-        setOtp(generatedOTP);
-      }
     } catch (error) {
       toast({
         title: 'Failed to Resend',

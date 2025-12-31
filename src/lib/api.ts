@@ -674,7 +674,8 @@ export const logoutUser = async (accessToken: string) => {
 
 // Send payment request OTP
 export const sendPaymentRequestOTP = async (accessToken: string) => {
-  return callProxy('/users/sendotp', 'POST', {
+  const device = getDeviceType();
+  return callProxy(`/users/sendotp?device=${device}`, 'POST', {
     data: {
       type: 'user_otp',
       attributes: {

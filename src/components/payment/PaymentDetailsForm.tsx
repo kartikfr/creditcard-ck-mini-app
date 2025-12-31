@@ -168,16 +168,20 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
 
     switch (method) {
       case 'amazon':
-        return validateMobile(formData.mobileNumber).isValid;
+        return validateMobile(formData.mobileNumber).isValid &&
+               validateConfirmMobile(formData.confirmMobileNumber).isValid &&
+               validateEmail(formData.email).isValid &&
+               validateConfirmEmail(formData.confirmEmail).isValid;
       case 'flipkart':
-        return validateEmail(formData.email).isValid;
+        return validateEmail(formData.email).isValid &&
+               validateConfirmEmail(formData.confirmEmail).isValid;
       case 'upi':
         return validateUpi(formData.upiId).isValid;
       case 'bank':
-        return validateAccountNumber(formData.accountNumber).isValid &&
-               validateConfirmAccountNumber(formData.confirmAccountNumber).isValid &&
-               validateIfsc(formData.ifscCode).isValid &&
-               validateRequired(formData.accountHolderName, 'accountHolderName').isValid;
+        return validateIfsc(formData.ifscCode).isValid &&
+               validateRequired(formData.bankName, 'bankName').isValid &&
+               validateRequired(formData.accountHolderName, 'accountHolderName').isValid &&
+               validateAccountNumber(formData.accountNumber).isValid;
       default:
         return false;
     }
@@ -274,28 +278,52 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
 
       {/* Form Fields */}
       <div className="space-y-4">
-        {/* Amazon Pay - Mobile Number */}
+        {/* Amazon Pay - Mobile + Email with confirmations */}
         {method === 'amazon' && (
           <>
             {renderInput(
               'mobileNumber',
-              'Mobile Number (linked to Amazon)',
+              'Mobile Number',
               'Enter 10-digit mobile number',
               <Phone className="w-4 h-4" />,
               validateMobile(formData.mobileNumber),
               'tel',
-              (v) => v.replace(/\D/g, '').slice(0, 10),
-              'Amazon Pay balance will be credited to this mobile number'
+              (v) => v.replace(/\D/g, '').slice(0, 10)
+            )}
+            {renderInput(
+              'confirmMobileNumber',
+              'Confirm Mobile Number',
+              'Re-enter mobile number',
+              <Phone className="w-4 h-4" />,
+              validateConfirmMobile(formData.confirmMobileNumber),
+              'tel',
+              (v) => v.replace(/\D/g, '').slice(0, 10)
+            )}
+            {renderInput(
+              'email',
+              'Email Address',
+              'Enter your email address',
+              <Mail className="w-4 h-4" />,
+              validateEmail(formData.email),
+              'email'
+            )}
+            {renderInput(
+              'confirmEmail',
+              'Confirm Email Address',
+              'Re-enter your email address',
+              <Mail className="w-4 h-4" />,
+              validateConfirmEmail(formData.confirmEmail),
+              'email'
             )}
           </>
         )}
 
-        {/* Flipkart - Email */}
+        {/* Flipkart - Email with confirmation */}
         {method === 'flipkart' && (
           <>
             {renderInput(
               'email',
-              'Email Address (linked to Flipkart)',
+              'Email Address',
               'Enter your email address',
               <Mail className="w-4 h-4" />,
               validateEmail(formData.email),
@@ -303,28 +331,49 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               undefined,
               'Flipkart Gift Card will be sent to this email'
             )}
-          </>
-        )}
-
-        {/* UPI */}
-        {method === 'upi' && (
-          <>
             {renderInput(
-              'upiId',
-              'UPI ID',
-              'yourname@paytm',
-              <Smartphone className="w-4 h-4" />,
-              validateUpi(formData.upiId),
-              'text',
-              undefined,
-              'Enter your UPI ID linked to your bank account'
+              'confirmEmail',
+              'Confirm Email Address',
+              'Re-enter your email address',
+              <Mail className="w-4 h-4" />,
+              validateConfirmEmail(formData.confirmEmail),
+              'email'
             )}
           </>
         )}
 
-        {/* Bank Transfer */}
+        {/* UPI - Single UPI ID field only */}
+        {method === 'upi' && (
+          <>
+            {renderInput(
+              'upiId',
+              'Enter UPI ID',
+              'Enter UPI ID',
+              <Smartphone className="w-4 h-4" />,
+              validateUpi(formData.upiId)
+            )}
+          </>
+        )}
+
+        {/* Bank Transfer - IFSC, Bank Name, Account Holder, Account Number */}
         {method === 'bank' && (
           <>
+            {renderInput(
+              'ifscCode',
+              'IFSC Code',
+              'e.g., HDFC0001234',
+              <Landmark className="w-4 h-4" />,
+              validateIfsc(formData.ifscCode),
+              'text',
+              (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)
+            )}
+            {renderInput(
+              'bankName',
+              'Bank Name',
+              'Enter bank name',
+              <Building2 className="w-4 h-4" />,
+              validateRequired(formData.bankName, 'bankName')
+            )}
             {renderInput(
               'accountHolderName',
               'Account Holder Name',
@@ -340,24 +389,6 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               validateAccountNumber(formData.accountNumber),
               'text',
               (v) => v.replace(/\D/g, '').slice(0, 18)
-            )}
-            {renderInput(
-              'confirmAccountNumber',
-              'Confirm Account Number',
-              'Re-enter account number',
-              <Hash className="w-4 h-4" />,
-              validateConfirmAccountNumber(formData.confirmAccountNumber),
-              'text',
-              (v) => v.replace(/\D/g, '').slice(0, 18)
-            )}
-            {renderInput(
-              'ifscCode',
-              'IFSC Code',
-              'e.g., HDFC0001234',
-              <Landmark className="w-4 h-4" />,
-              validateIfsc(formData.ifscCode),
-              'text',
-              (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)
             )}
           </>
         )}

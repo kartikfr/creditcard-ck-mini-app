@@ -692,6 +692,13 @@ export const verifyPaymentRequestOTP = async (
   otpGuid: string,
   otp: string
 ) => {
+  const parsedOtp = parseInt(otp.trim(), 10);
+  
+  console.log('[API] verifyPaymentRequestOTP - Sending:', {
+    otp_guid: otpGuid,
+    otp: parsedOtp,
+  });
+  
   return callProxy(
     '/users/verify',
     'POST',
@@ -700,7 +707,7 @@ export const verifyPaymentRequestOTP = async (
         type: 'user_otp',
         attributes: {
           otp_guid: otpGuid,
-          otp: parseInt(otp.trim(), 10),
+          otp: parsedOtp,
         },
       },
     },

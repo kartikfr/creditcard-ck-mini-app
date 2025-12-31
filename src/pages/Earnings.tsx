@@ -316,18 +316,28 @@ const Earnings: React.FC = () => {
     if (!accessToken) return;
     
     setIsLoading(true);
+    // Clear previous OTP state when sending/resending
+    setOtp('');
+    
     try {
       const res = await sendPaymentRequestOTP(accessToken);
-      const guid = res?.data?.attributes?.otp_guid;
-      if (guid) {
-        setOtpGuid(guid);
+      // API returns otp_guid under data.attribute (singular), not data.attributes
+      const guid = res?.data?.attribute?.otp_guid || res?.data?.attributes?.otp_guid;
+      
+      if (!guid) {
+        console.error('[Earnings OTP] Failed to extract otp_guid from response:', res);
+        throw new Error('Failed to get OTP GUID from response');
       }
+      
+      console.log('[Earnings OTP] Got otp_guid:', guid);
+      setOtpGuid(guid);
       setPaymentStep('otp');
       setCountdown(30);
       
+      const sentTo = res?.data?.attribute?.sent_to_mobile || res?.data?.attributes?.sent_to_mobile;
       toast({
         title: 'OTP Sent',
-        description: `OTP sent to your registered mobile number`,
+        description: `OTP sent to ${sentTo || 'your registered mobile number'}`,
       });
 
       const timer = setInterval(() => {
@@ -351,18 +361,40 @@ const Earnings: React.FC = () => {
   };
 
   const handleVerifyAndPay = async () => {
-    if (otp.length !== 6 || !accessToken || !otpGuid) {
+    const trimmedOtp = otp.trim();
+    
+    if (trimmedOtp.length !== 6 || !/^\d{6}$/.test(trimmedOtp)) {
       toast({
         title: 'Invalid OTP',
-        description: 'Please enter the 6-digit OTP',
+        description: 'Please enter a valid 6-digit OTP',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!accessToken || !otpGuid) {
+      toast({
+        title: 'Session Error',
+        description: 'Please request a new OTP',
         variant: 'destructive',
       });
       return;
     }
 
+    console.log('[Earnings OTP] Verifying with otp_guid:', otpGuid, 'otp:', trimmedOtp);
+    
     setIsLoading(true);
     try {
-      await verifyPaymentRequestOTP(accessToken, otpGuid, otp);
+      const verifyResponse = await verifyPaymentRequestOTP(accessToken, otpGuid, trimmedOtp);
+      
+      // Check if OTP verification failed
+      if (verifyResponse?.error || (verifyResponse?.data?.errors && verifyResponse.data.errors.length > 0)) {
+        const errorDetail = verifyResponse?.data?.errors?.[0]?.detail || 'OTP verification failed';
+        console.error('[Earnings OTP] Verify failed:', errorDetail);
+        throw new Error(errorDetail);
+      }
+      
+      console.log('[Earnings OTP] Verify success, submitting payment');
 
       const paymentType = redemptionType as 'cashback' | 'rewards' | 'cashback_and_rewards';
       
@@ -387,6 +419,7 @@ const Earnings: React.FC = () => {
         description: 'Your request will be processed within 24-48 hours',
       });
     } catch (error: any) {
+      console.error('[Earnings OTP] Payment failed:', error);
       toast({
         title: 'Payment Failed',
         description: error.message || 'Please try again',

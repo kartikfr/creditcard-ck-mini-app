@@ -14,6 +14,7 @@ import PaymentDetailsForm, { PaymentFormData, PaymentMethodType } from '@/compon
 import {
   fetchEarnings,
   fetchPaymentInfo,
+  extractPaymentMethodIds,
   sendPaymentRequestOTP,
   verifyPaymentRequestOTP,
   submitAmazonPayment,
@@ -95,26 +96,9 @@ const Payments: React.FC = () => {
         // Parse payment method IDs from response
         if (paymentInfoRes) {
           console.log('[Payments] Payment info response:', paymentInfoRes);
-          const methods = paymentInfoRes?.data?.attributes?.payment_methods || 
-                         paymentInfoRes?.data?.payment_methods ||
-                         paymentInfoRes?.included?.filter?.((i: any) => i.type === 'payment_method') ||
-                         [];
-          
-          if (Array.isArray(methods) && methods.length > 0) {
-            const ids: Record<string, number> = { amazon: 12, flipkart: 13, upi: 20, bank: 18 };
-            methods.forEach((m: any) => {
-              const mAttrs = m.attributes || m;
-              const id = parseInt(m.id || mAttrs.id, 10);
-              const name = (mAttrs.name || '').toLowerCase();
-              
-              if (name.includes('amazon')) ids.amazon = id;
-              else if (name.includes('flipkart')) ids.flipkart = id;
-              else if (name.includes('upi')) ids.upi = id;
-              else if (name.includes('imps') || name.includes('bank') || name.includes('rtgs')) ids.bank = id;
-            });
-            console.log('[Payments] Extracted payment method IDs:', ids);
-            setPaymentMethodIds(ids);
-          }
+          const ids = extractPaymentMethodIds(paymentInfoRes);
+          console.log('[Payments] Extracted payment method IDs:', ids);
+          setPaymentMethodIds(ids);
         }
       } catch (error) {
         console.error('Failed to load data:', error);

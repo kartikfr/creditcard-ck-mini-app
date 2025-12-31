@@ -648,6 +648,62 @@ export const fetchPaymentInfo = async (accessToken: string) => {
   );
 };
 
+export type PaymentMethodKey = 'amazon' | 'flipkart' | 'upi' | 'bank';
+
+const DEFAULT_PAYMENT_METHOD_IDS: Record<PaymentMethodKey, number> = {
+  amazon: 12,
+  flipkart: 13,
+  upi: 20,
+  bank: 18,
+};
+
+/**
+ * Extracts payment_method IDs from the /payment/payment response.
+ * The API is not strictly consistent JSON:API, so we check multiple shapes.
+ */
+export const extractPaymentMethodIds = (paymentInfo: any): Record<PaymentMethodKey, number> => {
+  const ids: Record<PaymentMethodKey, number> = { ...DEFAULT_PAYMENT_METHOD_IDS };
+
+  const candidates: any[] =
+    paymentInfo?.data?.relationships?.payment_methods?.data ||
+    paymentInfo?.data?.relationships?.payment_methods ||
+    paymentInfo?.relationships?.payment_methods?.data ||
+    paymentInfo?.relationships?.payment_methods ||
+    paymentInfo?.data?.attributes?.payment_methods ||
+    paymentInfo?.data?.payment_methods ||
+    (Array.isArray(paymentInfo?.included)
+      ? paymentInfo.included.filter((i: any) => i?.type === 'payment_method')
+      : []) ||
+    [];
+
+  if (!Array.isArray(candidates) || candidates.length === 0) return ids;
+
+  for (const m of candidates) {
+    const attrs = m?.attributes ?? m;
+    const rawId = m?.id ?? attrs?.id;
+    const id = typeof rawId === 'number' ? rawId : Number.parseInt(String(rawId), 10);
+    if (!Number.isFinite(id)) continue;
+
+    // API uses different fields across environments
+    const label = String(
+      attrs?.payment_name ?? attrs?.name ?? attrs?.payment_method_name ?? ''
+    ).toLowerCase();
+
+    if (label.includes('amazon')) ids.amazon = id;
+    else if (label.includes('flipkart')) ids.flipkart = id;
+    else if (label.includes('upi')) ids.upi = id;
+    else if (
+      label.includes('bank') ||
+      label.includes('neft') ||
+      label.includes('imps') ||
+      label.includes('rtgs')
+    )
+      ids.bank = id;
+  }
+
+  return ids;
+};
+
 // Fetch user profile
 export const fetchProfile = async (accessToken: string) => {
   return callProxy(
@@ -657,6 +713,7 @@ export const fetchProfile = async (accessToken: string) => {
     accessToken
   );
 };
+
 
 // Logout user
 export const logoutUser = async (accessToken: string) => {

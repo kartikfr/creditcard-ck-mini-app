@@ -16,6 +16,7 @@ import {
   fetchEarnings, 
   fetchPaymentHistory,
   fetchPaymentInfo,
+  extractPaymentMethodIds,
   sendPaymentRequestOTP, 
   verifyPaymentRequestOTP, 
   submitAmazonPayment, 
@@ -289,28 +290,10 @@ const Earnings: React.FC = () => {
         const paymentInfo = await fetchPaymentInfo(accessToken);
         console.log('[Earnings] Payment info response:', paymentInfo);
         
-        // Parse payment methods from the response and extract IDs
-        // The API response structure may vary - log it to understand the format
-        const methods = paymentInfo?.data?.attributes?.payment_methods || 
-                       paymentInfo?.data?.payment_methods ||
-                       paymentInfo?.included?.filter?.((i: any) => i.type === 'payment_method') ||
-                       [];
-        
-        if (Array.isArray(methods) && methods.length > 0) {
-          const ids: Record<string, number> = { ...paymentMethodIds };
-          methods.forEach((m: any) => {
-            const attrs = m.attributes || m;
-            const id = parseInt(m.id || attrs.id, 10);
-            const name = (attrs.name || '').toLowerCase();
-            
-            if (name.includes('amazon')) ids.amazon = id;
-            else if (name.includes('flipkart')) ids.flipkart = id;
-            else if (name.includes('upi')) ids.upi = id;
-            else if (name.includes('imps') || name.includes('bank') || name.includes('rtgs')) ids.bank = id;
-          });
-          console.log('[Earnings] Extracted payment method IDs:', ids);
-          setPaymentMethodIds(ids);
-        }
+        // Extract payment methods from the response and extract IDs
+        const ids = extractPaymentMethodIds(paymentInfo);
+        console.log('[Earnings] Extracted payment method IDs:', ids);
+        setPaymentMethodIds(ids);
       } catch (error) {
         console.error('[Earnings] Failed to fetch payment info:', error);
         // Continue with defaults - the submission will use fallback IDs

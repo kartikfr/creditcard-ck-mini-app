@@ -107,14 +107,10 @@ const LoginModal: React.FC<LoginModalProps> = ({
           setStep('otp');
           setCountdown(30);
           
-          // Fetch and display OTP for testing
+          // Fetch and auto-fill OTP for testing
           const generatedOTP = await fetchOTPFromGenerator(phone);
           if (generatedOTP) {
-            toast({
-              title: 'OTP Generated',
-              description: `Your OTP is: ${generatedOTP}`,
-              duration: 10000,
-            });
+            setOtp(generatedOTP);
           }
           return;
         }
@@ -131,14 +127,10 @@ const LoginModal: React.FC<LoginModalProps> = ({
               setStep('otp');
               setCountdown(30);
               
-              // Fetch and display OTP for testing
+              // Fetch and auto-fill OTP for testing
               const generatedOTP = await fetchOTPFromGenerator(phone);
               if (generatedOTP) {
-                toast({
-                  title: 'OTP Generated',
-                  description: `Your OTP is: ${generatedOTP}`,
-                  duration: 10000,
-                });
+                setOtp(generatedOTP);
               }
               return;
             }
@@ -263,14 +255,10 @@ const LoginModal: React.FC<LoginModalProps> = ({
       setCountdown(30);
       setOtp('');
       
-      // Fetch and display new OTP for testing
+      // Fetch and auto-fill new OTP for testing
       const generatedOTP = await fetchOTPFromGenerator(phone);
       if (generatedOTP) {
-        toast({
-          title: 'New OTP Generated',
-          description: `Your OTP is: ${generatedOTP}`,
-          duration: 10000,
-        });
+        setOtp(generatedOTP);
       }
     } catch (error) {
       toast({

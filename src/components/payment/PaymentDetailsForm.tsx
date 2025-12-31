@@ -168,21 +168,16 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
 
     switch (method) {
       case 'amazon':
-        return validateMobile(formData.mobileNumber).isValid &&
-               validateConfirmMobile(formData.confirmMobileNumber).isValid;
+        return validateMobile(formData.mobileNumber).isValid;
       case 'flipkart':
-        return validateEmail(formData.email).isValid &&
-               validateConfirmEmail(formData.confirmEmail).isValid;
+        return validateEmail(formData.email).isValid;
       case 'upi':
-        return validateUpi(formData.upiId).isValid &&
-               validateConfirmUpi(formData.confirmUpiId).isValid;
+        return validateUpi(formData.upiId).isValid;
       case 'bank':
         return validateAccountNumber(formData.accountNumber).isValid &&
                validateConfirmAccountNumber(formData.confirmAccountNumber).isValid &&
                validateIfsc(formData.ifscCode).isValid &&
-               validateRequired(formData.accountHolderName, 'accountHolderName').isValid &&
-               validateRequired(formData.bankName, 'bankName').isValid &&
-               validateRequired(formData.branch, 'branch').isValid;
+               validateRequired(formData.accountHolderName, 'accountHolderName').isValid;
       default:
         return false;
     }
@@ -292,15 +287,6 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               (v) => v.replace(/\D/g, '').slice(0, 10),
               'Amazon Pay balance will be credited to this mobile number'
             )}
-            {renderInput(
-              'confirmMobileNumber',
-              'Confirm Mobile Number',
-              'Re-enter mobile number',
-              <Phone className="w-4 h-4" />,
-              validateConfirmMobile(formData.confirmMobileNumber),
-              'tel',
-              (v) => v.replace(/\D/g, '').slice(0, 10)
-            )}
           </>
         )}
 
@@ -317,14 +303,6 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               undefined,
               'Flipkart Gift Card will be sent to this email'
             )}
-            {renderInput(
-              'confirmEmail',
-              'Confirm Email Address',
-              'Re-enter email address',
-              <Mail className="w-4 h-4" />,
-              validateConfirmEmail(formData.confirmEmail),
-              'email'
-            )}
           </>
         )}
 
@@ -340,13 +318,6 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               'text',
               undefined,
               'Enter your UPI ID linked to your bank account'
-            )}
-            {renderInput(
-              'confirmUpiId',
-              'Confirm UPI ID',
-              'Re-enter UPI ID',
-              <Smartphone className="w-4 h-4" />,
-              validateConfirmUpi(formData.confirmUpiId)
             )}
           </>
         )}
@@ -387,20 +358,6 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               validateIfsc(formData.ifscCode),
               'text',
               (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11)
-            )}
-            {renderInput(
-              'bankName',
-              'Bank Name',
-              'Enter bank name',
-              <Building2 className="w-4 h-4" />,
-              validateRequired(formData.bankName, 'bankName')
-            )}
-            {renderInput(
-              'branch',
-              'Branch',
-              'Enter branch name',
-              <MapPin className="w-4 h-4" />,
-              validateRequired(formData.branch, 'branch')
             )}
           </>
         )}

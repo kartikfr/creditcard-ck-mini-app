@@ -103,6 +103,9 @@ const Payments: React.FC = () => {
     if (!accessToken) return;
     
     setIsLoading(true);
+    // Clear previous OTP when sending/resending
+    setOtp('');
+    
     try {
       const response = await sendPaymentRequestOTP(accessToken);
       const guid = response?.data?.attribute?.otp_guid;
@@ -143,10 +146,21 @@ const Payments: React.FC = () => {
   };
 
   const handleVerifyAndPay = async () => {
-    if (otp.length !== 6 || !accessToken || !otpGuid) {
+    const trimmedOtp = otp.trim();
+    
+    if (trimmedOtp.length !== 6 || !/^\d{6}$/.test(trimmedOtp)) {
       toast({
         title: 'Invalid OTP',
-        description: 'Please enter the 6-digit OTP',
+        description: 'Please enter a valid 6-digit OTP',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!accessToken || !otpGuid) {
+      toast({
+        title: 'Session Error',
+        description: 'Please request a new OTP',
         variant: 'destructive',
       });
       return;
@@ -155,7 +169,13 @@ const Payments: React.FC = () => {
     setIsLoading(true);
     try {
       // Step 1: Verify OTP
-      await verifyPaymentRequestOTP(accessToken, otpGuid, otp);
+      const verifyResponse = await verifyPaymentRequestOTP(accessToken, otpGuid, trimmedOtp);
+      
+      // Check if OTP verification was successful
+      if (verifyResponse?.error || (verifyResponse?.data?.errors && verifyResponse.data.errors.length > 0)) {
+        const errorDetail = verifyResponse?.data?.errors?.[0]?.detail || 'OTP verification failed';
+        throw new Error(errorDetail);
+      }
       
       // Step 2: Submit payment based on selected method
       const paymentType = selectedWallet as 'cashback' | 'rewards' | 'cashback_and_rewards';
@@ -931,7 +951,7 @@ const Payments: React.FC = () => {
 
                 <Button
                   onClick={handleVerifyAndPay}
-                  disabled={otp.length !== 6 || isLoading}
+                  disabled={otp.trim().length !== 6 || !/^\d{6}$/.test(otp.trim()) || isLoading}
                   className="w-full h-12 bg-gradient-primary hover:opacity-90"
                 >
                   {isLoading ? <LoadingSpinner size="sm" /> : 'Verify & Submit Request'}

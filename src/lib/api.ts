@@ -710,7 +710,7 @@ export const submitAmazonPayment = async (
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
     data: {
-      type: 'amazon',
+      type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
         payment_method_id: 12,
@@ -733,7 +733,7 @@ export const submitFlipkartPayment = async (
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
     data: {
-      type: 'flipkart',
+      type: 'flipkartgiftcard',
       attributes: {
         payment_type: paymentType,
         payment_method_id: 13,

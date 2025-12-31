@@ -27,8 +27,9 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
   minimumPayout,
   onSelect,
 }) => {
-  const cashbackEligible = cashbackBalance >= minimumPayout;
-  const rewardsEligible = rewardsBalance >= minimumPayout;
+  const effectiveMinimumPayout = minimumPayout > 0 ? minimumPayout : 0.01;
+  const cashbackEligible = cashbackBalance >= effectiveMinimumPayout;
+  const rewardsEligible = rewardsBalance >= effectiveMinimumPayout;
 
   const options: WalletOption[] = [
     {
@@ -66,7 +67,7 @@ const PaymentTypeSelector: React.FC<PaymentTypeSelectorProps> = ({
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">
-          Minimum balance of ₹{minimumPayout} required to request payment
+          No balance available for withdrawal
         </p>
       </div>
     );

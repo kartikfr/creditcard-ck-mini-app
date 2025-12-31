@@ -64,7 +64,7 @@ const Payments: React.FC = () => {
   const [cashbackBalance, setCashbackBalance] = useState(0);
   const [rewardsBalance, setRewardsBalance] = useState(0);
   const [loadingEarnings, setLoadingEarnings] = useState(true);
-  const [minimumPayout, setMinimumPayout] = useState(250);
+  const [minimumPayout, setMinimumPayout] = useState(0.01);
 
   useEffect(() => {
     const loadEarnings = async () => {
@@ -79,7 +79,7 @@ const Payments: React.FC = () => {
           setCashbackBalance(parseFloat(attrs.confirmed_cashback) || 0);
           setRewardsBalance(parseFloat(attrs.confirmed_rewards) || 0);
           const threshold = Number(attrs.payment_threshold);
-          if (Number.isFinite(threshold) && threshold > 0) setMinimumPayout(threshold);
+          setMinimumPayout(Number.isFinite(threshold) && threshold > 0 ? threshold : 0.01);
         }
       } catch (error) {
         console.error('Failed to load earnings:', error);
@@ -452,11 +452,6 @@ const Payments: React.FC = () => {
                   </Button>
                 </div>
 
-                {(cashbackBalance < minimumPayout && rewardsBalance < minimumPayout) && (
-                  <p className="text-center text-sm text-muted-foreground mt-4">
-                    Minimum balance of ₹{minimumPayout} required to request payment
-                  </p>
-                )}
               </>
             )}
           </div>

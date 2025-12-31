@@ -161,7 +161,8 @@ const Earnings: React.FC = () => {
   const pendingReferrals = parseMoney(earnings?.pending_referrals);
   const paidReferrals = parseMoney(earnings?.paid_referrals);
 
-  const paymentThreshold = parseMoney(earnings?.payment_threshold) || 250;
+  const parsedThreshold = parseMoney(earnings?.payment_threshold);
+  const paymentThreshold = parsedThreshold > 0 ? parsedThreshold : 0.01;
 
   // Get breakdown data based on type
   const getBreakdownData = (type: BreakdownType) => {

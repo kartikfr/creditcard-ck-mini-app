@@ -715,13 +715,24 @@ export const verifyPaymentRequestOTP = async (
   );
 };
 
+// Payment method types from API
+export interface PaymentMethodInfo {
+  id: number;
+  name: string;
+  type: 'amazongiftcard' | 'flipkartgiftcard' | 'upi' | 'imps';
+  minAmount: number;
+  maxAmount: number;
+  enabled: boolean;
+}
+
 // Submit Amazon Pay payment
-// Docs are inconsistent (schema says number, samples use string IDs). Upstream expects string IDs.
+// paymentMethodId should be fetched from fetchPaymentInfo
 export const submitAmazonPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   mobile: string,
-  otpGuid: string
+  otpGuid: string,
+  paymentMethodId: number = 12 // Default fallback, should be passed from API response
 ) => {
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
@@ -729,7 +740,7 @@ export const submitAmazonPayment = async (
       type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
-        payment_method_id: '12',
+        payment_method_id: paymentMethodId,
         mobile: parseInt(mobile, 10),
         otp_guid: otpGuid,
       },
@@ -738,12 +749,13 @@ export const submitAmazonPayment = async (
 };
 
 // Submit Flipkart Gift Card payment
-// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
+// paymentMethodId should be fetched from fetchPaymentInfo
 export const submitFlipkartPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   email: string,
-  otpGuid: string
+  otpGuid: string,
+  paymentMethodId: number = 13 // Default fallback, should be passed from API response
 ) => {
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
@@ -752,7 +764,7 @@ export const submitFlipkartPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '13',
+        payment_method_id: paymentMethodId,
         email: email,
       },
     },
@@ -760,12 +772,13 @@ export const submitFlipkartPayment = async (
 };
 
 // Submit UPI payment
-// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
+// paymentMethodId should be fetched from fetchPaymentInfo
 export const submitUPIPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   upiId: string,
-  otpGuid: string
+  otpGuid: string,
+  paymentMethodId: number = 20 // Default fallback, should be passed from API response
 ) => {
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
@@ -774,7 +787,7 @@ export const submitUPIPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '20',
+        payment_method_id: paymentMethodId,
         upi_id: upiId,
       },
     },
@@ -782,14 +795,15 @@ export const submitUPIPayment = async (
 };
 
 // Submit Bank Transfer (IMPS/RTGS) payment
-// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
+// paymentMethodId should be fetched from fetchPaymentInfo
 export const submitBankPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   ifscCode: string,
   accountHolderName: string,
   accountNumber: string,
-  otpGuid: string
+  otpGuid: string,
+  paymentMethodId: number = 18 // Default fallback, should be passed from API response
 ) => {
   const device = getDeviceType();
   return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
@@ -798,7 +812,7 @@ export const submitBankPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: '18',
+        payment_method_id: paymentMethodId,
         ifsc_code: ifscCode,
         account_holder_name: accountHolderName,
         account_number: accountNumber,

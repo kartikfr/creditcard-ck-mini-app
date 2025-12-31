@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, CreditCard, Building2, ChevronRight, IndianRupee, ShieldCheck, Gift, Smartphone, ArrowLeft, Mail, Phone } from 'lucide-react';
+import { Wallet, CreditCard, Building2, ChevronRight, IndianRupee, ShieldCheck, Gift, Smartphone, ArrowLeft, Mail, Phone, Check, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import LoginPrompt from '@/components/LoginPrompt';
 import { useIsMobile } from '@/hooks/use-mobile';
+import TermsCheckbox from '@/components/payment/TermsCheckbox';
 import { 
   fetchEarnings, 
   sendPaymentRequestOTP, 
@@ -38,13 +39,20 @@ const Payments: React.FC = () => {
   
   // Payment details
   const [mobileNumber, setMobileNumber] = useState('');
+  const [confirmMobileNumber, setConfirmMobileNumber] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [confirmUpiId, setConfirmUpiId] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const [confirmAccountNumber, setConfirmAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
   const [bankName, setBankName] = useState('');
   const [branch, setBranch] = useState('');
+  
+  // Terms & Conditions
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   // OTP flow
   const [otp, setOtp] = useState('');
@@ -203,30 +211,100 @@ const Payments: React.FC = () => {
     setSelectedWallet(null);
     setSelectedMethod(null);
     setMobileNumber('');
+    setConfirmMobileNumber('');
     setEmail('');
+    setConfirmEmail('');
     setUpiId('');
+    setConfirmUpiId('');
     setAccountNumber('');
+    setConfirmAccountNumber('');
     setIfscCode('');
     setAccountHolder('');
     setBankName('');
     setBranch('');
     setOtp('');
     setOtpGuid('');
+    setTermsAccepted(false);
+  };
+
+  // Validation helpers
+  const isValidMobile = (mobile: string) => /^[6-9][0-9]{9}$/.test(mobile);
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length >= 5 && email.length <= 50;
+  const isValidUpi = (upi: string) => upi.includes('@') && upi.length >= 5;
+  const isValidIfsc = (ifsc: string) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc);
+  const isValidAccountNumber = (acc: string) => acc.length >= 9 && acc.length <= 18;
+
+  const getFieldValidation = (field: string, value: string, confirmValue?: string) => {
+    if (!value) return { isValid: false, error: '' };
+    
+    switch (field) {
+      case 'mobile':
+        const mobileValid = isValidMobile(value);
+        return { isValid: mobileValid, error: mobileValid ? '' : 'Enter valid 10-digit mobile number starting with 6-9' };
+      case 'confirmMobile':
+        const confirmMobileValid = value === confirmValue && isValidMobile(value);
+        return { isValid: confirmMobileValid, error: value !== confirmValue ? 'Mobile numbers don\'t match' : (!isValidMobile(value) ? 'Enter valid mobile number' : '') };
+      case 'email':
+        const emailValid = isValidEmail(value);
+        return { isValid: emailValid, error: emailValid ? '' : 'Enter valid email address (5-50 characters)' };
+      case 'confirmEmail':
+        const confirmEmailValid = value === confirmValue && isValidEmail(value);
+        return { isValid: confirmEmailValid, error: value !== confirmValue ? 'Email addresses don\'t match' : (!isValidEmail(value) ? 'Enter valid email' : '') };
+      case 'upi':
+        const upiValid = isValidUpi(value);
+        return { isValid: upiValid, error: upiValid ? '' : 'Enter valid UPI ID (e.g., name@upi)' };
+      case 'confirmUpi':
+        const confirmUpiValid = value === confirmValue && isValidUpi(value);
+        return { isValid: confirmUpiValid, error: value !== confirmValue ? 'UPI IDs don\'t match' : (!isValidUpi(value) ? 'Enter valid UPI ID' : '') };
+      case 'accountNumber':
+        const accValid = isValidAccountNumber(value);
+        return { isValid: accValid, error: accValid ? '' : 'Enter valid bank account number (9-18 digits)' };
+      case 'confirmAccountNumber':
+        const confirmAccValid = value === confirmValue && isValidAccountNumber(value);
+        return { isValid: confirmAccValid, error: value !== confirmValue ? 'Account numbers don\'t match' : (!isValidAccountNumber(value) ? 'Enter valid account number' : '') };
+      case 'ifsc':
+        const ifscValid = isValidIfsc(value);
+        return { isValid: ifscValid, error: ifscValid ? '' : 'Enter valid IFSC code (e.g., HDFC0001234)' };
+      case 'accountHolder':
+        const holderValid = value.length >= 3;
+        return { isValid: holderValid, error: holderValid ? '' : 'Enter account holder name (min 3 characters)' };
+      case 'bankName':
+        const bankValid = value.length >= 3;
+        return { isValid: bankValid, error: bankValid ? '' : 'Enter bank name (min 3 characters)' };
+      case 'branch':
+        const branchValid = value.length >= 3;
+        return { isValid: branchValid, error: branchValid ? '' : 'Enter branch name (min 3 characters)' };
+      default:
+        return { isValid: false, error: '' };
+    }
+  };
+
+  const getInputClassName = (field: string, value: string, confirmValue?: string) => {
+    if (!value) return 'h-12';
+    const { isValid, error } = getFieldValidation(field, value, confirmValue);
+    if (isValid) return 'h-12 border-success focus:ring-success';
+    if (error) return 'h-12 border-destructive focus:ring-destructive';
+    return 'h-12';
   };
 
   const isDetailsValid = () => {
+    if (!termsAccepted) return false;
+    
     if (selectedMethod === 'amazon') {
-      // Mobile must be 10 digits starting with 6-9, and valid email required
-      const validMobile = /^[6-9][0-9]{9}$/.test(mobileNumber);
-      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      return validMobile && validEmail;
+      return isValidMobile(mobileNumber) && 
+             mobileNumber === confirmMobileNumber &&
+             isValidEmail(email);
     } else if (selectedMethod === 'flipkart') {
-      // Valid email
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return isValidEmail(email) && email === confirmEmail;
     } else if (selectedMethod === 'upi') {
-      return upiId.includes('@');
+      return isValidUpi(upiId) && upiId === confirmUpiId;
     } else if (selectedMethod === 'bank') {
-      return accountNumber.length >= 9 && ifscCode.length === 11 && accountHolder.length > 2 && bankName.length > 2 && branch.length > 2;
+      return isValidAccountNumber(accountNumber) && 
+             accountNumber === confirmAccountNumber &&
+             isValidIfsc(ifscCode) && 
+             accountHolder.length >= 3 && 
+             bankName.length >= 3 && 
+             branch.length >= 3;
     }
     return false;
   };
@@ -571,7 +649,7 @@ const Payments: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Amazon Pay - Mobile Number + Email */}
+                  {/* Amazon Pay - Mobile Number + Confirm + Email */}
                   {selectedMethod === 'amazon' && (
                     <>
                       <div>
@@ -579,132 +657,336 @@ const Payments: React.FC = () => {
                           <Phone className="w-4 h-4" />
                           Mobile Number (linked to Amazon)
                         </label>
-                        <Input
-                          type="tel"
-                          placeholder="Enter 10-digit mobile number"
-                          value={mobileNumber}
-                          onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          className="h-12"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Amazon Pay balance will be credited to this mobile number
-                        </p>
+                        <div className="relative">
+                          <Input
+                            type="tel"
+                            placeholder="Enter 10-digit mobile number"
+                            value={mobileNumber}
+                            onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            className={getInputClassName('mobile', mobileNumber)}
+                          />
+                          {mobileNumber && getFieldValidation('mobile', mobileNumber).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {mobileNumber && !getFieldValidation('mobile', mobileNumber).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('mobile', mobileNumber).error}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Confirm Mobile Number
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="tel"
+                            placeholder="Re-enter mobile number"
+                            value={confirmMobileNumber}
+                            onChange={(e) => setConfirmMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            className={getInputClassName('confirmMobile', confirmMobileNumber, mobileNumber)}
+                          />
+                          {confirmMobileNumber && confirmMobileNumber === mobileNumber && isValidMobile(confirmMobileNumber) && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {confirmMobileNumber && confirmMobileNumber !== mobileNumber && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Mobile numbers don't match
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
                           <Mail className="w-4 h-4" />
                           Email Address (linked to Amazon)
                         </label>
-                        <Input
-                          type="email"
-                          placeholder="Enter your email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="email"
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className={getInputClassName('email', email)}
+                          />
+                          {email && getFieldValidation('email', email).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {email && !getFieldValidation('email', email).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('email', email).error}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          Gift card details will be sent to this email
+                          Amazon Pay balance will be credited to this mobile number. Gift card details will be sent to email.
                         </p>
                       </div>
                     </>
                   )}
 
-                  {/* Flipkart - Email */}
+                  {/* Flipkart - Email + Confirm Email */}
                   {selectedMethod === 'flipkart' && (
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Email Address (linked to Flipkart)
-                      </label>
-                      <Input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="h-12"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Flipkart Gift Card will be sent to this email
-                      </p>
-                    </div>
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Email Address (linked to Flipkart)
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="email"
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className={getInputClassName('email', email)}
+                          />
+                          {email && getFieldValidation('email', email).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {email && !getFieldValidation('email', email).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('email', email).error}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          Confirm Email Address
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type="email"
+                            placeholder="Re-enter your email"
+                            value={confirmEmail}
+                            onChange={(e) => setConfirmEmail(e.target.value)}
+                            className={getInputClassName('confirmEmail', confirmEmail, email)}
+                          />
+                          {confirmEmail && confirmEmail === email && isValidEmail(confirmEmail) && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {confirmEmail && confirmEmail !== email && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Email addresses don't match
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Flipkart Gift Card will be sent to this email
+                        </p>
+                      </div>
+                    </>
                   )}
 
-                  {/* UPI ID */}
+                  {/* UPI ID + Confirm UPI */}
                   {selectedMethod === 'upi' && (
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">UPI ID</label>
-                      <Input
-                        type="text"
-                        placeholder="yourname@paytm"
-                        value={upiId}
-                        onChange={(e) => setUpiId(e.target.value)}
-                        className="h-12"
-                      />
-                    </div>
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">UPI ID</label>
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="yourname@paytm"
+                            value={upiId}
+                            onChange={(e) => setUpiId(e.target.value.toLowerCase())}
+                            className={getInputClassName('upi', upiId)}
+                          />
+                          {upiId && getFieldValidation('upi', upiId).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {upiId && !getFieldValidation('upi', upiId).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('upi', upiId).error}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">Confirm UPI ID</label>
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Re-enter UPI ID"
+                            value={confirmUpiId}
+                            onChange={(e) => setConfirmUpiId(e.target.value.toLowerCase())}
+                            className={getInputClassName('confirmUpi', confirmUpiId, upiId)}
+                          />
+                          {confirmUpiId && confirmUpiId === upiId && isValidUpi(confirmUpiId) && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {confirmUpiId && confirmUpiId !== upiId && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            UPI IDs don't match
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Payment will be sent directly to this UPI ID
+                        </p>
+                      </div>
+                    </>
                   )}
 
-                  {/* Bank Details */}
+                  {/* Bank Details with confirmations */}
                   {selectedMethod === 'bank' && (
                     <>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 block">Account Holder Name</label>
-                        <Input
-                          type="text"
-                          placeholder="As per bank records"
-                          value={accountHolder}
-                          onChange={(e) => setAccountHolder(e.target.value)}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="As per bank records"
+                            value={accountHolder}
+                            onChange={(e) => setAccountHolder(e.target.value)}
+                            className={getInputClassName('accountHolder', accountHolder)}
+                          />
+                          {accountHolder && getFieldValidation('accountHolder', accountHolder).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {accountHolder && !getFieldValidation('accountHolder', accountHolder).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('accountHolder', accountHolder).error}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 block">Account Number</label>
-                        <Input
-                          type="text"
-                          placeholder="Enter account number"
-                          value={accountNumber}
-                          onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Enter account number"
+                            value={accountNumber}
+                            onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
+                            className={getInputClassName('accountNumber', accountNumber)}
+                          />
+                          {accountNumber && getFieldValidation('accountNumber', accountNumber).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {accountNumber && !getFieldValidation('accountNumber', accountNumber).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('accountNumber', accountNumber).error}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">Confirm Account Number</label>
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Re-enter account number"
+                            value={confirmAccountNumber}
+                            onChange={(e) => setConfirmAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 18))}
+                            className={getInputClassName('confirmAccountNumber', confirmAccountNumber, accountNumber)}
+                          />
+                          {confirmAccountNumber && confirmAccountNumber === accountNumber && isValidAccountNumber(confirmAccountNumber) && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {confirmAccountNumber && confirmAccountNumber !== accountNumber && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Account numbers don't match
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 block">IFSC Code</label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., HDFC0001234"
-                          value={ifscCode}
-                          onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="e.g., HDFC0001234"
+                            value={ifscCode}
+                            onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
+                            className={getInputClassName('ifsc', ifscCode)}
+                          />
+                          {ifscCode && getFieldValidation('ifsc', ifscCode).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {ifscCode && !getFieldValidation('ifsc', ifscCode).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('ifsc', ifscCode).error}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 block">Bank Name</label>
-                        <Input
-                          type="text"
-                          placeholder="Enter bank name"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Enter bank name"
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            className={getInputClassName('bankName', bankName)}
+                          />
+                          {bankName && getFieldValidation('bankName', bankName).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {bankName && !getFieldValidation('bankName', bankName).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('bankName', bankName).error}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-sm font-medium text-foreground mb-2 block">Branch</label>
-                        <Input
-                          type="text"
-                          placeholder="Enter branch name"
-                          value={branch}
-                          onChange={(e) => setBranch(e.target.value)}
-                          className="h-12"
-                        />
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Enter branch name"
+                            value={branch}
+                            onChange={(e) => setBranch(e.target.value)}
+                            className={getInputClassName('branch', branch)}
+                          />
+                          {branch && getFieldValidation('branch', branch).isValid && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                          )}
+                        </div>
+                        {branch && !getFieldValidation('branch', branch).isValid && (
+                          <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {getFieldValidation('branch', branch).error}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Payment will be transferred via IMPS/RTGS to this bank account
+                        </p>
                       </div>
                     </>
                   )}
+
+                  {/* Terms & Conditions Checkbox */}
+                  <div className="pt-2">
+                    <TermsCheckbox
+                      checked={termsAccepted}
+                      onCheckedChange={setTermsAccepted}
+                    />
+                  </div>
 
                   <Button
                     onClick={handleSendOTP}
                     disabled={!isDetailsValid() || isLoading}
                     className="w-full h-12 bg-gradient-primary hover:opacity-90"
                   >
-                    {isLoading ? <LoadingSpinner size="sm" /> : 'Send OTP to Verify'}
+                    {isLoading ? <LoadingSpinner size="sm" /> : 'Get Paid'}
                   </Button>
                 </div>
               </div>

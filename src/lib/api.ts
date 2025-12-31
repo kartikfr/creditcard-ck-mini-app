@@ -16,6 +16,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+// Fetch OTP from generator API (for testing/development)
+export const fetchOTPFromGenerator = async (mobileNumber: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('otp-generator', {
+      body: { mobile: mobileNumber },
+    });
+
+    if (error) {
+      console.error('[API] OTP Generator error:', error);
+      return null;
+    }
+
+    if (data?.status === 'Success' && data?.message) {
+      return data.message;
+    }
+
+    return null;
+  } catch (err) {
+    console.error('[API] Failed to fetch OTP from generator:', err);
+    return null;
+  }
+};
+
 // Token refresh interval (10 minutes = 600000ms)
 const TOKEN_REFRESH_INTERVAL = 10 * 60 * 1000;
 

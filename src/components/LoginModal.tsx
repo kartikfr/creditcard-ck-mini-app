@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, CreditCard } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { requestOTP, verifyOTPAndLogin, requestSignupOTP, signupUser } from '@/lib/api';
+import { requestOTP, verifyOTPAndLogin, requestSignupOTP, signupUser, fetchOTPFromGenerator } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -106,6 +106,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
           setIsNewUser(false);
           setStep('otp');
           setCountdown(30);
+          
+          // Fetch and display OTP for testing
+          const generatedOTP = await fetchOTPFromGenerator(phone);
+          if (generatedOTP) {
+            toast({
+              title: 'OTP Generated',
+              description: `Your OTP is: ${generatedOTP}`,
+              duration: 10000,
+            });
+          }
           return;
         }
       } catch (loginError) {
@@ -120,6 +130,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
               setIsNewUser(true);
               setStep('otp');
               setCountdown(30);
+              
+              // Fetch and display OTP for testing
+              const generatedOTP = await fetchOTPFromGenerator(phone);
+              if (generatedOTP) {
+                toast({
+                  title: 'OTP Generated',
+                  description: `Your OTP is: ${generatedOTP}`,
+                  duration: 10000,
+                });
+              }
               return;
             }
           } catch (signupError) {
@@ -242,6 +262,16 @@ const LoginModal: React.FC<LoginModalProps> = ({
       
       setCountdown(30);
       setOtp('');
+      
+      // Fetch and display new OTP for testing
+      const generatedOTP = await fetchOTPFromGenerator(phone);
+      if (generatedOTP) {
+        toast({
+          title: 'New OTP Generated',
+          description: `Your OTP is: ${generatedOTP}`,
+          duration: 10000,
+        });
+      }
     } catch (error) {
       toast({
         title: 'Failed to Resend',

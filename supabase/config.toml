@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.eligibility-proxy]
 verify_jwt = false
+
+[functions.otp-generator]
+verify_jwt = false

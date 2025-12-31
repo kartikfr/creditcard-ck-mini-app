@@ -686,12 +686,12 @@ export const sendPaymentRequestOTP = async (accessToken: string) => {
 };
 
 // Verify payment request OTP
+// API expects OTP as integer
 export const verifyPaymentRequestOTP = async (
   accessToken: string,
   otpGuid: string,
   otp: string
 ) => {
-  // Keep OTP as a digit string (do not parseInt) to avoid dropping leading zeros.
   return callProxy(
     '/users/verify',
     'POST',
@@ -700,7 +700,7 @@ export const verifyPaymentRequestOTP = async (
         type: 'user_otp',
         attributes: {
           otp_guid: otpGuid,
-          otp: otp.trim(),
+          otp: parseInt(otp.trim(), 10),
         },
       },
     },
@@ -709,23 +709,21 @@ export const verifyPaymentRequestOTP = async (
 };
 
 // Submit Amazon Pay payment
-// API expects: mobile as string matching ^[6-9][0-9]{9}$, email 5-50 chars
+// API expects: mobile as integer, payment_method_id: 12
 export const submitAmazonPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
   mobile: string,
-  email: string,
   otpGuid: string
 ) => {
   const device = getDeviceType();
-  return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
+  return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
     data: {
       type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
         payment_method_id: 12,
-        mobile: mobile,
-        email: email,
+        mobile: parseInt(mobile, 10),
         otp_guid: otpGuid,
       },
     },
@@ -733,7 +731,7 @@ export const submitAmazonPayment = async (
 };
 
 // Submit Flipkart Gift Card payment
-// API expects: email 5-50 chars
+// API expects: email, payment_method_id as string "13"
 export const submitFlipkartPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -741,20 +739,21 @@ export const submitFlipkartPayment = async (
   otpGuid: string
 ) => {
   const device = getDeviceType();
-  return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
+  return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
     data: {
       type: 'flipkartgiftcard',
       attributes: {
-        payment_type: paymentType,
-        payment_method_id: 13,
-        email: email,
         otp_guid: otpGuid,
+        payment_type: paymentType,
+        payment_method_id: '13',
+        email: email,
       },
     },
   }, accessToken);
 };
 
 // Submit UPI payment
+// API expects: payment_method_id as string "20"
 export const submitUPIPayment = async (
   accessToken: string,
   paymentType: 'cashback',
@@ -762,44 +761,40 @@ export const submitUPIPayment = async (
   otpGuid: string
 ) => {
   const device = getDeviceType();
-  return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
+  return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
     data: {
       type: 'upi',
       attributes: {
-        payment_type: paymentType,
-        payment_method_id: 20,
-        upi_id: upiId,
         otp_guid: otpGuid,
+        payment_type: paymentType,
+        payment_method_id: '20',
+        upi_id: upiId,
       },
     },
   }, accessToken);
 };
 
 // Submit Bank Transfer (IMPS/RTGS) payment
-// API expects: branch, bank_name, ifsc_code, account_holder_name, account_number
+// API expects: payment_method_id as string "18", no bank_name or branch
 export const submitBankPayment = async (
   accessToken: string,
   paymentType: 'cashback',
   ifscCode: string,
   accountHolderName: string,
   accountNumber: string,
-  bankName: string,
-  branch: string,
   otpGuid: string
 ) => {
   const device = getDeviceType();
-  return callProxy(`/payment/paymentV1?device=${device}&msg_override=1`, 'POST', {
+  return callProxy(`/payment/paymentV1?device=${device}`, 'POST', {
     data: {
       type: 'imps',
       attributes: {
+        otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: 18,
+        payment_method_id: '18',
         ifsc_code: ifscCode,
         account_holder_name: accountHolderName,
         account_number: accountNumber,
-        bank_name: bankName,
-        branch: branch,
-        otp_guid: otpGuid,
       },
     },
   }, accessToken);

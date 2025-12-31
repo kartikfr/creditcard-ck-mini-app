@@ -367,7 +367,7 @@ const Earnings: React.FC = () => {
       
       switch (selectedMethod) {
         case 'amazon':
-          await submitAmazonPayment(accessToken, paymentType, mobileNumber, email, otpGuid);
+          await submitAmazonPayment(accessToken, paymentType, mobileNumber, otpGuid);
           break;
         case 'flipkart':
           await submitFlipkartPayment(accessToken, paymentType, email, otpGuid);
@@ -376,7 +376,7 @@ const Earnings: React.FC = () => {
           await submitUPIPayment(accessToken, 'cashback', upiId, otpGuid);
           break;
         case 'bank':
-          await submitBankPayment(accessToken, 'cashback', ifscCode, accountHolderName, accountNumber, bankName, branch, otpGuid);
+          await submitBankPayment(accessToken, 'cashback', ifscCode, accountHolderName, accountNumber, otpGuid);
           break;
       }
 

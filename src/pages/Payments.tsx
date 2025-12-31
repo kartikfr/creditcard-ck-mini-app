@@ -64,8 +64,7 @@ const Payments: React.FC = () => {
   const [cashbackBalance, setCashbackBalance] = useState(0);
   const [rewardsBalance, setRewardsBalance] = useState(0);
   const [loadingEarnings, setLoadingEarnings] = useState(true);
-
-  const minimumPayout = 250;
+  const [minimumPayout, setMinimumPayout] = useState(250);
 
   useEffect(() => {
     const loadEarnings = async () => {
@@ -79,6 +78,8 @@ const Payments: React.FC = () => {
         if (attrs) {
           setCashbackBalance(parseFloat(attrs.confirmed_cashback) || 0);
           setRewardsBalance(parseFloat(attrs.confirmed_rewards) || 0);
+          const threshold = Number(attrs.payment_threshold);
+          if (Number.isFinite(threshold) && threshold > 0) setMinimumPayout(threshold);
         }
       } catch (error) {
         console.error('Failed to load earnings:', error);
@@ -916,9 +917,19 @@ const Payments: React.FC = () => {
                 </p>
 
                 <Input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="Enter 6-digit OTP"
                   value={otp}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData('text');
+                    const digits = (pasted || '').replace(/\D/g, '').slice(0, 6);
+                    if (digits) {
+                      e.preventDefault();
+                      setOtp(digits);
+                    }
+                  }}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   className="h-12 text-center text-xl tracking-[0.5em] font-mono mb-4"
                 />

@@ -686,16 +686,26 @@ export const sendPaymentRequestOTP = async (accessToken: string) => {
 };
 
 // Verify payment request OTP
-export const verifyPaymentRequestOTP = async (accessToken: string, otpGuid: string, otp: string) => {
-  return callProxy('/users/verify', 'POST', {
-    data: {
-      type: 'user_otp',
-      attributes: {
-        otp_guid: otpGuid,
-        otp: parseInt(otp),
+export const verifyPaymentRequestOTP = async (
+  accessToken: string,
+  otpGuid: string,
+  otp: string
+) => {
+  // Keep OTP as a digit string (do not parseInt) to avoid dropping leading zeros.
+  return callProxy(
+    '/users/verify',
+    'POST',
+    {
+      data: {
+        type: 'user_otp',
+        attributes: {
+          otp_guid: otpGuid,
+          otp: otp.trim(),
+        },
       },
     },
-  }, accessToken);
+    accessToken
+  );
 };
 
 // Submit Amazon Pay payment

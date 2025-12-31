@@ -716,7 +716,7 @@ export const verifyPaymentRequestOTP = async (
 };
 
 // Submit Amazon Pay payment
-// API expects: mobile as integer, payment_method_id as integer 12
+// Docs are inconsistent (schema says number, samples use string IDs). Upstream expects string IDs.
 export const submitAmazonPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -729,7 +729,7 @@ export const submitAmazonPayment = async (
       type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
-        payment_method_id: 12,
+        payment_method_id: '12',
         mobile: parseInt(mobile, 10),
         otp_guid: otpGuid,
       },
@@ -738,7 +738,7 @@ export const submitAmazonPayment = async (
 };
 
 // Submit Flipkart Gift Card payment
-// API expects: email, payment_method_id as number 13
+// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
 export const submitFlipkartPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -752,7 +752,7 @@ export const submitFlipkartPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: 13,
+        payment_method_id: '13',
         email: email,
       },
     },
@@ -760,7 +760,7 @@ export const submitFlipkartPayment = async (
 };
 
 // Submit UPI payment
-// API expects: payment_method_id as number 20
+// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
 export const submitUPIPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -774,7 +774,7 @@ export const submitUPIPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: 20,
+        payment_method_id: '20',
         upi_id: upiId,
       },
     },
@@ -782,7 +782,7 @@ export const submitUPIPayment = async (
 };
 
 // Submit Bank Transfer (IMPS/RTGS) payment
-// API expects: payment_method_id as number 18
+// Docs are inconsistent (schema says number, sample payload uses string). Upstream expects string IDs.
 export const submitBankPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -798,7 +798,7 @@ export const submitBankPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: 18,
+        payment_method_id: '18',
         ifsc_code: ifscCode,
         account_holder_name: accountHolderName,
         account_number: accountNumber,

@@ -312,20 +312,16 @@ const Payments: React.FC = () => {
     if (!termsAccepted) return false;
     
     if (selectedMethod === 'amazon') {
-      return isValidMobile(mobileNumber) && 
-             mobileNumber === confirmMobileNumber &&
-             isValidEmail(email);
+      return isValidMobile(mobileNumber);
     } else if (selectedMethod === 'flipkart') {
-      return isValidEmail(email) && email === confirmEmail;
+      return isValidEmail(email);
     } else if (selectedMethod === 'upi') {
       return isValidUpi(upiId);
     } else if (selectedMethod === 'bank') {
       return isValidAccountNumber(accountNumber) && 
              accountNumber === confirmAccountNumber &&
              isValidIfsc(ifscCode) && 
-             accountHolder.length >= 3 && 
-             bankName.length >= 3 && 
-             branch.length >= 3;
+             accountHolder.length >= 3;
     }
     return false;
   };
@@ -656,7 +652,7 @@ const Payments: React.FC = () => {
               </h2>
 
               <div className="space-y-4 text-left">
-                  {/* Amazon Pay - Simple inputs matching mobile */}
+                  {/* Amazon Pay - Only Mobile Number */}
                   {selectedMethod === 'amazon' && (
                     <>
                       <div>
@@ -670,50 +666,19 @@ const Payments: React.FC = () => {
                           onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                           className="h-12"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Amazon Pay balance will be credited to this mobile number
+                        </p>
                         {mobileNumber && !isValidMobile(mobileNumber) && (
                           <p className="text-xs text-destructive mt-1">
-                            Enter valid 10-digit mobile number
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">
-                          Confirm Mobile Number
-                        </label>
-                        <Input
-                          type="tel"
-                          placeholder="Re-enter mobile number"
-                          value={confirmMobileNumber}
-                          onChange={(e) => setConfirmMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                          className="h-12"
-                        />
-                        {confirmMobileNumber && confirmMobileNumber !== mobileNumber && (
-                          <p className="text-xs text-destructive mt-1">
-                            Mobile numbers don't match
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">
-                          Email Address (linked to Amazon)
-                        </label>
-                        <Input
-                          type="email"
-                          placeholder="Enter your email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="h-12"
-                        />
-                        {email && !isValidEmail(email) && (
-                          <p className="text-xs text-destructive mt-1">
-                            Enter valid email address
+                            Enter valid 10-digit mobile number starting with 6-9
                           </p>
                         )}
                       </div>
                     </>
                   )}
 
-                  {/* Flipkart - Simple Email inputs */}
+                  {/* Flipkart - Only Email */}
                   {selectedMethod === 'flipkart' && (
                     <>
                       <div>
@@ -727,44 +692,33 @@ const Payments: React.FC = () => {
                           onChange={(e) => setEmail(e.target.value)}
                           className="h-12"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Flipkart Gift Card will be sent to this email
+                        </p>
                         {email && !isValidEmail(email) && (
                           <p className="text-xs text-destructive mt-1">
-                            Enter valid email address
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">
-                          Confirm Email Address
-                        </label>
-                        <Input
-                          type="email"
-                          placeholder="Re-enter your email"
-                          value={confirmEmail}
-                          onChange={(e) => setConfirmEmail(e.target.value)}
-                          className="h-12"
-                        />
-                        {confirmEmail && confirmEmail !== email && (
-                          <p className="text-xs text-destructive mt-1">
-                            Email addresses don't match
+                            Enter valid email address (5-50 characters)
                           </p>
                         )}
                       </div>
                     </>
                   )}
 
-                  {/* UPI ID - Simple single input like mobile */}
+                  {/* UPI - Only UPI ID */}
                   {selectedMethod === 'upi' && (
                     <>
                       <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">Enter UPI ID</label>
+                        <label className="text-sm font-medium text-foreground mb-2 block">UPI ID</label>
                         <Input
                           type="text"
-                          placeholder="Enter UPI ID"
+                          placeholder="yourname@paytm"
                           value={upiId}
                           onChange={(e) => setUpiId(e.target.value.toLowerCase())}
                           className="h-12"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter your UPI ID linked to your bank account
+                        </p>
                         {upiId && !isValidUpi(upiId) && (
                           <p className="text-xs text-destructive mt-1">
                             Enter valid UPI ID (e.g., name@upi)
@@ -774,7 +728,7 @@ const Payments: React.FC = () => {
                     </>
                   )}
 
-                  {/* Bank Details - Simple inputs */}
+                  {/* Bank Details - Essential fields only */}
                   {selectedMethod === 'bank' && (
                     <>
                       <div>
@@ -828,42 +782,12 @@ const Payments: React.FC = () => {
                           type="text"
                           placeholder="e.g., HDFC0001234"
                           value={ifscCode}
-                          onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
+                          onChange={(e) => setIfscCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11))}
                           className="h-12"
                         />
                         {ifscCode && !isValidIfsc(ifscCode) && (
                           <p className="text-xs text-destructive mt-1">
-                            Enter valid IFSC code
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">Bank Name</label>
-                        <Input
-                          type="text"
-                          placeholder="Enter bank name"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="h-12"
-                        />
-                        {bankName && bankName.length < 3 && (
-                          <p className="text-xs text-destructive mt-1">
-                            Enter bank name (min 3 characters)
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground mb-2 block">Branch</label>
-                        <Input
-                          type="text"
-                          placeholder="Enter branch name"
-                          value={branch}
-                          onChange={(e) => setBranch(e.target.value)}
-                          className="h-12"
-                        />
-                        {branch && branch.length < 3 && (
-                          <p className="text-xs text-destructive mt-1">
-                            Enter branch name (min 3 characters)
+                            Enter valid IFSC code (e.g., HDFC0001234)
                           </p>
                         )}
                       </div>

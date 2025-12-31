@@ -716,7 +716,7 @@ export const verifyPaymentRequestOTP = async (
 };
 
 // Submit Amazon Pay payment
-// API expects: mobile as integer, payment_method_id as string "12"
+// API expects: mobile as integer, payment_method_id as integer 12
 export const submitAmazonPayment = async (
   accessToken: string,
   paymentType: 'cashback' | 'rewards' | 'cashback_and_rewards',
@@ -729,7 +729,7 @@ export const submitAmazonPayment = async (
       type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
-        payment_method_id: '12',
+        payment_method_id: 12,
         mobile: parseInt(mobile, 10),
         otp_guid: otpGuid,
       },

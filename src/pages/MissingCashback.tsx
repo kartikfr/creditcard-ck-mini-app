@@ -521,31 +521,12 @@ const MissingCashback: React.FC = () => {
     }
   };
 
-  // Re-validate before showing B1/C1/C2 UI to catch "already tracked" errors early
-  const revalidateBeforeAdditionalDetails = async (): Promise<boolean> => {
-    if (!selectedRetailer || !selectedClick || !accessToken) return false;
-    
-    try {
-      const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
-      await validateMissingCashback(accessToken, getRetailerId(selectedRetailer), exitDate, orderId);
-      return true;
-    } catch (error: any) {
-      console.error('[ReValidation] Failed before additional details:', error);
-      const errorMsg = error.message?.toLowerCase() || '';
-      const shouldRedirect = errorMsg.includes('already') || 
-                             errorMsg.includes('tracked') || 
-                             errorMsg.includes('ticket') ||
-                             errorMsg.includes('exists') ||
-                             errorMsg.includes('queue');
-      
-      setValidationErrorMessage(error.message || 'This order has already been tracked.');
-      setValidationErrorShouldRedirect(shouldRedirect);
-      setShowValidationErrorModal(true);
-      return false;
-    }
-  };
-
   // Submit claim and handle group-based flow
+  // Flow: After successful submitMissingCashbackQueue, check response to determine next step
+  // - If cashback_id exists OR status is "Resolved": Show success (cashback was found/tracked)
+  // - If under_tracking is "yes": Show auto-tracking message
+  // - If status is "Pending" and B1/C1/C2: Show additional details UI
+  // - Otherwise: Show generic success
   const handleSubmitClaimDirect = async (amount: string) => {
     if (!selectedRetailer || !selectedClick || !accessToken) return;
     setIsSubmitting(true);
@@ -553,40 +534,53 @@ const MissingCashback: React.FC = () => {
       const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
       const response = await submitMissingCashbackQueue(accessToken, getRetailerId(selectedRetailer), exitDate, orderId, amount);
       setSubmissionResult(response);
+      
+      console.log('[MissingCashback] Queue submission response:', JSON.stringify(response, null, 2));
 
       if (response?.data?.id) {
         setQueueId(String(response.data.id));
       }
 
-      const isUnderTrackingResponse = response?.meta?.under_tracking === 'yes';
+      const meta = response?.meta || {};
+      const hasCashbackId = !!meta.cashback_id;
+      const isResolved = meta.status === 'Resolved';
+      const isUnderTracking = meta.under_tracking === 'yes';
+      const isPending = meta.status === 'Pending';
       const requiresAdditionalDetails = groupRequiresAdditionalDetails(selectedRetailerGroup);
       
-      if (response?.meta?.cashback_id) {
-        setTrackedCashbackId(response.meta.cashback_id);
+      // CASE 1: Cashback was found and tracked - this is SUCCESS
+      if (hasCashbackId) {
+        console.log('[MissingCashback] Cashback found - ID:', meta.cashback_id, 'Value:', meta.cashbackvalue);
+        setTrackedCashbackId(meta.cashback_id);
         setShowTrackedModal(true);
-      } else if (response?.meta?.status === 'Resolved') {
+        return;
+      }
+      
+      // CASE 2: Status is Resolved (without cashback_id) - still a success
+      if (isResolved) {
+        console.log('[MissingCashback] Status resolved - showing success');
         setStep('success');
         setInfoModalTitle('Claim Submitted!');
         setInfoModalMessage('Your missing cashback claim has been processed.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
-      } else if (isUnderTrackingResponse) {
-        // System is auto-tracking - show success, user will add details later when tracking completes
+        return;
+      }
+      
+      // CASE 3: Under auto-tracking - success, will be processed automatically
+      if (isUnderTracking) {
+        console.log('[MissingCashback] Under auto-tracking');
         setStep('success');
         setInfoModalTitle('Claim Submitted!');
-        setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed. You may need to provide additional details later.');
+        setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
-      } else if (requiresAdditionalDetails) {
-        // B1/C1/C2: Re-validate before showing additional details UI
-        const isValid = await revalidateBeforeAdditionalDetails();
-        if (!isValid) {
-          // Validation failed - error modal will be shown by revalidateBeforeAdditionalDetails
-          // Reset to claims step after user dismisses the error
-          return;
-        }
-        
-        // Validation passed - proceed to show additional details UI
+        return;
+      }
+      
+      // CASE 4: Pending status for B1/C1/C2 - needs additional details
+      if (isPending && requiresAdditionalDetails) {
+        console.log('[MissingCashback] Pending with additional details needed for group:', selectedRetailerGroup);
         if (selectedRetailerGroup === 'B1') {
           setStep('additionalDetails');
         } else if (selectedRetailerGroup === 'C1') {
@@ -594,20 +588,23 @@ const MissingCashback: React.FC = () => {
         } else if (selectedRetailerGroup === 'C2') {
           setStep('invoiceUpload');
         }
-      } else {
-        // Normal success flow for Group A, D, or unknown groups
-        setStep('success');
-        setInfoModalTitle('Claim Submitted!');
-        setInfoModalMessage('Your missing cashback claim has been added to the queue.');
-        setInfoModalVariant('success');
-        setShowInfoModal(true);
+        return;
       }
-    } catch (error: any) {
-      console.error('Failed to submit claim:', error);
-      setInfoModalTitle('Submission Failed');
-      setInfoModalMessage(error.message || 'Failed to submit your claim. Please try again.');
-      setInfoModalVariant('error');
+      
+      // CASE 5: Default success for other cases (Group A, B2, D, or unknown)
+      console.log('[MissingCashback] Default success flow');
+      setStep('success');
+      setInfoModalTitle('Claim Submitted!');
+      setInfoModalMessage('Your missing cashback claim has been added to the queue.');
+      setInfoModalVariant('success');
       setShowInfoModal(true);
+      
+    } catch (error: any) {
+      console.error('[MissingCashback] Failed to submit claim:', error);
+      // Show error and redirect to claims page
+      setValidationErrorMessage(error.message || 'Failed to submit your claim. Please try again.');
+      setValidationErrorShouldRedirect(true);
+      setShowValidationErrorModal(true);
     } finally {
       setIsSubmitting(false);
     }

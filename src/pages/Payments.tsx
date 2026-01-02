@@ -716,10 +716,12 @@ const Payments: React.FC = () => {
                   amount={getPaymentAmount()}
                   walletLabel={`${getWalletLabel()} available for payment`}
                   isLoading={isLoading}
+                  userEmail={user?.email}
                   onSubmit={(data: PaymentFormData) => {
                     // Keep state for OTP + submit step
                     setMobileNumber(data.mobileNumber);
-                    setEmail(data.email);
+                    // For Amazon, use profile email; for others, use form email
+                    setEmail(selectedMethod === 'amazon' ? (user?.email || '') : data.email);
                     setUpiId(data.upiId);
                     setAccountNumber(data.accountNumber);
                     setIfscCode(data.ifscCode);
@@ -817,41 +819,36 @@ const Payments: React.FC = () => {
         {step === 'success' && (
           <div className="animate-fade-in">
             <div className="max-w-lg mx-auto">
-              <div className="card-elevated p-8 text-center">
-                <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ShieldCheck className="w-10 h-10 text-success" />
+              <div className="card-elevated p-8">
+                {/* Celebration Image */}
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-6">
+                    <div className="w-32 h-32 mx-auto relative">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-6xl">🎉</div>
+                      </div>
+                      <div className="absolute top-0 left-2 text-2xl animate-bounce" style={{ animationDelay: '0.1s' }}>✨</div>
+                      <div className="absolute top-2 right-0 text-xl animate-bounce" style={{ animationDelay: '0.2s' }}>🎊</div>
+                      <div className="absolute bottom-2 left-0 text-xl animate-bounce" style={{ animationDelay: '0.3s' }}>💫</div>
+                      <div className="absolute bottom-0 right-2 text-2xl animate-bounce" style={{ animationDelay: '0.4s' }}>🌟</div>
+                    </div>
+                  </div>
+
+                  <h2 className="text-xl font-bold text-foreground mb-3">
+                    Your Withdrawal of ₹{getPaymentAmount().toFixed(0)} is Initiated!
+                  </h2>
+
+                  <p className="text-muted-foreground mb-8 max-w-sm text-sm leading-relaxed">
+                    We are processing your payment and will update you once it is ready. Usually takes 5-7 business days. Have a great day.
+                  </p>
+
+                  <Button
+                    onClick={resetForm}
+                    className="w-full max-w-xs h-12 bg-gradient-primary hover:opacity-90 font-semibold"
+                  >
+                    Continue Shopping
+                  </Button>
                 </div>
-                
-                <h2 className="text-2xl font-semibold text-foreground mb-2">Payment Request Submitted!</h2>
-                <p className="text-muted-foreground mb-6">
-                  Your payment of ₹{getPaymentAmount().toFixed(2)} via {getMethodLabel(selectedMethod)} has been submitted successfully.
-                </p>
-
-                <div className="bg-secondary/50 rounded-lg p-4 mb-6 text-left">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Wallet</span>
-                    <span className="font-medium">{getWalletLabel()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Amount</span>
-                    <span className="font-medium text-success">₹{getPaymentAmount().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Method</span>
-                    <span className="font-medium">{getMethodLabel(selectedMethod)}</span>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground mb-6">
-                  Your payment will be processed within 24-48 hours. You will receive a notification once it's done.
-                </p>
-
-                <Button
-                  onClick={resetForm}
-                  className="w-full h-12 bg-gradient-primary hover:opacity-90"
-                >
-                  Done
-                </Button>
               </div>
             </div>
           </div>

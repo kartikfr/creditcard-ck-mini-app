@@ -797,9 +797,10 @@ export const submitAmazonPayment = async (
       type: 'amazongiftcard',
       attributes: {
         payment_type: paymentType,
-        payment_method_id: paymentMethodId,
-        mobile: parseInt(mobile, 10),
+        payment_method_id: String(paymentMethodId),
+        mobile: mobile,
         otp_guid: otpGuid,
+        amazon_payment_type: 'AmazonMobile',
       },
     },
   }, accessToken);
@@ -821,7 +822,7 @@ export const submitFlipkartPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: paymentMethodId,
+        payment_method_id: String(paymentMethodId),
         email: email,
       },
     },
@@ -844,7 +845,7 @@ export const submitUPIPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: paymentMethodId,
+        payment_method_id: String(paymentMethodId),
         upi_id: upiId,
       },
     },
@@ -869,7 +870,7 @@ export const submitBankPayment = async (
       attributes: {
         otp_guid: otpGuid,
         payment_type: paymentType,
-        payment_method_id: paymentMethodId,
+        payment_method_id: String(paymentMethodId),
         ifsc_code: ifscCode,
         account_holder_name: accountHolderName,
         account_number: accountNumber,

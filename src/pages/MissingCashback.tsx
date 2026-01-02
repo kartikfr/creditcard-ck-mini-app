@@ -721,13 +721,28 @@ const MissingCashback: React.FC = () => {
 
   // Handle invoice upload and ticket submission (for C1 "Other Category" and C2)
   const handleInvoiceSubmit = async () => {
+    console.log('[InvoiceSubmit] Starting invoice submission...');
+    console.log('[InvoiceSubmit] State check:', {
+      accessToken: !!accessToken,
+      uploadedFilesCount: uploadedFiles.length,
+      selectedClaimForDetails: selectedClaimForDetails ? { id: selectedClaimForDetails.id, groupid: selectedClaimForDetails.attributes.groupid } : null,
+      selectedClick: selectedClick ? { id: selectedClick.id } : null,
+      selectedRetailer: selectedRetailer ? { id: selectedRetailer.id } : null,
+      queueId,
+      orderId,
+      orderAmount,
+      selectedRetailerGroup
+    });
+
     if (!accessToken) {
+      console.log('[InvoiceSubmit] ERROR: No access token');
       setValidationErrorMessage('Please login to continue.');
       setShowValidationErrorModal(true);
       return;
     }
 
     if (uploadedFiles.length === 0) {
+      console.log('[InvoiceSubmit] ERROR: No files uploaded');
       setValidationErrorMessage('Please upload at least one invoice screenshot.');
       setShowValidationErrorModal(true);
       return;
@@ -759,7 +774,18 @@ const MissingCashback: React.FC = () => {
 
     const effectiveQueueId = claimCtx ? String(claimCtx.id) : queueId;
 
+    console.log('[InvoiceSubmit] Computed values:', {
+      exitDate,
+      exitId,
+      storeId,
+      txnOrderId,
+      txnOrderAmountStr,
+      effectiveQueueId,
+      claimCtx: claimCtx ? 'present' : 'null'
+    });
+
     if (!exitDate || !exitId || !storeId || !txnOrderId) {
+      console.log('[InvoiceSubmit] ERROR: Missing required fields', { exitDate, exitId, storeId, txnOrderId });
       setValidationErrorMessage('Unable to prepare ticket request for this claim. Please try again.');
       setShowValidationErrorModal(true);
       return;
@@ -909,7 +935,14 @@ const MissingCashback: React.FC = () => {
 
     // C1 with "Other Category" or C2 needs invoice upload - redirect to invoice upload flow
     if ((claimGroup === 'C1' && selectedCategory === 'Other Category') || claimGroup === 'C2') {
-      // Set up context for invoice upload
+      console.log('[AddDetails] C1 Other/C2 - redirecting to invoice upload, preserving claim context:', {
+        claimId: claimQueueId,
+        exitId: selectedClaimForDetails.attributes.exit_id,
+        storeId: selectedClaimForDetails.attributes.store_id,
+        orderId: selectedClaimForDetails.attributes.order_id,
+        clickDate: selectedClaimForDetails.attributes.click_date
+      });
+      // Set up context for invoice upload - keep selectedClaimForDetails intact
       setQueueId(claimQueueId);
       setSelectedRetailerGroup(claimGroup);
       setShowAddDetailsModal(false);
@@ -2136,6 +2169,14 @@ const MissingCashback: React.FC = () => {
                       
                       <Button
                         onClick={() => {
+                          console.log('[C2 Modal] Upload Invoice clicked, preserving claim context:', {
+                            claimId: selectedClaimForDetails.id,
+                            exitId: selectedClaimForDetails.attributes.exit_id,
+                            storeId: selectedClaimForDetails.attributes.store_id,
+                            orderId: selectedClaimForDetails.attributes.order_id,
+                            clickDate: selectedClaimForDetails.attributes.click_date
+                          });
+                          // Keep selectedClaimForDetails intact - don't clear it
                           setQueueId(String(selectedClaimForDetails.id));
                           setSelectedRetailerGroup('C2');
                           setShowAddDetailsModal(false);

@@ -521,6 +521,30 @@ const MissingCashback: React.FC = () => {
     }
   };
 
+  // Re-validate before showing B1/C1/C2 UI to catch "already tracked" errors early
+  const revalidateBeforeAdditionalDetails = async (): Promise<boolean> => {
+    if (!selectedRetailer || !selectedClick || !accessToken) return false;
+    
+    try {
+      const exitDate = selectedClick.attributes.exitclick_date || selectedClick.attributes.exit_date || '';
+      await validateMissingCashback(accessToken, getRetailerId(selectedRetailer), exitDate, orderId);
+      return true;
+    } catch (error: any) {
+      console.error('[ReValidation] Failed before additional details:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists') ||
+                             errorMsg.includes('queue');
+      
+      setValidationErrorMessage(error.message || 'This order has already been tracked.');
+      setValidationErrorShouldRedirect(shouldRedirect);
+      setShowValidationErrorModal(true);
+      return false;
+    }
+  };
+
   // Submit claim and handle group-based flow
   const handleSubmitClaimDirect = async (amount: string) => {
     if (!selectedRetailer || !selectedClick || !accessToken) return;
@@ -535,6 +559,7 @@ const MissingCashback: React.FC = () => {
       }
 
       const isUnderTrackingResponse = response?.meta?.under_tracking === 'yes';
+      const requiresAdditionalDetails = groupRequiresAdditionalDetails(selectedRetailerGroup);
       
       if (response?.meta?.cashback_id) {
         setTrackedCashbackId(response.meta.cashback_id);
@@ -552,15 +577,23 @@ const MissingCashback: React.FC = () => {
         setInfoModalMessage('Your claim is under auto-tracking. We will update you once it\'s processed. You may need to provide additional details later.');
         setInfoModalVariant('success');
         setShowInfoModal(true);
-      } else if (selectedRetailerGroup === 'B1') {
-        // B1: Show New/Existing user question
-        setStep('additionalDetails');
-      } else if (selectedRetailerGroup === 'C1') {
-        // C1: Show category selection
-        setStep('categorySelection');
-      } else if (selectedRetailerGroup === 'C2') {
-        // C2: Show invoice upload directly
-        setStep('invoiceUpload');
+      } else if (requiresAdditionalDetails) {
+        // B1/C1/C2: Re-validate before showing additional details UI
+        const isValid = await revalidateBeforeAdditionalDetails();
+        if (!isValid) {
+          // Validation failed - error modal will be shown by revalidateBeforeAdditionalDetails
+          // Reset to claims step after user dismisses the error
+          return;
+        }
+        
+        // Validation passed - proceed to show additional details UI
+        if (selectedRetailerGroup === 'B1') {
+          setStep('additionalDetails');
+        } else if (selectedRetailerGroup === 'C1') {
+          setStep('categorySelection');
+        } else if (selectedRetailerGroup === 'C2') {
+          setStep('invoiceUpload');
+        }
       } else {
         // Normal success flow for Group A, D, or unknown groups
         setStep('success');

@@ -19,6 +19,7 @@ interface PaymentDetailsFormProps {
   amount: number;
   walletLabel: string;
   isLoading: boolean;
+  userEmail?: string; // Email from profile for Amazon payment
   onSubmit: (data: PaymentFormData) => void;
 }
 
@@ -43,6 +44,7 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
   amount,
   walletLabel,
   isLoading,
+  userEmail = '',
   onSubmit,
 }) => {
   const [formData, setFormData] = useState<PaymentFormData>({
@@ -168,10 +170,10 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
 
     switch (method) {
       case 'amazon':
+        // Amazon: only mobile + confirm mobile (email comes from profile)
         return validateMobile(formData.mobileNumber).isValid &&
                validateConfirmMobile(formData.confirmMobileNumber).isValid &&
-               validateEmail(formData.email).isValid &&
-               validateConfirmEmail(formData.confirmEmail).isValid;
+               !!userEmail; // Ensure profile email exists
       case 'flipkart':
         return validateEmail(formData.email).isValid &&
                validateConfirmEmail(formData.confirmEmail).isValid;
@@ -278,12 +280,12 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
 
       {/* Form Fields */}
       <div className="space-y-4">
-        {/* Amazon Pay - Mobile + Email with confirmations */}
+        {/* Amazon Pay - Mobile only (email from profile) */}
         {method === 'amazon' && (
           <>
             {renderInput(
               'mobileNumber',
-              'Mobile Number',
+              'Mobile Number (linked to Amazon)',
               'Enter 10-digit mobile number',
               <Phone className="w-4 h-4" />,
               validateMobile(formData.mobileNumber),
@@ -299,22 +301,19 @@ const PaymentDetailsForm: React.FC<PaymentDetailsFormProps> = ({
               'tel',
               (v) => v.replace(/\D/g, '').slice(0, 10)
             )}
-            {renderInput(
-              'email',
-              'Email Address',
-              'Enter your email address',
-              <Mail className="w-4 h-4" />,
-              validateEmail(formData.email),
-              'email'
-            )}
-            {renderInput(
-              'confirmEmail',
-              'Confirm Email Address',
-              'Re-enter your email address',
-              <Mail className="w-4 h-4" />,
-              validateConfirmEmail(formData.confirmEmail),
-              'email'
-            )}
+            {/* Display profile email (read-only) */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Email Address (from profile)
+              </label>
+              <div className="h-12 px-3 flex items-center bg-muted/50 border border-border rounded-md text-muted-foreground">
+                {userEmail || 'No email in profile'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Amazon Pay Balance will be sent to this email
+              </p>
+            </div>
           </>
         )}
 

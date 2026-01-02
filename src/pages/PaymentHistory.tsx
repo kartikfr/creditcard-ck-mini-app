@@ -60,7 +60,11 @@ const PaymentHistory = () => {
   const PULL_THRESHOLD = 80;
 
   const loadMonths = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      setMonthsLoading(false);
+      setLoading(false);
+      return;
+    }
     setMonthsLoading(true);
     try {
       const response = await fetchPaymentHistoryMonths(accessToken);
@@ -73,16 +77,23 @@ const PaymentHistory = () => {
       setMonthOptions(options);
       if (options.length > 0 && !selectedMonth) {
         setSelectedMonth(options[0]);
+      } else if (options.length === 0) {
+        // No months available, stop loading
+        setLoading(false);
       }
     } catch (error) {
       console.error('Failed to fetch payment history months:', error);
+      setLoading(false);
     } finally {
       setMonthsLoading(false);
     }
   }, [accessToken, selectedMonth]);
 
   const loadPayments = useCallback(async () => {
-    if (!accessToken || !selectedMonth) return;
+    if (!accessToken || !selectedMonth) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetchPaymentHistoryByMonth(

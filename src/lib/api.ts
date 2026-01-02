@@ -929,6 +929,21 @@ export const fetchPaymentHistory = async (accessToken: string) => {
   return callProxy('/payment/payment?device=Desktop&paymentautomation=true', 'GET', undefined, accessToken);
 };
 
+// Fetch all payment requests (for showing pending/completed payment requests)
+export const fetchPaymentRequests = async (
+  accessToken: string,
+  pageNumber: number = 1,
+  pageSize: number = 20
+) => {
+  const device = getDeviceType();
+  return callProxy(
+    `/payment/history?device=${device}&page[number]=${pageNumber}&page[size]=${pageSize}`,
+    'GET',
+    undefined,
+    accessToken
+  );
+};
+
 // Fetch all categories (uses GUEST TOKEN - offers scope)
 export const fetchCategories = async (pageNumber: number = 1, pageSize: number = 1000) => {
   const guestToken = await getGuestToken();

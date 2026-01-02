@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Building2, Gift, Smartphone, ArrowLeft, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Wallet, Building2, Gift, Smartphone, ArrowLeft, ShieldCheck, Clock, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import LoginPrompt from '@/components/LoginPrompt';
 import { useIsMobile } from '@/hooks/use-mobile';
 import PaymentDetailsForm, { PaymentFormData, PaymentMethodType } from '@/components/payment/PaymentDetailsForm';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   fetchEarnings,
   fetchPaymentInfo,
@@ -21,13 +22,29 @@ import {
   submitFlipkartPayment,
   submitUPIPayment,
   submitBankPayment,
+  fetchPaymentRequests,
 } from '@/lib/api';
 
 type WalletType = 'cashback' | 'rewards' | 'cashback_and_rewards' | null;
 type PaymentMethod = 'amazon' | 'flipkart' | 'bank' | 'upi' | null;
 type Step = 'overview' | 'selection' | 'method' | 'details' | 'otp' | 'success';
 
+interface PaymentRequestItem {
+  id: string | number;
+  type: string;
+  attributes: {
+    cashout_id?: number;
+    month?: string;
+    year?: number;
+    total_amount?: string;
+    status?: string;
+    payment_method?: string;
+    created_at?: string;
+  };
+}
+
 const Payments: React.FC = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { user, accessToken, isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
@@ -62,6 +79,10 @@ const Payments: React.FC = () => {
   const [rewardsBalance, setRewardsBalance] = useState(0);
   const [loadingEarnings, setLoadingEarnings] = useState(true);
   
+  // Payment requests
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequestItem[]>([]);
+  const [loadingPaymentRequests, setLoadingPaymentRequests] = useState(false);
+  
   // Payment method IDs from API - dynamically fetched
   const [paymentMethodIds, setPaymentMethodIds] = useState<Record<string, number>>({
     amazon: 12,
@@ -77,12 +98,17 @@ const Payments: React.FC = () => {
         setLoadingEarnings(false);
         return;
       }
+      setLoadingPaymentRequests(true);
       try {
-        // Fetch earnings and payment info in parallel
-        const [earningsRes, paymentInfoRes] = await Promise.all([
+        // Fetch earnings, payment info, and payment requests in parallel
+        const [earningsRes, paymentInfoRes, paymentRequestsRes] = await Promise.all([
           fetchEarnings(accessToken),
           fetchPaymentInfo(accessToken).catch(err => {
             console.error('[Payments] Failed to fetch payment info:', err);
+            return null;
+          }),
+          fetchPaymentRequests(accessToken).catch(err => {
+            console.error('[Payments] Failed to fetch payment requests:', err);
             return null;
           }),
         ]);
@@ -100,10 +126,20 @@ const Payments: React.FC = () => {
           console.log('[Payments] Extracted payment method IDs:', ids);
           setPaymentMethodIds(ids);
         }
+        
+        // Parse payment requests from response
+        if (paymentRequestsRes?.data) {
+          console.log('[Payments] Payment requests response:', paymentRequestsRes);
+          const requests = Array.isArray(paymentRequestsRes.data) 
+            ? paymentRequestsRes.data 
+            : [paymentRequestsRes.data];
+          setPaymentRequests(requests);
+        }
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
         setLoadingEarnings(false);
+        setLoadingPaymentRequests(false);
       }
     };
     loadData();
@@ -379,7 +415,7 @@ const Payments: React.FC = () => {
                 </div>
 
                 {/* Request Payment Button */}
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-4 mb-8">
                   <Button
                     onClick={() => setStep('selection')}
                     className="px-8 py-3 bg-gradient-primary hover:opacity-90"
@@ -387,6 +423,89 @@ const Payments: React.FC = () => {
                   >
                     Request Payment
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/payment-history')}
+                    className="px-8 py-3"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Payment History
+                  </Button>
+                </div>
+
+                {/* Recent Payment Requests Section */}
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-foreground">Recent Payment Requests</h2>
+                    {paymentRequests.length > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigate('/payment-history')}
+                        className="text-primary"
+                      >
+                        View All
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {loadingPaymentRequests ? (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="p-4 rounded-xl border border-border bg-card">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                            <Skeleton className="h-6 w-20" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : paymentRequests.length === 0 ? (
+                    <div className="p-8 text-center border rounded-xl bg-muted/30">
+                      <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground font-medium">No payment requests yet</p>
+                      <p className="text-sm text-muted-foreground mt-1">Your payment requests will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {paymentRequests.slice(0, 5).map((request) => {
+                        const attrs = request.attributes;
+                        const amount = parseFloat(attrs.total_amount || '0');
+                        const month = attrs.month || '';
+                        const year = attrs.year || '';
+                        const cashoutId = attrs.cashout_id;
+                        
+                        return (
+                          <button
+                            key={request.id}
+                            onClick={() => cashoutId && navigate(`/payment-history/${cashoutId}`)}
+                            className="w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors text-left"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-foreground">
+                                  {month} {year}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {attrs.status || 'Processed'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-foreground">
+                                  ₹{amount.toFixed(2)}
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
               </>

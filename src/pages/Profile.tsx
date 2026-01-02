@@ -141,7 +141,7 @@ const Profile: React.FC = () => {
   const cashbackRewardsItems = [
     { icon: Wallet, label: 'My Earnings', path: '/earnings' },
     { icon: CreditCard, label: 'Payments', path: '/payments' },
-    { icon: Clock, label: 'Payments History', path: '/orders' },
+    { icon: Clock, label: 'Payments History', path: '/payment-history' },
     { icon: AlertCircle, label: 'Missing Cashback', path: '/missing-cashback' },
     { icon: MessageSquare, label: 'Your Queries', path: '/your-queries' },
   ];

@@ -851,6 +851,20 @@ const MissingCashback: React.FC = () => {
     try {
       const response = await updateMissingCashbackQueue(accessToken, claimQueueId, { user_type: pendingUserType });
       console.log('[AddDetails] B1 update response:', response);
+      
+      // Check if cashback was found during the update
+      if (response?.meta?.cashback_id) {
+        setTrackedCashbackId(response.meta.cashback_id);
+        setIsTrackedModalSuccess(true);
+        setShowTrackedModal(true);
+        setShowAddDetailsModal(false);
+        setSelectedClaimForDetails(null);
+        setSelectedUserType('');
+        setPendingUserType('');
+        loadClaims();
+        return;
+      }
+      
       setInfoModalTitle('Details Added!');
       setInfoModalMessage('Your claim has been updated.');
       setInfoModalVariant('success');
@@ -915,6 +929,20 @@ const MissingCashback: React.FC = () => {
       console.log('[AddDetails] Sending PUT request:', { queueId: claimQueueId, details });
       const response = await updateMissingCashbackQueue(accessToken, claimQueueId, details);
       console.log('[AddDetails] Response:', response);
+      
+      // Check if cashback was found during the update
+      if (response?.meta?.cashback_id) {
+        setTrackedCashbackId(response.meta.cashback_id);
+        setIsTrackedModalSuccess(true);
+        setShowTrackedModal(true);
+        setShowAddDetailsModal(false);
+        setSelectedClaimForDetails(null);
+        setSelectedUserType('');
+        setSelectedCategory('');
+        loadClaims();
+        return;
+      }
+      
       setInfoModalTitle('Details Added!');
       setInfoModalMessage('Your claim has been updated.');
       setInfoModalVariant('success');

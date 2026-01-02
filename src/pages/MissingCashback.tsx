@@ -252,6 +252,7 @@ const MissingCashback: React.FC = () => {
   // Modal states
   const [showTrackedModal, setShowTrackedModal] = useState(false);
   const [trackedCashbackId, setTrackedCashbackId] = useState<number | null>(null);
+  const [isTrackedModalSuccess, setIsTrackedModalSuccess] = useState(false); // true = submission succeeded, false = already tracked error
   const [showAddDetailsModal, setShowAddDetailsModal] = useState(false);
   const [selectedClaimForDetails, setSelectedClaimForDetails] = useState<Claim | null>(null);
   const [showQueueAlreadyAddedModal, setShowQueueAlreadyAddedModal] = useState(false);
@@ -552,6 +553,7 @@ const MissingCashback: React.FC = () => {
       if (hasCashbackId) {
         console.log('[MissingCashback] Cashback found - ID:', meta.cashback_id, 'Value:', meta.cashbackvalue);
         setTrackedCashbackId(meta.cashback_id);
+        setIsTrackedModalSuccess(true); // Mark as success - cashback was found after submission
         setShowTrackedModal(true);
         return;
       }
@@ -649,6 +651,7 @@ const MissingCashback: React.FC = () => {
       }
       if (response?.meta?.cashback_id) {
         setTrackedCashbackId(response.meta.cashback_id);
+        setIsTrackedModalSuccess(true);
         setShowTrackedModal(true);
       } else {
         setStep('success');
@@ -692,6 +695,7 @@ const MissingCashback: React.FC = () => {
       const response = await updateMissingCashbackQueue(accessToken, queueId, { category: selectedCategory });
       if (response?.meta?.cashback_id) {
         setTrackedCashbackId(response.meta.cashback_id);
+        setIsTrackedModalSuccess(true);
         setShowTrackedModal(true);
       } else {
         setStep('success');
@@ -994,6 +998,7 @@ const MissingCashback: React.FC = () => {
     setSubmissionResult(null);
     setShowTrackedModal(false);
     setTrackedCashbackId(null);
+    setIsTrackedModalSuccess(false);
     setSelectedRetailerGroup('');
     setSelectedRetailerTrackingSpeed('');
     setQueueId(null);
@@ -1935,11 +1940,14 @@ const MissingCashback: React.FC = () => {
               )}
               
               <h2 className="text-xl font-semibold text-foreground mb-3">
-                Cashback Tracked
+                {isTrackedModalSuccess ? 'Cashback Found!' : 'Cashback Tracked'}
               </h2>
               
               <p className="text-muted-foreground mb-6">
-                Hi{user?.firstName ? ` ${user.firstName}` : ''}, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.
+                {isTrackedModalSuccess 
+                  ? `Great news${user?.firstName ? ` ${user.firstName}` : ''}! We found your cashback and it has been successfully tracked. You can view the details below.`
+                  : `Hi${user?.firstName ? ` ${user.firstName}` : ''}, no need to raise a ticket. Cashback has already been tracked for your clicks on this date.`
+                }
               </p>
               
               {orderId && (

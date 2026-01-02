@@ -259,6 +259,7 @@ const MissingCashback: React.FC = () => {
   const [pendingUserType, setPendingUserType] = useState<string>('');
   const [showValidationErrorModal, setShowValidationErrorModal] = useState(false);
   const [validationErrorMessage, setValidationErrorMessage] = useState<string>('');
+  const [validationErrorShouldRedirect, setValidationErrorShouldRedirect] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoModalTitle, setInfoModalTitle] = useState<string>('');
   const [infoModalMessage, setInfoModalMessage] = useState<string>('');
@@ -509,7 +510,10 @@ const MissingCashback: React.FC = () => {
       if (errorMessage.includes('already') && (errorMessage.includes('queue') || errorMessage.includes('added') || errorMessage.includes('tracked'))) {
         setShowQueueAlreadyAddedModal(true);
       } else {
+        // For other validation errors, check if they should redirect
+        const shouldRedirect = errorMessage.includes('ticket') || errorMessage.includes('exists');
         setValidationErrorMessage(error.message || 'Failed to validate your order. Please check the Order ID.');
+        setValidationErrorShouldRedirect(shouldRedirect);
         setShowValidationErrorModal(true);
       }
     } finally {
@@ -625,7 +629,13 @@ const MissingCashback: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to update claim details:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists');
       setValidationErrorMessage(error.message || 'Failed to update claim details. Please try again.');
+      setValidationErrorShouldRedirect(shouldRedirect);
       setShowValidationErrorModal(true);
     } finally {
       setIsUpdatingDetails(false);
@@ -662,7 +672,13 @@ const MissingCashback: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to update C1 category:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists');
       setValidationErrorMessage(error.message || 'Failed to update claim. Please try again.');
+      setValidationErrorShouldRedirect(shouldRedirect);
       setShowValidationErrorModal(true);
     } finally {
       setIsUpdatingDetails(false);
@@ -769,8 +785,16 @@ const MissingCashback: React.FC = () => {
       setShowAddDetailsModal(false);
     } catch (error: any) {
       console.error('Failed to submit ticket:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists');
       setValidationErrorMessage(error.message || 'Failed to upload invoice. Please try again.');
+      setValidationErrorShouldRedirect(shouldRedirect);
       setShowValidationErrorModal(true);
+      // Close modals
+      setShowAddDetailsModal(false);
     } finally {
       setIsUploadingTicket(false);
     }
@@ -804,8 +828,20 @@ const MissingCashback: React.FC = () => {
       loadClaims();
     } catch (error: any) {
       console.error('[AddDetails] Failed to update B1 claim:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      // Check if this is a "already tracked" type error - redirect after showing
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists');
       setValidationErrorMessage(error.message || 'Failed to update claim details.');
+      setValidationErrorShouldRedirect(shouldRedirect);
       setShowValidationErrorModal(true);
+      // Close the add details modal
+      setShowAddDetailsModal(false);
+      setSelectedClaimForDetails(null);
+      setShowB1ConfirmationSheet(false);
+      setPendingUserType('');
     } finally {
       setIsUpdatingDetails(false);
     }
@@ -856,8 +892,18 @@ const MissingCashback: React.FC = () => {
       loadClaims();
     } catch (error: any) {
       console.error('[AddDetails] Failed to update claim details:', error);
+      const errorMsg = error.message?.toLowerCase() || '';
+      // Check if this is a "already tracked" type error - redirect after showing
+      const shouldRedirect = errorMsg.includes('already') || 
+                             errorMsg.includes('tracked') || 
+                             errorMsg.includes('ticket') ||
+                             errorMsg.includes('exists');
       setValidationErrorMessage(error.message || 'Failed to update claim details.');
+      setValidationErrorShouldRedirect(shouldRedirect);
       setShowValidationErrorModal(true);
+      // Close the add details modal
+      setShowAddDetailsModal(false);
+      setSelectedClaimForDetails(null);
     } finally {
       setIsUpdatingDetails(false);
     }
@@ -2155,7 +2201,21 @@ const MissingCashback: React.FC = () => {
         </Dialog>
 
         {/* Validation Error Modal */}
-        <Dialog open={showValidationErrorModal} onOpenChange={setShowValidationErrorModal}>
+        <Dialog 
+          open={showValidationErrorModal} 
+          onOpenChange={(open) => {
+            if (!open && validationErrorShouldRedirect) {
+              // Reset states and redirect to claims page
+              resetClaimState();
+              setStep('claims');
+              loadClaims();
+            }
+            setShowValidationErrorModal(open);
+            if (!open) {
+              setValidationErrorShouldRedirect(false);
+            }
+          }}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="sr-only">Validation Error</DialogTitle>
@@ -2166,7 +2226,7 @@ const MissingCashback: React.FC = () => {
               </div>
               
               <h2 className="text-xl font-semibold text-foreground mb-3">
-                Unable to Process
+                {validationErrorShouldRedirect ? 'Already Tracked' : 'Unable to Process'}
               </h2>
               
               <p className="text-muted-foreground mb-6">
@@ -2180,8 +2240,19 @@ const MissingCashback: React.FC = () => {
                 </div>
               )}
               
-              <Button onClick={() => setShowValidationErrorModal(false)} className="w-full h-12">
-                Okay
+              <Button 
+                onClick={() => {
+                  setShowValidationErrorModal(false);
+                  if (validationErrorShouldRedirect) {
+                    resetClaimState();
+                    setStep('claims');
+                    loadClaims();
+                    setValidationErrorShouldRedirect(false);
+                  }
+                }} 
+                className="w-full h-12"
+              >
+                {validationErrorShouldRedirect ? 'View My Claims' : 'Okay'}
               </Button>
             </div>
           </DialogContent>

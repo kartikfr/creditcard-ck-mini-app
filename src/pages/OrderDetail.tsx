@@ -228,44 +228,59 @@ const OrderDetail: React.FC = () => {
   };
 
   // Get dynamic status comments based on cashback status
+  // Logic per API docs:
+  // 1. Admin comment takes priority
+  // 2. For Bonus/Rewards - only show comments for pending/confirmed, null for other statuses
+  // 3. For Cashback pending - check if expected_confirmation_date has passed for delay comments
+  // 4. No comments for paid/requested statuses
   const getStatusComment = () => {
     if (!order) return '';
     const attrs = order.attributes;
     const status = attrs.cashback_status?.toLowerCase() || 'pending';
-    
-    let comment = '';
-    
-    // Check for admin comment first
+    const cashbackType = attrs.cashback_type?.toLowerCase();
+
+    // 1. Admin comment always takes priority
     if (attrs.admin_comment) {
-      comment = attrs.admin_comment;
-    } else if (attrs.is_delayed === 'yes' && attrs.delay_validation_comments) {
-      // Check for delay validation comments if delayed
-      comment = attrs.delay_validation_comments;
-    } else {
-      // Status-specific comments
-      switch (status) {
-        case 'pending':
-          comment = attrs.pending_comments || attrs.comments || 'Your transaction will remain in Pending status till the return/cancellation period is over and the retailer has shared the final report with us.';
-          break;
-        case 'confirmed':
-          comment = attrs.confirmed_comments || attrs.comments || 'Great news! Your cashback has been confirmed and will be paid out soon.';
-          break;
-        case 'cancelled':
-          comment = attrs.cancelled_comments || attrs.comments || 'This transaction has been cancelled.';
-          break;
-        case 'paid':
-          comment = attrs.comments || 'Your cashback has been paid to your account.';
-          break;
-        case 'requested':
-          comment = attrs.comments || 'Your payment request has been submitted and is being processed.';
-          break;
-        default:
-          comment = attrs.comments || '';
-      }
+      return formatHtmlContent(attrs.admin_comment);
     }
-    
-    // Format HTML content
-    return formatHtmlContent(comment);
+
+    // 2. For Bonus/Rewards - only show comments for pending/confirmed
+    if (cashbackType === 'bonus' || cashbackType === 'rewards') {
+      if (status === 'pending') {
+        return formatHtmlContent(attrs.pending_comments || '');
+      }
+      if (status === 'confirmed') {
+        return formatHtmlContent(attrs.confirmed_comments || '');
+      }
+      // For other statuses (cancelled, paid, requested) - return empty per API docs
+      return '';
+    }
+
+    // 3. For Cashback - check delay validation based on expected_confirmation_date
+    if (status === 'pending') {
+      const expectedDate = attrs.expected_confirmation_date;
+      // If expected confirmation date has passed, show delay validation comments
+      if (expectedDate && new Date(expectedDate) < new Date()) {
+        if (attrs.delay_validation_comments) {
+          return formatHtmlContent(attrs.delay_validation_comments);
+        }
+      }
+      return formatHtmlContent(attrs.pending_comments || '');
+    }
+
+    // 4. Status-specific comments for Cashback
+    switch (status) {
+      case 'confirmed':
+        return formatHtmlContent(attrs.confirmed_comments || '');
+      case 'cancelled':
+        return formatHtmlContent(attrs.cancelled_comments || '');
+      case 'paid':
+      case 'requested':
+        // No comments for paid/requested per API documentation
+        return '';
+      default:
+        return '';
+    }
   };
 
   // Check if raise query is allowed - always show if order exists

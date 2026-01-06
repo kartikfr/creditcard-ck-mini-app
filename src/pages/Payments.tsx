@@ -5,7 +5,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import shoppingLoveImg from '@/assets/shopping-love.png';
+import thresholdSavingsImg from '@/assets/threshold-savings.png';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -596,11 +596,11 @@ const Payments: React.FC = () => {
         {/* Threshold Step (Mobile only) - Not enough balance */}
         {step === 'threshold' && isMobile && (
           <div className="animate-fade-in flex flex-col items-center text-center py-8">
-            {/* Shopping Love Illustration */}
+            {/* Threshold Savings Illustration */}
             <div className="mb-6">
               <img 
-                src={shoppingLoveImg} 
-                alt="Show Shopping Some Love" 
+                src={thresholdSavingsImg} 
+                alt="Keep saving to reach threshold" 
                 className="w-48 h-auto mx-auto"
               />
             </div>
@@ -1091,11 +1091,11 @@ const Payments: React.FC = () => {
                 <h2 className="text-lg font-semibold text-foreground">Request Payment</h2>
               </div>
 
-              {/* Shopping Love Illustration */}
+              {/* Threshold Savings Illustration */}
               <div className="mb-6">
                 <img 
-                  src={shoppingLoveImg} 
-                  alt="Show Shopping Some Love" 
+                  src={thresholdSavingsImg} 
+                  alt="Keep saving to reach threshold" 
                   className="w-40 h-auto mx-auto"
                 />
               </div>

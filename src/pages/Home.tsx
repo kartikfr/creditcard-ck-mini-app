@@ -657,15 +657,6 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-6">
-            <p className="text-destructive font-medium">Error loading content</p>
-            <p className="text-sm text-muted-foreground mt-1">{error}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={handleRefresh}>
-              <RefreshCw className="w-4 h-4 mr-2" /> Retry
-            </Button>
-          </div>
-        )}
 
       </div>
     </AppLayout>

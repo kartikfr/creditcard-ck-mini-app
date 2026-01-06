@@ -1437,13 +1437,28 @@ const MissingCashback: React.FC = () => {
                         <span className="text-sm text-muted-foreground">Expect update in</span>
                         <CountdownTimer targetDate={trackingTargetDate} />
                       </div>
+                      {claim.attributes.status_update && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-sm text-muted-foreground">Expect update by</span>
+                          <span className="text-sm font-medium text-primary border border-border rounded px-2 py-0.5">
+                            {formatExpectedDate(claim.attributes.status_update)}
+                          </span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-foreground mb-1">
                         Your missing Cashback ticket is under review.
                       </p>
-                      {trackingTargetDate && (
+                      {claim.attributes.status_update ? (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm text-muted-foreground">Expect update by</span>
+                          <span className="text-sm font-medium text-primary border border-border rounded px-2 py-0.5">
+                            {formatExpectedDate(claim.attributes.status_update)}
+                          </span>
+                        </div>
+                      ) : trackingTargetDate && (
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm text-muted-foreground">Expected by</span>
                           <span className="text-sm text-muted-foreground">

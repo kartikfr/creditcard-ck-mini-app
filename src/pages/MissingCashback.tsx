@@ -681,6 +681,13 @@ const MissingCashback: React.FC = () => {
         setTrackedCashbackId(response.meta.cashback_id);
         setIsTrackedModalSuccess(true);
         setShowTrackedModal(true);
+      } else if (response?.meta?.message) {
+        // Show meta.message as info (not success) when no cashback_id
+        setStep('success');
+        setInfoModalTitle('Claim Status');
+        setInfoModalMessage(response.meta.message);
+        setInfoModalVariant('info');
+        setShowInfoModal(true);
       } else {
         setStep('success');
         setInfoModalTitle('Details Added!');
@@ -721,6 +728,13 @@ const MissingCashback: React.FC = () => {
         setTrackedCashbackId(response.meta.cashback_id);
         setIsTrackedModalSuccess(true);
         setShowTrackedModal(true);
+      } else if (response?.meta?.message) {
+        // Show meta.message as info (not success) when no cashback_id
+        setStep('success');
+        setInfoModalTitle('Claim Status');
+        setInfoModalMessage(response.meta.message);
+        setInfoModalVariant('info');
+        setShowInfoModal(true);
       } else {
         setStep('success');
         setInfoModalTitle('Details Added!');
@@ -2044,9 +2058,11 @@ const MissingCashback: React.FC = () => {
               </h2>
               
               <p className="text-muted-foreground mb-6">
-                {submissionResult?.meta?.cashback_id
-                  ? `₹${submissionResult.meta.cashbackvalue || '0'} ${submissionResult.meta.cashback_type || 'Cashback'} has been added to your account.`
-                  : 'Your missing cashback claim has been added to the review queue.'}
+                {submissionResult?.meta?.message
+                  ? submissionResult.meta.message
+                  : submissionResult?.meta?.cashback_id
+                    ? `₹${submissionResult.meta.cashbackvalue || '0'} ${submissionResult.meta.cashback_type || 'Cashback'} has been added to your account.`
+                    : 'Your missing cashback claim has been added to the review queue.'}
               </p>
               
               <div className="bg-muted/50 rounded-lg p-4 mb-6 text-left">
@@ -2054,9 +2070,6 @@ const MissingCashback: React.FC = () => {
                   <p><strong>Store:</strong> {selectedRetailer && getRetailerName(selectedRetailer)}</p>
                   <p><strong>Order ID:</strong> {orderId}</p>
                   {orderAmount && <p><strong>Amount:</strong> ₹{orderAmount}</p>}
-                  {submissionResult?.meta?.under_tracking === 'no' && (
-                    <p className="text-success"><strong>Status:</strong> Cashback resolved immediately</p>
-                  )}
                 </div>
               </div>
               

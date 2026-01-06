@@ -452,6 +452,80 @@ export const fetchMissingCashbackQueue = async (
   );
 };
 
+// Fetch a single missing cashback queue item by ID
+// Used after submission to get full claim details including exit_id
+export const fetchMissingCashbackQueueItem = async (
+  accessToken: string,
+  queueId: string
+): Promise<Claim | null> => {
+  console.log('[API] fetchMissingCashbackQueueItem - fetching queue item:', queueId);
+  
+  try {
+    // Try to find the item in the Pending queue
+    const pendingResponse = await fetchMissingCashbackQueue(accessToken, 'Pending', 1, 50);
+    const pendingClaims = pendingResponse?.data || [];
+    const foundInPending = pendingClaims.find((claim: any) => String(claim.id) === String(queueId));
+    
+    if (foundInPending) {
+      console.log('[API] Found queue item in Pending:', foundInPending.id);
+      return foundInPending;
+    }
+    
+    // If not found in Pending, check Resolved
+    const resolvedResponse = await fetchMissingCashbackQueue(accessToken, 'Resolved', 1, 50);
+    const resolvedClaims = resolvedResponse?.data || [];
+    const foundInResolved = resolvedClaims.find((claim: any) => String(claim.id) === String(queueId));
+    
+    if (foundInResolved) {
+      console.log('[API] Found queue item in Resolved:', foundInResolved.id);
+      return foundInResolved;
+    }
+    
+    console.log('[API] Queue item not found in Pending or Resolved');
+    return null;
+  } catch (error) {
+    console.error('[API] Failed to fetch queue item:', error);
+    return null;
+  }
+};
+
+// Type for queue claim (matches the Claim interface in MissingCashback.tsx)
+interface Claim {
+  id: string;
+  type: string;
+  attributes: {
+    callback_id?: number;
+    ticket_id?: string | null;
+    cashback_id?: number;
+    store_id?: number;
+    exit_id?: string;
+    click_date?: string;
+    order_id: string;
+    order_amount?: string;
+    details?: string;
+    comments?: string | null;
+    status: string;
+    user_type?: string;
+    category?: string;
+    notification_count?: number;
+    report_storename?: string;
+    imageurl?: string;
+    store_name?: string;
+    merchant_name?: string;
+    image_url?: string;
+    ticket_comments?: string | null;
+    cashbackvalue?: string;
+    ticket_status?: string | null;
+    groupid?: string;
+    cashback_type?: string;
+    under_tracking?: string;
+    status_update?: string;
+    expected_resolution_date?: string;
+    missing_txn_cashback_type?: string;
+    missing_txn_cashback?: string;
+  };
+}
+
 // Submit missing cashback to queue (after validation passes)
 export const submitMissingCashbackQueue = async (
   accessToken: string,

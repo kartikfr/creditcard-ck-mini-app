@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { fetchMissingCashbackRetailers, fetchExitClickDates, validateMissingCashback, submitMissingCashbackQueue, fetchMissingCashbackQueue, updateMissingCashbackQueue, raiseTicket } from '@/lib/api';
+import { fetchMissingCashbackRetailers, fetchExitClickDates, validateMissingCashback, submitMissingCashbackQueue, fetchMissingCashbackQueue, updateMissingCashbackQueue, raiseTicket, fetchMissingCashbackQueueItem } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import LoginPrompt from '@/components/LoginPrompt';
 import { Badge } from '@/components/ui/badge';
@@ -598,6 +598,24 @@ const MissingCashback: React.FC = () => {
         } else if (selectedRetailerGroup === 'C1') {
           setStep('categorySelection');
         } else if (selectedRetailerGroup === 'C2') {
+          // For C2, fetch the queue item to get exit_id and other details
+          // This ensures handleInvoiceSubmit has all required data
+          const newQueueId = response?.data?.id ? String(response.data.id) : null;
+          if (newQueueId && accessToken) {
+            console.log('[MissingCashback] C2 flow - fetching queue item to hydrate claim context:', newQueueId);
+            const queueItem = await fetchMissingCashbackQueueItem(accessToken, newQueueId);
+            if (queueItem) {
+              console.log('[MissingCashback] C2 flow - hydrated claim context:', {
+                id: queueItem.id,
+                exit_id: queueItem.attributes.exit_id,
+                store_id: queueItem.attributes.store_id,
+                order_id: queueItem.attributes.order_id
+              });
+              setSelectedClaimForDetails(queueItem);
+            } else {
+              console.warn('[MissingCashback] C2 flow - failed to fetch queue item, will try on-demand in invoice submit');
+            }
+          }
           setStep('invoiceUpload');
         }
         return;
@@ -783,12 +801,12 @@ const MissingCashback: React.FC = () => {
     // For new claims: use selectedClick
     // For existing claims from queue: use claimCtx
     // Also handle numeric IDs by converting to string
-    const exitIdFromClaim = claimCtx?.attributes.exit_id;
+    let exitIdFromClaim = claimCtx?.attributes.exit_id;
     const exitIdFromClick = selectedClick?.attributes?.exit_id || 
                             (selectedClick?.attributes as any)?.exitId;  // Check camelCase variant
     const exitIdFromTopLevel = selectedClick?.id != null ? String(selectedClick.id) : '';
     
-    const exitId = exitIdFromClaim || exitIdFromClick || exitIdFromTopLevel || '';
+    let exitId = exitIdFromClaim || exitIdFromClick || exitIdFromTopLevel || '';
     
     console.log('[InvoiceSubmit] Exit ID extraction:', {
       claimCtxExitId: exitIdFromClaim,
@@ -800,12 +818,12 @@ const MissingCashback: React.FC = () => {
       selectedClickFullAttributes: selectedClick?.attributes ? JSON.stringify(selectedClick.attributes) : 'null'
     });
 
-    const storeId =
+    let storeId =
       (claimCtx?.attributes.store_id ? String(claimCtx.attributes.store_id) : '') ||
       (selectedRetailer ? getRetailerId(selectedRetailer) : '');
 
-    const txnOrderId = claimCtx?.attributes.order_id || orderId;
-    const txnOrderAmountStr = claimCtx?.attributes.order_amount || orderAmount;
+    let txnOrderId = claimCtx?.attributes.order_id || orderId;
+    let txnOrderAmountStr = claimCtx?.attributes.order_amount || orderAmount;
 
     const effectiveQueueId = claimCtx ? String(claimCtx.id) : queueId;
 
@@ -819,19 +837,57 @@ const MissingCashback: React.FC = () => {
       claimCtx: claimCtx ? 'present' : 'null'
     });
 
+    // Pre-flight hydration: If exitId is missing but we have a queueId, fetch the claim on-demand
+    if ((!exitId || !storeId) && effectiveQueueId && accessToken) {
+      console.log('[InvoiceSubmit] Missing exitId or storeId, attempting on-demand hydration from queue:', effectiveQueueId);
+      setIsUploadingTicket(true);
+      try {
+        const hydratedClaim = await fetchMissingCashbackQueueItem(accessToken, effectiveQueueId);
+        if (hydratedClaim) {
+          console.log('[InvoiceSubmit] On-demand hydration successful:', {
+            id: hydratedClaim.id,
+            exit_id: hydratedClaim.attributes.exit_id,
+            store_id: hydratedClaim.attributes.store_id
+          });
+          // Update values from hydrated claim
+          if (!exitId && hydratedClaim.attributes.exit_id) {
+            exitId = hydratedClaim.attributes.exit_id;
+            exitIdFromClaim = hydratedClaim.attributes.exit_id;
+          }
+          if (!storeId && hydratedClaim.attributes.store_id) {
+            storeId = String(hydratedClaim.attributes.store_id);
+          }
+          if (!txnOrderId && hydratedClaim.attributes.order_id) {
+            txnOrderId = hydratedClaim.attributes.order_id;
+          }
+          if (!txnOrderAmountStr && hydratedClaim.attributes.order_amount) {
+            txnOrderAmountStr = hydratedClaim.attributes.order_amount;
+          }
+          // Also update the state for future reference
+          setSelectedClaimForDetails(hydratedClaim);
+        } else {
+          console.warn('[InvoiceSubmit] On-demand hydration failed - claim not found');
+        }
+      } catch (hydrateError) {
+        console.error('[InvoiceSubmit] On-demand hydration error:', hydrateError);
+      }
+      setIsUploadingTicket(false);
+    }
+
     if (!exitDate || !exitId || !storeId || !txnOrderId) {
-      console.log('[InvoiceSubmit] ERROR: Missing required fields', { exitDate, exitId, storeId, txnOrderId });
-      setValidationErrorMessage('Unable to prepare ticket request for this claim. Please try again.');
+      console.log('[InvoiceSubmit] ERROR: Missing required fields after hydration attempt', { exitDate, exitId, storeId, txnOrderId });
+      setValidationErrorMessage('Unable to prepare ticket request. Please try again in a moment or upload invoice from the claim list.');
       setShowValidationErrorModal(true);
       return;
     }
 
     setIsUploadingTicket(true);
     try {
-      // Convert files to base64 - use 'ticket_attachment' as the field name (matches curl)
+      // Convert files to base64 with proper naming for multiple files
+      // Use ticket_attachment for first file, ticket_attachment1, ticket_attachment2 for subsequent
       const fileData = await Promise.all(
-        uploadedFiles.map(async (file) => ({
-          name: 'ticket_attachment',
+        uploadedFiles.map(async (file, index) => ({
+          name: index === 0 ? 'ticket_attachment' : `ticket_attachment${index}`,
           data: await fileToBase64(file),
           filename: file.name,
           contentType: file.type,

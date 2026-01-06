@@ -16,6 +16,7 @@ import {
   fetchEarnings,
   fetchPaymentInfo,
   extractPaymentMethodIds,
+  extractPaymentData,
   sendPaymentRequestOTP,
   verifyPaymentRequestOTP,
   submitAmazonPayment,
@@ -75,9 +76,11 @@ const Payments: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   
-  // Earnings data
+  // Earnings/Payment data
   const [cashbackBalance, setCashbackBalance] = useState(0);
   const [rewardsBalance, setRewardsBalance] = useState(0);
+  const [paymentThreshold, setPaymentThreshold] = useState(250);
+  const [currencyCode, setCurrencyCode] = useState('INR');
   const [loadingEarnings, setLoadingEarnings] = useState(true);
   
   // Payment requests
@@ -104,9 +107,9 @@ const Payments: React.FC = () => {
       }
       setLoadingPaymentRequests(true);
       try {
-        // Fetch earnings, payment info, payment requests, and profile in parallel
-        const [earningsRes, paymentInfoRes, paymentRequestsRes, profileRes] = await Promise.all([
-          fetchEarnings(accessToken),
+        // Fetch payment info, payment requests, and profile in parallel
+        // Payment info now provides cashback_earnings, rewards_earnings, payment_threshold
+        const [paymentInfoRes, paymentRequestsRes, profileRes] = await Promise.all([
           fetchPaymentInfo(accessToken).catch(err => {
             console.error('[Payments] Failed to fetch payment info:', err);
             return null;
@@ -121,18 +124,37 @@ const Payments: React.FC = () => {
           }),
         ]);
         
-        const attrs = earningsRes?.data?.attributes ?? earningsRes?.data?.[0]?.attributes;
-        if (attrs) {
-          setCashbackBalance(parseFloat(attrs.confirmed_cashback) || 0);
-          setRewardsBalance(parseFloat(attrs.confirmed_rewards) || 0);
-        }
-        
-        // Parse payment method IDs from response
+        // Extract payment data from Payment API (primary source for balances)
         if (paymentInfoRes) {
           console.log('[Payments] Payment info response:', paymentInfoRes);
+          
+          // Extract earnings, threshold, currency from Payment API
+          const paymentData = extractPaymentData(paymentInfoRes);
+          console.log('[Payments] Extracted payment data:', paymentData);
+          
+          setCashbackBalance(paymentData.cashbackEarnings);
+          setRewardsBalance(paymentData.rewardsEarnings);
+          setPaymentThreshold(paymentData.paymentThreshold);
+          setCurrencyCode(paymentData.currencyCode);
+          
+          // Extract payment method IDs
           const ids = extractPaymentMethodIds(paymentInfoRes);
           console.log('[Payments] Extracted payment method IDs:', ids);
           setPaymentMethodIds(ids);
+        } else {
+          // Fallback to earnings API if payment info fails
+          console.log('[Payments] Payment info failed, falling back to earnings API');
+          try {
+            const earningsRes = await fetchEarnings(accessToken);
+            const attrs = earningsRes?.data?.attributes ?? earningsRes?.data?.[0]?.attributes;
+            if (attrs) {
+              setCashbackBalance(parseFloat(attrs.confirmed_cashback) || 0);
+              setRewardsBalance(parseFloat(attrs.confirmed_rewards) || 0);
+              setPaymentThreshold(parseFloat(attrs.payment_threshold) || 250);
+            }
+          } catch (earningsErr) {
+            console.error('[Payments] Fallback earnings API also failed:', earningsErr);
+          }
         }
         
         // Parse payment requests from response

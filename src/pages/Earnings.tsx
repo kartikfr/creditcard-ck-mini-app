@@ -14,9 +14,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import LoginPrompt from '@/components/LoginPrompt';
 import { 
   fetchEarnings, 
-  fetchPaymentHistory,
   fetchPaymentInfo,
   extractPaymentMethodIds,
+  extractPaymentData,
   sendPaymentRequestOTP, 
   verifyPaymentRequestOTP, 
   submitAmazonPayment, 
@@ -245,7 +245,7 @@ const Earnings: React.FC = () => {
     
     setIsLoadingHistory(true);
     try {
-      const res = await fetchPaymentHistory(accessToken);
+      const res = await fetchPaymentInfo(accessToken);
       const data = res?.data || [];
       // Parse the response data
       const history: PaymentHistoryItem[] = Array.isArray(data) ? data.map((item: any) => ({

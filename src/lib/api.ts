@@ -637,15 +637,84 @@ export const raiseTicket = async (
   );
 };
 
-// Fetch payment info
+// Fetch payment info - includes paymentautomation=true for automation-enabled payment methods
 export const fetchPaymentInfo = async (accessToken: string) => {
   const device = getDeviceType();
   return callProxy(
-    `/payment/payment?device=${device}&include=charities`,
+    `/payment/payment?device=${device}&paymentautomation=true&include=charities`,
     'GET',
     undefined,
     accessToken
   );
+};
+
+// Payment API Response Types
+export interface PaymentInfoAttributes {
+  mobile: string;
+  total_earnings: string;
+  cashback_earnings: string;
+  rewards_earnings: string;
+  currency_code: string;
+  payment_threshold: string;
+}
+
+export interface PaymentMethodAttributes {
+  payment_name: string;
+  payment_type: string;
+  payment_user_info?: {
+    bank_name?: string;
+    account_holder_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
+    email?: string;
+    branch?: string;
+    sort_code?: string;
+  };
+}
+
+export interface PaymentInfoResponse {
+  data: {
+    type: string;
+    id: number;
+    attributes: PaymentInfoAttributes;
+    relationships?: {
+      payment_methods?: {
+        data: Array<{
+          type: string;
+          id: number;
+          attributes: PaymentMethodAttributes;
+        }>;
+      };
+      user_default_rewards_payment_method_details?: {
+        data: object | null;
+      };
+      user_default_cashback_payment_method_details?: {
+        data: object | null;
+      };
+    };
+  };
+  included?: Array<{
+    type: string;
+    id: number;
+    attributes: {
+      name: string;
+      unique_identifier: string;
+    };
+  }>;
+}
+
+// Extract payment data from Payment API response
+export const extractPaymentData = (paymentInfo: any) => {
+  const attrs = paymentInfo?.data?.attributes || {};
+  
+  return {
+    mobile: attrs.mobile || '',
+    totalEarnings: parseFloat(attrs.total_earnings) || 0,
+    cashbackEarnings: parseFloat(attrs.cashback_earnings) || 0,
+    rewardsEarnings: parseFloat(attrs.rewards_earnings) || 0,
+    currencyCode: attrs.currency_code || 'INR',
+    paymentThreshold: parseFloat(attrs.payment_threshold) || 250,
+  };
 };
 
 export type PaymentMethodKey = 'amazon' | 'flipkart' | 'upi' | 'bank';
@@ -924,10 +993,7 @@ export const downloadPaymentHistoryPDF = async (
   return callProxy(`/payment/history/${cashoutId}/download/pdf`, 'GET', undefined, accessToken);
 };
 
-// Fetch payment info (legacy)
-export const fetchPaymentHistory = async (accessToken: string) => {
-  return callProxy('/payment/payment?device=Desktop&paymentautomation=true', 'GET', undefined, accessToken);
-};
+// NOTE: fetchPaymentHistory (legacy) removed - use fetchPaymentInfo instead which now includes paymentautomation=true
 
 // Fetch all payment requests (for showing pending/completed payment requests)
 export const fetchPaymentRequests = async (

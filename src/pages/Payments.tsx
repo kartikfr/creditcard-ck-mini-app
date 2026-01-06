@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Building2, Gift, Smartphone, ArrowLeft, ShieldCheck, Clock, ChevronRight } from 'lucide-react';
+import { Wallet, Building2, Gift, Smartphone, ArrowLeft, ShieldCheck, Clock, ChevronRight, X, CheckCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import SettingsPageLayout from '@/components/layout/SettingsPageLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -25,6 +26,7 @@ import {
   submitBankPayment,
   fetchPaymentRequests,
   fetchProfile,
+  APIError,
 } from '@/lib/api';
 
 type WalletType = 'cashback' | 'rewards' | 'cashback_and_rewards' | null;
@@ -98,6 +100,10 @@ const Payments: React.FC = () => {
     bank: 18,
   });
   
+  // Payment Processing Modal state (for pending payment error)
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState<string | null>(null);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -297,6 +303,19 @@ const Payments: React.FC = () => {
       });
     } catch (error: any) {
       console.error('Payment failed:', error);
+      
+      // Check if this is a "payment already pending" error (code 5002)
+      if (error instanceof APIError && error.code === '5002') {
+        // Reset form and show processing modal
+        resetForm();
+        
+        // Set the pending amount from meta
+        const pendingAmount = error.meta?.requested_earnings || null;
+        setPendingPaymentAmount(pendingAmount);
+        setShowProcessingModal(true);
+        return;
+      }
+      
       toast({
         title: 'Payment Failed',
         description: error.message || 'Please try again',
@@ -911,6 +930,79 @@ const Payments: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Payment Processing Modal - shown when payment is already pending */}
+      <Dialog open={showProcessingModal} onOpenChange={setShowProcessingModal}>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          <div className="relative">
+            {/* Close button */}
+            <button
+              onClick={() => setShowProcessingModal(false)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Content */}
+            <div className="p-6 pt-8 text-center">
+              {/* Wallet Icon with Timer Badge */}
+              <div className="relative inline-block mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-cyan-400 to-teal-500 rounded-2xl flex items-center justify-center transform rotate-6 relative">
+                  <Wallet className="w-12 h-12 text-white transform -rotate-6" />
+                  {/* Money notes effect */}
+                  <div className="absolute -top-2 -right-2 w-8 h-10 bg-green-400 rounded-sm transform rotate-12 opacity-80"></div>
+                  <div className="absolute -top-3 right-1 w-6 h-8 bg-green-300 rounded-sm transform rotate-6 opacity-60"></div>
+                  {/* Checkmark badge */}
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full border-2 border-teal-500 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-teal-500" />
+                  </div>
+                </div>
+                {/* Curved arrow */}
+                <div className="absolute -top-2 -right-6 text-orange-400 text-2xl">↗</div>
+              </div>
+
+              {/* Timer Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-600 rounded-full mb-4 font-medium text-sm">
+                <Clock className="w-4 h-4" />
+                5 Min to 72 Hrs
+              </div>
+
+              {/* Title */}
+              <h2 className="text-xl font-bold text-foreground mb-3">
+                Payment Is Processing
+              </h2>
+
+              {/* Description */}
+              <p className="text-muted-foreground mb-6">
+                We've already got your payment request of{' '}
+                <span className="font-semibold text-foreground">
+                  ₹{pendingPaymentAmount ? parseFloat(pendingPaymentAmount).toLocaleString('en-IN') : '0'}
+                </span>
+                , which will be done within 5 min to 72 hours.
+              </p>
+
+              {/* Note */}
+              <div className="bg-muted/50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">Note - </span>
+                  You can request another payment after this is completed :)
+                </p>
+              </div>
+
+              {/* Action Button */}
+              <Button 
+                onClick={() => {
+                  setShowProcessingModal(false);
+                  navigate('/');
+                }}
+                className="w-full h-12 font-semibold"
+              >
+                Browse More Deals
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };

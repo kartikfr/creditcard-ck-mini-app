@@ -63,6 +63,23 @@ const isTokenExpired = (token: string): boolean => {
   return Date.now() >= exp - 60000; // 60 second buffer before expiration
 };
 
+// Custom error class to preserve API error details including meta
+export class APIError extends Error {
+  code?: string;
+  title?: string;
+  detail?: string;
+  meta?: Record<string, any>;
+
+  constructor(message: string, errorData?: { code?: string; title?: string; detail?: string; meta?: Record<string, any> }) {
+    super(message);
+    this.name = 'APIError';
+    this.code = errorData?.code;
+    this.title = errorData?.title;
+    this.detail = errorData?.detail;
+    this.meta = errorData?.meta;
+  }
+}
+
 // Helper to call the proxy edge function
 const callProxy = async (endpoint: string, method = 'GET', body?: any, accessToken?: string) => {
   console.log(`[API] Calling proxy: ${method} ${endpoint}`);
@@ -89,7 +106,16 @@ const callProxy = async (endpoint: string, method = 'GET', body?: any, accessTok
     const errors = data.data?.errors;
     if (Array.isArray(errors) && errors.length > 0) {
       const firstError = errors[0];
-      throw new Error(firstError.detail || firstError.title || 'API request failed');
+      // Throw APIError with full error details including meta
+      throw new APIError(
+        firstError.detail || firstError.title || 'API request failed',
+        {
+          code: firstError.code,
+          title: firstError.title,
+          detail: firstError.detail,
+          meta: firstError.meta,
+        }
+      );
     }
     throw new Error(typeof data.error === 'string' ? data.error : `API Error ${data.status}`);
   }

@@ -1190,6 +1190,36 @@ export const fetchCategoryOffersBySlug = async (
   );
 };
 
+// Fetch popular retailers by category type (for Deals page)
+export type RetailerCategoryType = 'popular' | 'highest-cashback' | 'electronics' | 'fashion' | 'beauty' | 'flights';
+
+export const fetchPopularRetailers = async (
+  categoryType: RetailerCategoryType,
+  pageNumber: number = 1,
+  pageSize: number = 1000
+) => {
+  const guestToken = await getGuestToken();
+  
+  const categoryPaths: Record<RetailerCategoryType, string> = {
+    'popular': 'most-popular-retailers',
+    'highest-cashback': 'highest-cashback-stores',
+    'electronics': 'most-popular-retailers/electronics-most-popular',
+    'fashion': 'most-popular-retailers/more-fashion-stores',
+    'beauty': 'home-categories-exclusive/beauty-personal-care-offers',
+    'flights': 'most-popular-retailers/flight-offers',
+  };
+  
+  const path = categoryPaths[categoryType];
+  console.log(`[API] fetchPopularRetailers: ${categoryType} -> ${path}`);
+  
+  return callProxy(
+    `/offers/category/${path}?device=Desktop&page[number]=${pageNumber}&page[size]=${pageSize}&sort=Popularity`,
+    'GET',
+    undefined,
+    guestToken
+  );
+};
+
 // Check eligibility for credit cards via BankKaro API
 export const checkEligibility = async (
   pincode: string,

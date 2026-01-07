@@ -1,149 +1,129 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tag, ChevronRight, Search, Grid3X3, List } from 'lucide-react';
+import { 
+  Sparkles, Shirt, Heart, Smartphone, Plane, TrendingUp, 
+  Search, Package 
+} from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchCategories } from '@/lib/api';
+import { fetchPopularRetailers, RetailerCategoryType } from '@/lib/api';
+import RetailerCard, { Retailer } from '@/components/RetailerCard';
+import { cn } from '@/lib/utils';
 
-interface Category {
-  id: string;
-  type: string;
-  attributes: {
-    name: string;
-    slug?: string;
-    unique_identifier?: string;
-    hierachy_unique_identifier?: string;
-    image_url?: string;
-    offer_count?: number;
-    description?: string;
-  };
-  links?: {
-    self?: string;
-    offers?: string;
-    products?: string;
-  };
-  relationships?: {
-    sub_categories?: {
-      data?: any[];
-    };
-  };
-}
+// Category tab configuration
+const CATEGORIES = [
+  { id: 'popular' as RetailerCategoryType, label: 'Popular', icon: Sparkles },
+  { id: 'fashion' as RetailerCategoryType, label: 'Fashion', icon: Shirt },
+  { id: 'beauty' as RetailerCategoryType, label: 'Beauty', icon: Heart },
+  { id: 'electronics' as RetailerCategoryType, label: 'Electronics', icon: Smartphone },
+  { id: 'flights' as RetailerCategoryType, label: 'Flights', icon: Plane },
+  { id: 'highest-cashback' as RetailerCategoryType, label: 'Highest Cashback', icon: TrendingUp },
+];
 
 const Deals: React.FC = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategory, setActiveCategory] = useState<RetailerCategoryType>('popular');
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [displayCount, setDisplayCount] = useState(20);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // Load retailers when category changes
   useEffect(() => {
-    loadCategories();
-  }, []);
+    loadRetailers();
+    setDisplayCount(20); // Reset display count on category change
+  }, [activeCategory]);
 
-  const loadCategories = async () => {
+  const loadRetailers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetchCategories(1, 1000);
-      console.log('[Deals] Categories response:', response);
-      console.log('[Deals] Total categories from API:', response?.data?.length || 0);
+      const response = await fetchPopularRetailers(activeCategory, 1, 1000);
+      console.log(`[Deals] Loaded ${response?.data?.length || 0} retailers for ${activeCategory}`);
       
       if (response?.data && Array.isArray(response.data)) {
-        // Log each category's navigation info
-        response.data.forEach((cat: Category) => {
-          const subCats = cat.relationships?.sub_categories?.data || [];
-          const hasOffers = !!cat.links?.offers && cat.links.offers.trim() !== '';
-          console.log(`[Deals] Category: ${cat.attributes?.name} | unique_id: ${cat.attributes?.unique_identifier} | subCats: ${subCats.length} | hasOffers: ${hasOffers}`);
-        });
-        
-        // Filter out categories without valid navigation paths OR without content
-        const validCategories = response.data.filter((cat: Category) => {
-          const hasUniqueId = !!cat.attributes?.unique_identifier;
-          const hasSlug = !!cat.attributes?.slug;
-          const hasSelfLink = !!cat.links?.self;
-          const hasValidPath = hasUniqueId || hasSlug || hasSelfLink;
-          
-          // Also check if category has subcategories or offers
-          const subCats = cat.relationships?.sub_categories?.data || [];
-          const hasSubcategories = subCats.length > 0;
-          const hasOffersUrl = !!cat.links?.offers && cat.links.offers.trim() !== '';
-          const hasContent = hasSubcategories || hasOffersUrl;
-          
-          // Only show categories that have valid path AND content
-          return hasValidPath && hasContent;
-        });
-        
-        console.log(`[Deals] Valid categories after filtering: ${validCategories.length} (removed ${response.data.length - validCategories.length})`);
-        setCategories(validCategories);
+        setRetailers(response.data);
+      } else {
+        setRetailers([]);
       }
     } catch (error) {
-      console.error('[Deals] Error loading categories:', error);
+      console.error('[Deals] Error loading retailers:', error);
+      setRetailers([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredCategories = categories.filter((cat) =>
-    cat.attributes?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter retailers by search query
+  const filteredRetailers = useMemo(() => {
+    if (!searchQuery.trim()) return retailers;
+    const query = searchQuery.toLowerCase();
+    return retailers.filter(r => 
+      r.attributes?.name?.toLowerCase().includes(query)
+    );
+  }, [retailers, searchQuery]);
 
-  // Normalize slug by removing numeric suffix (e.g., beauty_01 -> beauty)
-  const normalizeSlug = (slug: string): string => {
-    return slug.replace(/_\d+$/, '');
-  };
+  // Displayed retailers (for infinite scroll effect)
+  const displayedRetailers = useMemo(() => {
+    return filteredRetailers.slice(0, displayCount);
+  }, [filteredRetailers, displayCount]);
 
-  const handleCategoryClick = (category: Category) => {
-    // Priority 1: Extract slug from links.self URL (most reliable for nested categories)
-    if (category.links?.self) {
-      const match = category.links.self.match(/\/categories\/([^?]+)/);
+  const hasMore = displayCount < filteredRetailers.length;
+
+  // Intersection Observer for infinite scroll
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [entry] = entries;
+    if (entry.isIntersecting && hasMore && !isLoading) {
+      setDisplayCount(prev => Math.min(prev + 20, filteredRetailers.length));
+    }
+  }, [hasMore, isLoading, filteredRetailers.length]);
+
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    observerRef.current = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '100px',
+      threshold: 0.1,
+    });
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [handleObserver]);
+
+  // Handle retailer click - navigate to offer detail
+  const handleRetailerClick = (retailer: Retailer) => {
+    const uniqueId = retailer.attributes?.unique_identifier;
+    if (uniqueId) {
+      navigate(`/offer/${uniqueId}`);
+      return;
+    }
+    
+    // Fallback: extract from self link
+    if (retailer.links?.self) {
+      const match = retailer.links.self.match(/\/offers\/([^?]+)/);
       if (match) {
-        const normalizedSlug = normalizeSlug(match[1]);
-        console.log('[Deals] Using links.self for navigation:', normalizedSlug);
-        navigate(`/category/${normalizedSlug}`);
+        navigate(`/offer/${match[1]}`);
         return;
       }
     }
     
-    // Priority 2: Use unique_identifier (normalized)
-    if (category.attributes?.unique_identifier) {
-      const normalizedSlug = normalizeSlug(category.attributes.unique_identifier);
-      console.log('[Deals] Using unique_identifier for navigation:', normalizedSlug);
-      navigate(`/category/${normalizedSlug}`);
-      return;
-    }
-    
-    // Priority 3: Use slug (normalized)
-    if (category.attributes?.slug) {
-      const normalizedSlug = normalizeSlug(category.attributes.slug);
-      console.log('[Deals] Using slug for navigation:', normalizedSlug);
-      navigate(`/category/${normalizedSlug}`);
-      return;
-    }
-    
-    console.error('[Deals] No valid navigation path for category:', category);
+    console.error('[Deals] No valid navigation path for retailer:', retailer);
   };
 
-  const LoadingSkeleton = () => (
-    <div className={viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-3'}>
-      {Array.from({ length: 12 }).map((_, i) => (
-        viewMode === 'grid' ? (
-          <div key={i} className="card-elevated p-4">
-            <Skeleton className="w-16 h-16 rounded-xl mx-auto mb-3" />
-            <Skeleton className="h-4 w-3/4 mx-auto mb-2" />
-            <Skeleton className="h-3 w-1/2 mx-auto" />
-          </div>
-        ) : (
-          <div key={i} className="card-elevated p-4 flex items-center gap-4">
-            <Skeleton className="w-14 h-14 rounded-xl" />
-            <div className="flex-1">
-              <Skeleton className="h-4 w-1/3 mb-2" />
-              <Skeleton className="h-3 w-1/4" />
-            </div>
-            <Skeleton className="w-5 h-5" />
-          </div>
-        )
-      ))}
+  // Loading skeleton
+  const RetailerSkeleton = () => (
+    <div className="bg-card rounded-xl border border-border p-3 md:p-4">
+      <Skeleton className="w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-lg mx-auto mb-2 md:mb-3" />
+      <Skeleton className="h-3 md:h-4 w-3/4 mx-auto mb-1.5 md:mb-2" />
+      <Skeleton className="h-5 md:h-6 w-1/2 mx-auto" />
     </div>
   );
 
@@ -153,133 +133,100 @@ const Deals: React.FC = () => {
         {/* Header */}
         <header className="mb-4 md:mb-6">
           <h1 className="text-xl md:text-2xl lg:text-3xl font-display font-bold text-foreground mb-1 md:mb-2">
-            Deals & Categories
+            All Deals & Offers
           </h1>
-          <p className="text-sm md:text-base text-muted-foreground">Browse categories and find deals</p>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Discover top stores and earn cashback
+          </p>
         </header>
 
-        {/* Search and View Toggle */}
-        <div className="flex gap-2 md:gap-4 mb-4 md:mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search categories..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 md:pl-10 h-9 md:h-11 text-xs md:text-sm placeholder:text-xs md:placeholder:text-sm"
-            />
-          </div>
-          <div className="flex gap-1 md:gap-2">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => setViewMode('grid')}
-              className="h-10 w-10 md:h-11 md:w-11"
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => setViewMode('list')}
-              className="h-10 w-10 md:h-11 md:w-11"
-            >
-              <List className="w-4 h-4" />
-            </Button>
+        {/* Category Tabs */}
+        <div className="mb-4 md:mb-6 -mx-3 px-3 md:mx-0 md:px-0">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map((category) => {
+              const Icon = category.icon;
+              const isActive = activeCategory === category.id;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => setActiveCategory(category.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span>{category.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Categories Count */}
+        {/* Search Bar */}
+        <div className="mb-4 md:mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search stores..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 md:h-11 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Results Count */}
         {!isLoading && (
           <p className="text-sm text-muted-foreground mb-4">
-            {filteredCategories.length} categories found
+            {filteredRetailers.length} stores found
+            {searchQuery && ` for "${searchQuery}"`}
           </p>
         )}
 
-        {/* Categories */}
+        {/* Retailers Grid */}
         {isLoading ? (
-          <LoadingSkeleton />
-        ) : filteredCategories.length === 0 ? (
-          <div className="card-elevated p-8 text-center">
-            <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No categories found</p>
-          </div>
-        ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
-            {filteredCategories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => handleCategoryClick(category)}
-                className="card-elevated p-3 md:p-4 text-center hover:border-primary transition-all duration-200 group"
-              >
-                <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-2 md:mb-3 rounded-lg md:rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
-                  {category.attributes?.image_url ? (
-                    <img
-                      src={category.attributes.image_url}
-                      alt={category.attributes.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = `<span class="text-lg md:text-2xl">${category.attributes?.name?.charAt(0) || 'C'}</span>`;
-                      }}
-                    />
-                  ) : (
-                    <span className="text-lg md:text-2xl font-bold text-primary">
-                      {category.attributes?.name?.charAt(0) || 'C'}
-                    </span>
-                  )}
-                </div>
-                <p className="font-semibold text-foreground text-xs md:text-sm mb-0.5 md:mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-                  {category.attributes?.name}
-                </p>
-                {category.attributes?.offer_count !== undefined && (
-                  <p className="text-[10px] md:text-xs text-muted-foreground">
-                    {category.attributes.offer_count} offers
-                  </p>
-                )}
-              </button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <RetailerSkeleton key={i} />
             ))}
+          </div>
+        ) : filteredRetailers.length === 0 ? (
+          <div className="bg-card border border-border rounded-xl p-8 md:p-12 text-center">
+            <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-foreground font-medium mb-1">No stores found</p>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery 
+                ? 'Try a different search term' 
+                : 'No stores available in this category'}
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredCategories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => handleCategoryClick(category)}
-                className="card-elevated p-4 w-full flex items-center gap-4 text-left hover:border-primary transition-all duration-200 group"
-              >
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {category.attributes?.image_url ? (
-                    <img
-                      src={category.attributes.image_url}
-                      alt={category.attributes.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = `<span class="text-xl font-bold text-primary">${category.attributes?.name?.charAt(0) || 'C'}</span>`;
-                      }}
-                    />
-                  ) : (
-                    <span className="text-xl font-bold text-primary">
-                      {category.attributes?.name?.charAt(0) || 'C'}
-                    </span>
-                  )}
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
+              {displayedRetailers.map((retailer) => (
+                <RetailerCard
+                  key={retailer.id}
+                  retailer={retailer}
+                  onClick={() => handleRetailerClick(retailer)}
+                />
+              ))}
+            </div>
+
+            {/* Infinite scroll trigger */}
+            {hasMore && (
+              <div ref={loadMoreRef} className="py-6 md:py-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <RetailerSkeleton key={`loading-${i}`} />
+                  ))}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {category.attributes?.name}
-                  </p>
-                  {category.attributes?.offer_count !== undefined && (
-                    <p className="text-sm text-muted-foreground">
-                      {category.attributes.offer_count} offers available
-                    </p>
-                  )}
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </button>
-            ))}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </AppLayout>

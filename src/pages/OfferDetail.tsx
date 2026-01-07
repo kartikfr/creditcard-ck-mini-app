@@ -735,26 +735,15 @@ const OfferDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Fixed CTA - positioned above bottom nav */}
-        <div className="fixed bottom-16 left-0 right-0 bg-card border-t border-border p-3 z-40 lg:hidden shadow-lg">
-          <div className="flex items-center justify-between gap-3">
-            {cashbackDisplay && (
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1 flex-wrap">
-                  <span className="text-xs font-semibold text-muted-foreground">{cashbackDisplay.prefix}</span>
-                  <span className="text-base font-bold text-orange-500">{cashbackDisplay.amount}</span>
-                  <span className="text-xs font-semibold text-orange-500">{cashbackDisplay.suffix}</span>
-                </div>
-              </div>
-            )}
-            <Button 
-              onClick={handleApplyNow}
-              className="h-10 px-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm whitespace-nowrap"
-            >
-              {attrs.cashback_button_text || `Visit ${attrs.name?.split(' ')[0] || 'Store'}`}
-              <ArrowRight className="w-4 h-4 ml-1.5" />
-            </Button>
-          </div>
+        {/* Mobile Fixed CTA - Full width prominent button */}
+        <div className="fixed bottom-16 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border px-4 py-3 z-40 lg:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+          <Button 
+            onClick={handleApplyNow}
+            className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base rounded-xl shadow-md"
+          >
+            {attrs.cashback_button_text || `Earn Cashback on ${attrs.name?.split(' ')[0] || 'Store'}`}
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
 
         {/* How to Get This Offer Popup - Clean Professional Design */}

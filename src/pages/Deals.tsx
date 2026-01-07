@@ -2,14 +2,21 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, Shirt, Heart, Smartphone, Plane, TrendingUp, 
-  Search, Package 
+  Search, Package, ChevronDown, Check
 } from 'lucide-react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchPopularRetailers, RetailerCategoryType } from '@/lib/api';
+import { fetchPopularRetailers, RetailerCategoryType, RetailerSortType } from '@/lib/api';
 import RetailerCard, { Retailer } from '@/components/RetailerCard';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 // Category tab configuration
 const CATEGORIES = [
@@ -21,9 +28,19 @@ const CATEGORIES = [
   { id: 'highest-cashback' as RetailerCategoryType, label: 'Highest Cashback', icon: TrendingUp },
 ];
 
+// Sort options
+const SORT_OPTIONS: { value: RetailerSortType; label: string }[] = [
+  { value: 'Popularity', label: 'Popularity' },
+  { value: 'A-Z', label: 'A-Z' },
+  { value: 'Newest', label: 'Newest' },
+  { value: 'Percent', label: 'Highest %' },
+  { value: 'Amount', label: 'Highest Amount' },
+];
+
 const Deals: React.FC = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<RetailerCategoryType>('popular');
+  const [sortBy, setSortBy] = useState<RetailerSortType>('Popularity');
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,17 +48,17 @@ const Deals: React.FC = () => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Load retailers when category changes
+  // Load retailers when category or sort changes
   useEffect(() => {
     loadRetailers();
-    setDisplayCount(20); // Reset display count on category change
-  }, [activeCategory]);
+    setDisplayCount(20); // Reset display count on category/sort change
+  }, [activeCategory, sortBy]);
 
   const loadRetailers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetchPopularRetailers(activeCategory, 1, 1000);
-      console.log(`[Deals] Loaded ${response?.data?.length || 0} retailers for ${activeCategory}`);
+      const response = await fetchPopularRetailers(activeCategory, 1, 1000, sortBy);
+      console.log(`[Deals] Loaded ${response?.data?.length || 0} retailers for ${activeCategory}, sorted by ${sortBy}`);
       
       if (response?.data && Array.isArray(response.data)) {
         setRetailers(response.data);
@@ -165,9 +182,9 @@ const Deals: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-4 md:mb-6">
-          <div className="relative max-w-md">
+        {/* Search Bar & Sort */}
+        <div className="mb-4 md:mb-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
@@ -177,6 +194,29 @@ const Deals: React.FC = () => {
               className="pl-10 h-10 md:h-11 text-sm"
             />
           </div>
+          
+          {/* Sort Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-10 md:h-11 gap-2 w-full sm:w-auto">
+                <span className="text-muted-foreground">Sort:</span>
+                <span className="font-medium">{SORT_OPTIONS.find(o => o.value === sortBy)?.label}</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              {SORT_OPTIONS.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => setSortBy(option.value)}
+                  className="flex items-center justify-between"
+                >
+                  {option.label}
+                  {sortBy === option.value && <Check className="w-4 h-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Results Count */}

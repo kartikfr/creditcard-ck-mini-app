@@ -1193,10 +1193,13 @@ export const fetchCategoryOffersBySlug = async (
 // Fetch popular retailers by category type (for Deals page)
 export type RetailerCategoryType = 'popular' | 'highest-cashback' | 'electronics' | 'fashion' | 'beauty' | 'flights';
 
+export type RetailerSortType = 'Popularity' | 'A-Z' | 'Amount' | 'Newest' | 'Percent';
+
 export const fetchPopularRetailers = async (
   categoryType: RetailerCategoryType,
   pageNumber: number = 1,
-  pageSize: number = 1000
+  pageSize: number = 1000,
+  sort: RetailerSortType = 'Popularity'
 ) => {
   const guestToken = await getGuestToken();
   
@@ -1210,10 +1213,10 @@ export const fetchPopularRetailers = async (
   };
   
   const path = categoryPaths[categoryType];
-  console.log(`[API] fetchPopularRetailers: ${categoryType} -> ${path}`);
+  console.log(`[API] fetchPopularRetailers: ${categoryType} -> ${path}, sort: ${sort}`);
   
   return callProxy(
-    `/offers/category/${path}?device=Desktop&page[number]=${pageNumber}&page[size]=${pageSize}&sort=Popularity`,
+    `/offers/category/${path}?device=Desktop&page[number]=${pageNumber}&page[size]=${pageSize}&sort=${sort}`,
     'GET',
     undefined,
     guestToken
